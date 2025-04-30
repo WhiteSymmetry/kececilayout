@@ -11,8 +11,8 @@ setup(
     url="https://github.com/WhiteSymmetry/kececilayout",
     packages=find_packages(),
     install_requires=[
-        "networkx>=2.5",
-        "numpy>=1.20",
+        "networkx",
+        "numpy",
         "rustworkx",
         "igraph",
         "networkit",
