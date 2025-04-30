@@ -1,5 +1,3 @@
-Harika, GitHub README.md formatına uygun hale getirelim. Daha okunabilir ve standart bir yapı oluşturalım.
-
 ```markdown
 # KececiLayout
 
