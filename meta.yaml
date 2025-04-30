@@ -27,9 +27,9 @@ requirements:
 about:
   home: https://github.com/WhiteSymmetry/kececilayout
   license: MIT
-  summary: 'Binary to Gray code conversion package.'
+  summary: 'A deterministic node placement algorithm used in graph visualization. In this layout, nodes are arranged sequentially along a defined primary axis. Each subsequent node is then alternately offset along a secondary, perpendicular axis, typically moving to one side of the primary axis and then the other. Often, the magnitude of this secondary offset increases as nodes progress along the primary axis, creating a characteristic zig-zag or serpentine pattern.'
   description: |
-    Binary to Gray code conversion package.
+    A deterministic node placement algorithm used in graph visualization. In this layout, nodes are arranged sequentially along a defined primary axis. Each subsequent node is then alternately offset along a secondary, perpendicular axis, typically moving to one side of the primary axis and then the other. Often, the magnitude of this secondary offset increases as nodes progress along the primary axis, creating a characteristic zig-zag or serpentine pattern.
   dev_url: https://github.com/WhiteSymmetry/kececilayout
   doc_url: https://github.com/WhiteSymmetry/kececilayout
   doc_source_url: https://github.com/WhiteSymmetry/kececilayout/blob/main/README.md
