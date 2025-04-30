@@ -20,7 +20,6 @@ requirements:
     - pip
     - setuptools
     - wheel
-    - setuptools_scm
   run:
     - python
 
