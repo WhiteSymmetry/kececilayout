@@ -58,6 +58,8 @@ Desteklenen arka uçlar:
 - NetworkX
 - Rustworkx
 - iGraph
+- Networkit
+- Graphillion
 ```
 
 
