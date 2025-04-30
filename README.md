@@ -1,4 +1,3 @@
-```markdown
 # KececiLayout
 
 [![PyPI version](https://badge.fury.io/py/kececilayout.svg)](https://badge.fury.io/py/kececilayout) <!-- Opsiyonel: Eğer PyPI'daysa -->
