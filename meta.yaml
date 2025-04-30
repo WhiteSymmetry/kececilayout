@@ -1,0 +1,36 @@
+{% set version = "0.1.0" %}
+
+package:
+  name: kececilayout
+  version: {{ version }}
+
+source:
+  path: kececilayout/kececilayout/  # Yerel kaynak kodunun dizinini belirtin
+  url: 
+  sha256: 
+
+build:
+  noarch: python  # Platformdan bağımsız bir paket oluşturur
+  script: python -m pip install --ignore-installed .  # Kurulum komutu
+  number: 0
+
+requirements:
+  host:
+    - python
+    - pip
+    - setuptools
+    - wheel
+    - setuptools_scm
+  run:
+    - python
+
+about:
+  home: https://github.com/WhiteSymmetry/kececilayout
+  license: MIT
+  summary: 'Binary to Gray code conversion package.'
+  description: |
+    Binary to Gray code conversion package.
+  dev_url: https://github.com/WhiteSymmetry/kececilayout
+  doc_url: https://github.com/WhiteSymmetry/kececilayout
+  doc_source_url: https://github.com/WhiteSymmetry/kececilayout/blob/main/README.md
+  
