@@ -153,3 +153,33 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 *   **İçe Aktarma Yolları:** Örneklerde `import kececilayout as kl` veya `from kececilayout import kececi_layout_v4_igraph` gibi varsayımsal içe aktarma yolları kullandım. Kendi paket yapınıza göre bunları ayarlamanız gerekebilir.
 *   **Fonksiyon Adları:** Örneklerde `kececi_layout_v4` ve `kececi_layout_v4_igraph` gibi fonksiyon adlarını kullandım. Gerçek fonksiyon adlarınız farklıysa bunları güncelleyin.
 *   **Görselleştirme:** Örneklere `matplotlib.pyplot` kullanarak temel görselleştirme adımlarını ekledim, bu da kullanıcıların sonucu nasıl görebileceğini gösterir. Eksen oranlarını eşitlemek (`axis('equal')` veya `set_aspect('equal')`) layout'un doğru görünmesi için önemlidir.
+
+## Citation
+
+If this library was useful to you in your research, please cite us. Following the [GitHub citation standards](https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-on-github/about-citation-files), here is the recommended citation.
+
+### BibTeX
+
+```bibtex
+@misc{kececi_2025_15313947,
+  author       = {Keçeci, Mehmet},
+  title        = {kececilayout},
+  month        = may,
+  year         = 2025,
+  publisher    = {PyPI, Anaconda, Github, Zenodo},
+  version      = {0.2.0},
+  doi          = {10.5281/zenodo.15313947},
+  url          = {https://doi.org/10.5281/zenodo.15313947},
+}
+```
+### APA
+
+```
+Keçeci, M. (2025). kececilayout (0.2.0). PyPI, Anaconda, Github, Zenodo. https://doi.org/10.5281/zenodo.15313947
+```
+
+### Chicago
+
+```
+Keçeci, Mehmet. “Kececilayout”. PyPI, Anaconda, Github, Zenodo, 01 Mayıs 2025. https://doi.org/10.5281/zenodo.15313947.
+```
