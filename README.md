@@ -57,6 +57,8 @@ https://anaconda.org/bilgi/kececilayout
 
 https://pypi.org/project/KececiLayout/
 
+https://github.com/WhiteSymmetry/kececilayout
+
 ---
 
 ## Usage / Kullanım
