@@ -3,6 +3,7 @@
 [![PyPI version](https://badge.fury.io/py/kececilayout.svg)](https://badge.fury.io/py/kececilayout) <!-- Opsiyonel: Eğer PyPI'daysa -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) <!-- Opsiyonel: Lisans rozeti -->
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15313947.svg)](https://doi.org/10.5281/zenodo.15313947)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15314329.svg)](https://doi.org/10.5281/zenodo.15314329)
 
 **Kececi Layout (Keçeci Yerleşimi)**: A deterministic graph layout algorithm designed for visualizing linear or sequential structures with a characteristic "zig-zag" or "serpentine" pattern.
 
@@ -60,6 +61,9 @@ https://pypi.org/project/KececiLayout/
 https://github.com/WhiteSymmetry/kececilayout
 
 https://zenodo.org/records/15313947
+
+https://zenodo.org/records/15314329
+
 ---
 
 ## Usage / Kullanım
@@ -176,15 +180,30 @@ If this library was useful to you in your research, please cite us. Following th
   doi          = {10.5281/zenodo.15313947},
   url          = {https://doi.org/10.5281/zenodo.15313947},
 }
+
+@misc{kececi_2025_15314329,
+  author       = {Keçeci, Mehmet},
+  title        = {Keçeci Layout},
+  month        = may,
+  year         = 2025,
+  publisher    = {Zenodo},
+  version      = {1.0.0},
+  doi          = {10.5281/zenodo.15314329},
+  url          = {https://doi.org/10.5281/zenodo.15314329},
+}
 ```
 ### APA
 
 ```
-Keçeci, M. (2025). kececilayout (0.2.0). PyPI, Anaconda, Github, Zenodo. https://doi.org/10.5281/zenodo.15313947
+Keçeci, M. (2025). kececilayout (0.2.0). PyPI, Anaconda, GitHub, Zenodo. https://doi.org/10.5281/zenodo.15313947
+
+Keçeci, M. (2025). Keçeci Layout. https://doi.org/10.5281/zenodo.15314329
 ```
 
 ### Chicago
 
 ```
-Keçeci, Mehmet. “Kececilayout”. PyPI, Anaconda, Github, Zenodo, 01 Mayıs 2025. https://doi.org/10.5281/zenodo.15313947.
+Keçeci, Mehmet. “Kececilayout”. PyPI, Anaconda, GitHub, Zenodo, 01 May 2025. https://doi.org/10.5281/zenodo.15313947.
+
+Keçeci, Mehmet. “Keçeci Layout”, 01 May 2025. https://doi.org/10.5281/zenodo.15314329.
 ```
