@@ -59,6 +59,7 @@ https://pypi.org/project/KececiLayout/
 
 https://github.com/WhiteSymmetry/kececilayout
 
+https://zenodo.org/records/15313947
 ---
 
 ## Usage / Kullanım
