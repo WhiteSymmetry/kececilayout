@@ -16,9 +16,7 @@ authors:
     orcid: 'https://orcid.org/0000-0001-9937-9839'
 identifiers:
   - type: doi
-    value: 
-  - type: doi
-    value: 
+    value: https://doi.org/10.5281/zenodo.15313947
 repository-code: 'https://github.com/WhiteSymmetry/kececilayout'
 url: 'https://github.com/WhiteSymmetry/kececilayout'
 repository: 'https://anaconda.org/bilgi/kececilayout'
