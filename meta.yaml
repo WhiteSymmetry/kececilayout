@@ -1,13 +1,13 @@
-{% set version = "0.1.0" %}
+{% set version = "0.2.0" %}
 
 package:
   name: kececilayout
   version: {{ version }}
 
 source:
-  path: kececilayout/kececilayout/  # Yerel kaynak kodunun dizinini belirtin
-  url: 
-  sha256: 
+  path: kececilayout/
+  url: https://files.pythonhosted.org/packages/66/fd/8f7bb5e2cd68b081486f1e01c245436568ca1e1337b492114f4e386bbaa8/kececilayout-0.2.0.tar.gz
+  sha256: 66024b02b793aab7ec995a2edda3709b1a8649c43bbe3c3dcb86770c2ec33806
 
 build:
   noarch: python  # Platformdan bağımsız bir paket oluşturur
@@ -16,12 +16,13 @@ build:
 
 requirements:
   host:
-    - python
-    - pip
-    - setuptools
-    - wheel
+    - python {{ python }}
+    - numpy >=1.22,<2.3 # Example pin
+    # Other build tools
   run:
-    - python
+    - python {{ python }}
+    - numpy >=1.22,<2.3 # Example pin
+    # Other runtime dependencies
 
 about:
   home: https://github.com/WhiteSymmetry/kececilayout
@@ -32,4 +33,3 @@ about:
   dev_url: https://github.com/WhiteSymmetry/kececilayout
   doc_url: https://github.com/WhiteSymmetry/kececilayout
   doc_source_url: https://github.com/WhiteSymmetry/kececilayout/blob/main/README.md
-  
