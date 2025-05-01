@@ -11,4 +11,4 @@ def eski_fonksiyon():
     warnings.warn("Keçeci Layout; Python 3.7-3.14 sürümlerinde sorunsuz çalışmalıdır.", DeprecationWarning)
 eski_fonksiyon()
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
