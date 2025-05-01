@@ -2,6 +2,7 @@
 
 [![PyPI version](https://badge.fury.io/py/kececilayout.svg)](https://badge.fury.io/py/kececilayout) <!-- Opsiyonel: Eğer PyPI'daysa -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) <!-- Opsiyonel: Lisans rozeti -->
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15313947.svg)](https://doi.org/10.5281/zenodo.15313947)
 
 **Kececi Layout (Keçeci Yerleşimi)**: A deterministic graph layout algorithm designed for visualizing linear or sequential structures with a characteristic "zig-zag" or "serpentine" pattern.
 
