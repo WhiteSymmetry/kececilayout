@@ -48,8 +48,13 @@ Graf görselleştirmede kullanılan deterministik bir düğüm yerleştirme algo
 ## Installation / Kurulum
 
 ```bash
+conda install bilgi::kececilayout -y
+
 pip install kececilayout
 ```
+https://anaconda.org/bilgi/kececilayout
+
+https://pypi.org/project/KececiLayout/
 
 ---
 
