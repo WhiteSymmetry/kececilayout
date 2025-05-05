@@ -140,6 +140,127 @@ def kececi_layout_v4(graph, primary_spacing=1.0, secondary_spacing=1.0,
     if is_horizontal and secondary_start not in ['up', 'down']:
          raise ValueError(f"Invalid secondary_start ('{secondary_start}') for horizontal primary_direction ('{primary_direction}'). Use 'up' or 'down'.")
 
+    # Ana döngü - Düğümleri sıralı indekslerine göre yerleştirir,
+    # sözlüğe ise gerçek düğüm ID/indeks/nesnesini anahtar olarak kullanır.
+    for i, node_id in enumerate(nodes):
+        # i: Düğümün sıralı listedeki 0-tabanlı indeksi (0, 1, 2, ...) - Yerleşim için kullanılır
+        # node_id: Gerçek düğüm kimliği/indeksi - Sonuç sözlüğünün anahtarı
+
+        # 1. Ana eksen koordinatını hesapla
+        if primary_direction == 'top-down':
+            primary_coord = i * -primary_spacing; secondary_axis = 'x'
+        elif primary_direction == 'bottom-up':
+            primary_coord = i * primary_spacing; secondary_axis = 'x'
+        elif primary_direction == 'left-to-right':
+            primary_coord = i * primary_spacing; secondary_axis = 'y'
+        else: # right-to-left
+            primary_coord = i * -primary_spacing; secondary_axis = 'y'
+
+        # 2. Yan eksen ofsetini hesapla (zigzag)
+        if i == 0: secondary_offset_multiplier = 0.0
+        else:
+            start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
+            magnitude = math.ceil(i / 2.0)
+            side = 1 if i % 2 != 0 else -1
+            secondary_offset_multiplier = start_mult * magnitude * side
+        secondary_coord = secondary_offset_multiplier * secondary_spacing
+
+        # 3. (x, y) koordinatlarını ata
+        if secondary_axis == 'x': x, y = secondary_coord, primary_coord
+        else: x, y = primary_coord, secondary_coord
+
+        # Sonuç sözlüğüne ekle
+        pos[node_id] = (x, y)
+
+    return pos
+ 
+def kececi_layout(graph, primary_spacing=1.0, secondary_spacing=1.0,
+                     primary_direction='top-down', secondary_start='right'):
+    """
+    Keçeci Layout v4 - Graf düğümlerine sıralı-zigzag yerleşimi sağlar.
+    NetworkX, Rustworkx, igraph, Networkit ve Graphillion grafikleriyle çalışır.
+
+    Parametreler:
+    -------------
+    graph : Kütüphaneye özel graf nesnesi
+        NetworkX, Rustworkx, igraph, Networkit veya Graphillion nesnesi.
+        Graphillion için bir GraphSet nesnesi beklenir.
+    ... (diğer parametreler) ...
+
+    Dönüş:
+    ------
+    dict[node_identifier, tuple[float, float]]
+        Her düğümün koordinatını içeren sözlük. Anahtarlar kütüphaneye
+        göre değişir (NX: node obj/id, RW/NK/igraph: int index, GG: 1-based int index).
+    """
+
+    nodes = None
+
+    # Kütüphane Tespiti ve Düğüm Listesi Çıkarımı
+    # isinstance kullanmak hasattr'dan daha güvenilirdir.
+    # Önce daha spesifik tipleri kontrol etmek iyi olabilir.
+
+    if gg and isinstance(graph, gg.GraphSet): # Graphillion kontrolü EKLENDİ
+        edges = graph.universe()
+        max_node_id = find_max_node_id(edges)
+        if max_node_id > 0:
+            nodes = list(range(1, max_node_id + 1)) # 1-tabanlı indeksleme
+        else:
+            nodes = [] # Boş evren
+        print(f"DEBUG: Graphillion tespit edildi. Düğümler (1..{max_node_id}): {nodes[:10]}...") # Debug mesajı
+
+    elif ig and isinstance(graph, ig.Graph): # igraph
+        nodes = sorted([v.index for v in graph.vs]) # 0-tabanlı indeksleme
+        print(f"DEBUG: igraph tespit edildi. Düğümler (0..{len(nodes)-1}): {nodes[:10]}...")
+
+    elif nk and isinstance(graph, nk.graph.Graph): # Networkit
+        try:
+            # iterNodes genellikle 0..N-1 verir ama garanti değil
+            nodes = sorted(list(graph.iterNodes()))
+        except Exception:
+             nodes = list(range(graph.numberOfNodes()))
+        print(f"DEBUG: Networkit tespit edildi. Düğümler: {nodes[:10]}...")
+
+    elif rx and isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):  # Rustworkx (hem yönlü hem yönsüz)
+        nodes = sorted(graph.node_indices()) # 0-tabanlı indeksleme
+        print(f"DEBUG: Rustworkx tespit edildi. Düğümler (0..{len(nodes)-1}): {nodes[:10]}...")
+
+    elif nx and isinstance(graph, (nx.Graph, nx.DiGraph, nx.MultiGraph, nx.MultiDiGraph)): # NetworkX
+        try:
+            # Düğümler sıralanabilirse sırala (genelde int/str)
+            nodes = sorted(list(graph.nodes()))
+        except TypeError:
+             # Sıralanamayan düğüm tipleri varsa (örn. tuple, nesne) sırasız al
+             nodes = list(graph.nodes())
+        print(f"DEBUG: NetworkX tespit edildi. Düğümler: {nodes[:10]}...")
+
+    else:
+        # Desteklenmeyen tip veya kütüphane kurulu değilse
+        supported_types = []
+        if nx: supported_types.append("NetworkX")
+        if rx: supported_types.append("Rustworkx")
+        if ig: supported_types.append("igraph")
+        if nk: supported_types.append("Networkit")
+        if gg: supported_types.append("Graphillion.GraphSet")
+        raise TypeError(f"Unsupported graph type: {type(graph)}. Desteklenen türler: {', '.join(supported_types)}")
+
+    # ----- Buradan sonrası tüm kütüphaneler için ortak -----
+
+    num_nodes = len(nodes)
+    if num_nodes == 0:
+        return {}  # Boş graf için boş sözlük döndür
+
+    pos = {}  # Sonuç sözlüğü
+    is_vertical = primary_direction in ['top-down', 'bottom-up']
+    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
+
+    # Parametre kontrolleri
+    if not (is_vertical or is_horizontal):
+        raise ValueError(f"Invalid primary_direction: {primary_direction}")
+    if is_vertical and secondary_start not in ['right', 'left']:
+        raise ValueError(f"Invalid secondary_start ('{secondary_start}') for vertical primary_direction ('{primary_direction}'). Use 'right' or 'left'.")
+    if is_horizontal and secondary_start not in ['up', 'down']:
+         raise ValueError(f"Invalid secondary_start ('{secondary_start}') for horizontal primary_direction ('{primary_direction}'). Use 'up' or 'down'.")
 
     # Ana döngü - Düğümleri sıralı indekslerine göre yerleştirir,
     # sözlüğe ise gerçek düğüm ID/indeks/nesnesini anahtar olarak kullanır.
@@ -174,7 +295,6 @@ def kececi_layout_v4(graph, primary_spacing=1.0, secondary_spacing=1.0,
         pos[node_id] = (x, y)
 
     return pos
-
 
 def kececi_layout_v4_nx(graph, primary_spacing=1.0, secondary_spacing=1.0,
                      primary_direction='top-down', secondary_start='right'):
