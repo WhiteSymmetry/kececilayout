@@ -42,15 +42,6 @@ def find_max_node_id(edges):
     except TypeError: # Eğer kenarlar (node, node) formatında değilse
       print("Uyarı: Kenar formatı beklenenden farklı, max node ID 0 varsayıldı.")
       return 0
-"""
-def find_max_node_id(edges):
-    #Verilen kenar listesindeki en büyük düğüm ID'sini bulur.
-    if not edges:
-        return 0 # Kenar yoksa düğüm de yoktur (varsayım)
-    # Tüm düğüm ID'lerini tek bir kümede topla ve en büyüğünü bul
-    all_nodes = set(itertools.chain.from_iterable(edges))
-    return max(all_nodes) if all_nodes else 0
-"""
 
 def kececi_layout_v4(graph, primary_spacing=1.0, secondary_spacing=1.0,
                      primary_direction='top-down', secondary_start='right'):
