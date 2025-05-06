@@ -96,6 +96,70 @@ plt.axis('equal') # Ensure aspect ratio is equal
 plt.show()
 ```
 
+```python
+import matplotlib.pyplot as plt
+import math
+import networkx as nx
+import kececilayout as kl
+
+try:
+    import kececilayout as kl
+except ImportError:
+    print("Error: 'kececi_layout.py' not found or could not be imported.")
+    print("Please ensure the file containing kececi_layout_v4 is accessible.")
+    exit()
+
+# --- General Layout Parameters ---
+LAYOUT_PARAMS = {
+    'primary_spacing': 1.0,
+    'secondary_spacing': 0.6, # Make the zigzag noticeable
+    'primary_direction': 'top-down',
+    'secondary_start': 'right'
+}
+N_NODES = 10 # Number of nodes in the example graph
+
+# === NetworkX Example ===
+try:
+    import networkx as nx
+    print("\n--- NetworkX Example ---")
+
+    # Generate graph (Path graph)
+    G_nx = nx.path_graph(N_NODES)
+    print(f"NetworkX graph generated: {G_nx.number_of_nodes()} nodes, {G_nx.number_of_edges()} edges")
+
+    # Calculate layout
+    print("Calculating Keçeci Layout...")
+    # Call the layout function from the imported module
+    pos_nx = kl.kececi_layout_v4(G_nx, **LAYOUT_PARAMS)
+    # print("NetworkX positions:", pos_nx) # Debug print if needed
+
+    # Plot
+    plt.figure(figsize=(6, 8)) # Suitable figure size for vertical layout
+    nx.draw(G_nx,               # NetworkX graph object
+            pos=pos_nx,         # Positions calculated by Kececi Layout
+            with_labels=True,   # Show node labels (indices)
+            node_color='skyblue',# Node color
+            node_size=700,      # Node size
+            font_size=10,       # Label font size
+            edge_color='gray')  # Edge color
+
+    plt.title(f"NetworkX ({N_NODES} Nodes) with Keçeci Layout") # Plot title
+    plt.xlabel("X Coordinate") # X-axis label
+    plt.ylabel("Y Coordinate") # Y-axis label
+    plt.axis('equal')       # Ensure equal aspect ratio for correct spacing perception
+    # plt.grid(False)         # Ensure grid is off
+    plt.show()              # Display the plot
+
+except ImportError:
+    print("NetworkX is not installed. Skipping this example.")
+except Exception as e:
+    print(f"An error occurred in the NetworkX example: {e}")
+    import traceback
+    traceback.print_exc()
+
+print("\n--- NetworkX Example Finished ---")
+```
+
 ### Example with iGraph
 
 ```python
