@@ -16,7 +16,9 @@ authors:
     orcid: 'https://orcid.org/0000-0001-9937-9839'
 identifiers:
   - type: doi
-    value: https://doi.org/10.5281/zenodo.15313947
+    value: 10.5281/zenodo.15313947
+  - type: doi
+    value: 10.5281/zenodo.15314329
 repository-code: 'https://github.com/WhiteSymmetry/kececilayout'
 url: 'https://github.com/WhiteSymmetry/kececilayout'
 repository: 'https://anaconda.org/bilgi/kececilayout'
@@ -29,5 +31,5 @@ keywords:
   - Layout
 license: MIT
 commit: 'Revision: 1'
-version: 0.2.0
+version: 0.2.1
 date-released: '2025-04-30'
