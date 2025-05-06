@@ -1,4 +1,4 @@
-{% set version = "0.2.0" %}
+{% set version = "0.2.1" %}
 
 package:
   name: kececilayout
@@ -11,17 +11,17 @@ source:
 
 build:
   noarch: python  # Platformdan bağımsız bir paket oluşturur
-  script: python -m pip install --ignore-installed .  # Kurulum komutu
+  script: python -m pip install --ignore-installed .
   number: 0
 
 requirements:
   host:
     - python {{ python }}
-    - numpy >=1.22,<2.3 # Example pin
+    - numpy
     # Other build tools
   run:
     - python {{ python }}
-    - numpy >=1.22,<2.3 # Example pin
+    - numpy
     # Other runtime dependencies
 
 about:
