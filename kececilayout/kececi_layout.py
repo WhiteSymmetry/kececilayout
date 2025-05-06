@@ -7,6 +7,7 @@ import rustworkx as rx
 import igraph as ig
 import networkit as nk
 import graphillion as gg
+import random
 
 
 # Gerekli olabilecek kütüphane importları (type hinting veya isinstance için)
