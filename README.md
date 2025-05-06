@@ -284,6 +284,10 @@ except Exception as e:
 print("\n--- igraph Example Finished ---")
 ```
 
+![iGraph Example](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/ig-1.png?raw=true)
+
+---
+
 ### Example with RustworkX
 
 ```python
@@ -375,6 +379,10 @@ except Exception as e:
 
 print("\n--- Rustworkx Example Finished ---")
 ```
+
+![Rustworkx Exampl](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/rx-1.png?raw=true)
+
+---
 
 ### Example with Networkit
 
@@ -473,6 +481,10 @@ except Exception as e:
 
 print("\n--- Networkit Example Finished ---")
 ```
+
+![Networkit Example](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/nk-1.png?raw=true)
+
+---
 
 ### Example with Graphillion
 
@@ -576,6 +588,8 @@ except Exception as e:
 
 print("\n--- Graphillion Example Finished ---")
 ```
+
+![Graphillion Example](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/gg-1.png?raw=true)
 
 ---
 
