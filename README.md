@@ -279,7 +279,300 @@ except Exception as e:
     traceback.print_exc()
 
 print("\n--- igraph Example Finished ---")
+```
+
+### Example with RustworkX
+
 ```python
+import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection # Efficient edge drawing
+import math
+import rustworkx as rx
+import kececilayout as kl
+
+
+try:
+    import kececilayout as kl
+except ImportError:
+    print("Error: 'kececi_layout.py' not found or could not be imported.")
+    print("Please ensure the file containing kececi_layout_v4 is accessible.")
+    exit()
+
+# --- General Layout Parameters ---
+LAYOUT_PARAMS = {
+    'primary_spacing': 1.0,
+    'secondary_spacing': 0.6, # Make the zigzag noticeable
+    'primary_direction': 'top-down',
+    'secondary_start': 'right'
+}
+N_NODES = 10 # Number of nodes in the example graph
+
+# === Rustworkx Example ===
+try:
+    import rustworkx as rx
+    print("\n--- Rustworkx Example ---")
+
+    # Generate graph (Path graph)
+    G_rx = rx.generators.path_graph(N_NODES)
+    print(f"Rustworkx graph generated: {G_rx.num_nodes()} nodes, {G_rx.num_edges()} edges")
+
+    # Calculate layout
+    print("Calculating Keçeci Layout...")
+    # Call the layout function from the imported module
+    pos_rx = kl.kececi_layout_v4(G_rx, **LAYOUT_PARAMS)
+    # print("Rustworkx positions:", pos_rx) # Debug print if needed
+
+    # Plot using Matplotlib directly (Rustworkx doesn't have a built-in draw)
+    print("Plotting graph using Matplotlib...")
+    plt.figure(figsize=(6, 8))
+    ax = plt.gca() # Get current axes
+
+    node_indices_rx = G_rx.node_indices() # Get node indices [0, 1, ...]
+
+    # Check if all nodes have positions
+    if not all(idx in pos_rx for idx in node_indices_rx):
+         print("ERROR: Rustworkx positions dictionary does not cover all nodes!")
+         # Decide how to handle: exit, plot partial, etc.
+    else:
+        # Draw nodes
+        x_coords_rx = [pos_rx[i][0] for i in node_indices_rx]
+        y_coords_rx = [pos_rx[i][1] for i in node_indices_rx]
+        ax.scatter(x_coords_rx, y_coords_rx, s=700, c='#88CCEE', zorder=2, label='Nodes') # Skyblue color
+
+        # Draw labels
+        for i in node_indices_rx:
+            ax.text(pos_rx[i][0], pos_rx[i][1], str(i), ha='center', va='center', fontsize=10, zorder=3)
+
+        # Draw edges using LineCollection for efficiency
+        edge_lines = []
+        for u, v in G_rx.edge_list(): # Get list of edges (node index pairs)
+            if u in pos_rx and v in pos_rx:
+                # Segment format: [(x1, y1), (x2, y2)]
+                edge_lines.append([pos_rx[u], pos_rx[v]])
+            else:
+                print(f"Warning: Position not found for edge ({u},{v}) in Rustworkx graph.")
+
+        if edge_lines:
+            lc = LineCollection(edge_lines, colors='gray', linewidths=1.0, zorder=1, label='Edges')
+            ax.add_collection(lc) # Add edges to the plot axes
+
+    plt.title(f"Rustworkx ({N_NODES} Nodes) with Keçeci Layout (Matplotlib)") # Plot title
+    plt.xlabel("X Coordinate") # X-axis label
+    plt.ylabel("Y Coordinate") # Y-axis label
+    plt.axis('equal')       # Ensure equal aspect ratio
+    # plt.grid(False)         # Ensure grid is off
+    plt.show()              # Display the plot
+
+except ImportError:
+    print("Rustworkx is not installed. Skipping this example.")
+except Exception as e:
+    print(f"An error occurred in the Rustworkx example: {e}")
+    import traceback
+    traceback.print_exc()
+
+print("\n--- Rustworkx Example Finished ---")
+```
+
+### Example with Networkit
+
+```python
+import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection # Efficient edge drawing
+import math
+import networkit as nk
+import kececilayout as kl
+
+try:
+    import kececilayout as kl
+except ImportError:
+    print("Error: 'kececi_layout.py' not found or could not be imported.")
+    print("Please ensure the file containing kececi_layout_v4 is accessible.")
+    exit()
+
+# --- General Layout Parameters ---
+LAYOUT_PARAMS = {
+    'primary_spacing': 1.0,
+    'secondary_spacing': 0.6, # Make the zigzag noticeable
+    'primary_direction': 'top-down',
+    'secondary_start': 'right'
+}
+N_NODES = 10 # Number of nodes in the example graph
+
+# === Networkit Example ===
+try:
+    import networkit as nk
+    print("\n--- Networkit Example ---")
+
+    # Generate graph (Path graph, manually)
+    G_nk = nk.graph.Graph(N_NODES, weighted=False, directed=False) # Generate empty graph container
+    print("Empty Networkit graph generated.")
+    # Add nodes first (Networkit often requires this)
+    for i in range(N_NODES):
+        if not G_nk.hasNode(i): # Check if node already exists (good practice)
+             G_nk.addNode()
+    print(f"{G_nk.numberOfNodes()} nodes added.")
+    # Add edges
+    for i in range(N_NODES - 1):
+        G_nk.addEdge(i, i+1) # Add edges 0-1, 1-2, ...
+    print(f"Networkit graph constructed: {G_nk.numberOfNodes()} nodes, {G_nk.numberOfEdges()} edges")
+
+    # Calculate layout
+    print("Calculating Keçeci Layout...")
+    # Call the layout function from the imported module
+    pos_nk = kl.kececi_layout_v4(G_nk, **LAYOUT_PARAMS)
+    # print("Networkit positions:", pos_nk) # Debug print if needed
+
+    # Plot using Matplotlib directly (Networkit doesn't have a simple built-in draw)
+    print("Plotting graph using Matplotlib...")
+    plt.figure(figsize=(6, 8))
+    ax = plt.gca() # Get current axes
+
+    node_indices_nk = sorted(list(G_nk.iterNodes())) # Get node indices [0, 1, ...]
+
+    # Check if all nodes have positions
+    if not all(idx in pos_nk for idx in node_indices_nk):
+         print("ERROR: Networkit positions dictionary does not cover all nodes!")
+    else:
+        # Draw nodes
+        x_coords_nk = [pos_nk[i][0] for i in node_indices_nk]
+        y_coords_nk = [pos_nk[i][1] for i in node_indices_nk]
+        ax.scatter(x_coords_nk, y_coords_nk, s=700, c='coral', zorder=2, label='Nodes')
+
+        # Draw labels
+        for i in node_indices_nk:
+            ax.text(pos_nk[i][0], pos_nk[i][1], str(i), ha='center', va='center', fontsize=10, zorder=3)
+
+        # Draw edges using LineCollection
+        edge_lines_nk = []
+        for u, v in G_nk.iterEdges(): # Iterate through edges
+            if u in pos_nk and v in pos_nk:
+                 edge_lines_nk.append([pos_nk[u], pos_nk[v]])
+            else:
+                 print(f"Warning: Position not found for edge ({u},{v}) in Networkit graph.")
+
+        if edge_lines_nk:
+             lc_nk = LineCollection(edge_lines_nk, colors='gray', linewidths=1.0, zorder=1, label='Edges')
+             ax.add_collection(lc_nk)
+
+    plt.title(f"Networkit ({N_NODES} Nodes) with Keçeci Layout (Matplotlib)") # Plot title
+    plt.xlabel("X Coordinate") # X-axis label
+    plt.ylabel("Y Coordinate") # Y-axis label
+    plt.axis('equal')       # Ensure equal aspect ratio
+    # plt.grid(False)         # Ensure grid is off
+    plt.show()              # Display the plot
+
+except ImportError:
+    print("Networkit is not installed. Skipping this example.")
+except Exception as e:
+    print(f"An error occurred in the Networkit example: {e}")
+    import traceback
+    traceback.print_exc()
+
+print("\n--- Networkit Example Finished ---")
+```
+
+### Example with Graphillion
+
+```python
+import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection # Efficient edge drawing
+import math
+import itertools # Graphillion might implicitly need itertools if find_max_node_id uses it internally
+import graphillion as gg
+import kececilayout as kl
+
+
+try:
+    import kececilayout as kl
+except ImportError:
+    print("Error: 'kececi_layout.py' not found or could not be imported.")
+    print("Please ensure the file containing kececi_layout_v4 is accessible.")
+    exit()
+
+# --- General Layout Parameters ---
+LAYOUT_PARAMS = {
+    'primary_spacing': 1.0,
+    'secondary_spacing': 0.6, # Make the zigzag noticeable
+    'primary_direction': 'top-down',
+    'secondary_start': 'right'
+}
+N_NODES = 10 # Number of nodes in the example graph (will be 1 to N_NODES)
+
+# === Graphillion Example ===
+try:
+    import graphillion as gg
+    print("\n--- Graphillion Example ---")
+
+    # Define the universe of possible edges (Path graph, 1-based indexing common)
+    universe = []
+    # Edges (1,2), (2,3), ..., (N_NODES-1, N_NODES)
+    for i in range(1, N_NODES):
+        universe.append((i, i + 1))
+    gg.GraphSet.set_universe(universe)
+    max_node_gg = N_NODES # We know the max node ID for this simple case
+    print(f"Graphillion universe defined: {len(universe)} edges, max node ID {max_node_gg}")
+
+    # Generate a GraphSet object (can be empty, layout function uses the universe)
+    # The layout function provided seems to derive nodes from the universe edges.
+    gs = gg.GraphSet()
+
+    # Calculate layout
+    print("Calculating Keçeci Layout...")
+    # Call the layout function; it should handle the Graphillion GraphSet object
+    # and likely use 1-based indexing based on the universe.
+    pos_gg = kl.kececi_layout_v4(gs, **LAYOUT_PARAMS)
+    # print("Graphillion positions:", pos_gg) # Debug print if needed
+
+    # Plot using Matplotlib directly (Graphillion has no plotting)
+    print("Plotting graph using Matplotlib...")
+    plt.figure(figsize=(6, 8))
+    ax = plt.gca() # Get current axes
+
+    # Node indices are expected to be 1, 2, ... N_NODES from the universe
+    node_indices_gg = sorted(pos_gg.keys())
+
+    # Check if all expected nodes (1 to N_NODES) have positions
+    expected_nodes = set(range(1, N_NODES + 1))
+    if not expected_nodes.issubset(set(node_indices_gg)):
+         print(f"ERROR: Graphillion positions missing expected nodes. Found: {node_indices_gg}, Expected: {list(expected_nodes)}")
+    else:
+        # Draw nodes
+        x_coords_gg = [pos_gg[i][0] for i in node_indices_gg]
+        y_coords_gg = [pos_gg[i][1] for i in node_indices_gg]
+        ax.scatter(x_coords_gg, y_coords_gg, s=700, c='gold', zorder=2, label='Nodes')
+
+        # Draw labels (using the 1-based indices)
+        for i in node_indices_gg:
+            ax.text(pos_gg[i][0], pos_gg[i][1], str(i), ha='center', va='center', fontsize=10, zorder=3)
+
+        # Draw edges using LineCollection (from the defined universe)
+        edge_lines_gg = []
+        for u, v in universe: # Use the universe edges
+            if u in pos_gg and v in pos_gg:
+                 edge_lines_gg.append([pos_gg[u], pos_gg[v]])
+            else:
+                 print(f"Warning: Position not found for universe edge ({u},{v}) in Graphillion.")
+
+        if edge_lines_gg:
+            lc_gg = LineCollection(edge_lines_gg, colors='gray', linewidths=1.0, zorder=1, label='Edges')
+            ax.add_collection(lc_gg)
+
+    plt.title(f"Graphillion ({N_NODES} Nodes) with Keçeci Layout (Matplotlib)") # Plot title
+    plt.xlabel("X Coordinate") # X-axis label
+    plt.ylabel("Y Coordinate") # Y-axis label
+    plt.axis('equal')       # Ensure equal aspect ratio
+    # plt.grid(False)         # Ensure grid is off
+    plt.show()              # Display the plot
+
+except ImportError:
+    print("Graphillion is not installed. Skipping this example.")
+except Exception as e:
+    print(f"An error occurred in the Graphillion example: {e}")
+    import traceback
+    traceback.print_exc()
+
+print("\n--- Graphillion Example Finished ---")
+```
 
 ---
 
