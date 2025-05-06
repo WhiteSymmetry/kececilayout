@@ -160,6 +160,9 @@ except Exception as e:
 print("\n--- NetworkX Example Finished ---")
 ```
 
+![Networkx Example](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/nx-1.png?raw=true)
+
+---
 ### Example with iGraph
 
 ```python
