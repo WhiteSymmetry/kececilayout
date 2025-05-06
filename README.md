@@ -196,6 +196,91 @@ ax.set_aspect('equal', adjustable='box')
 plt.show()
 ```
 
+```python
+import matplotlib.pyplot as plt
+import math
+import igraph as ig
+import kececilayout as kl
+
+
+try:
+    import kececilayout as kl
+except ImportError:
+    print("Error: 'kececi_layout.py' not found or could not be imported.")
+    print("Please ensure the file containing kececi_layout_v4 is accessible.")
+    exit()
+
+# --- General Layout Parameters ---
+LAYOUT_PARAMS = {
+    'primary_spacing': 1.0,
+    'secondary_spacing': 0.6, # Make the zigzag noticeable
+    'primary_direction': 'top-down',
+    'secondary_start': 'right'
+}
+N_NODES = 10 # Number of nodes in the example graph
+
+# === igraph Example ===
+try:
+    import igraph as ig
+    print("\n--- igraph Example ---")
+
+    # Generate graph (Path graph using Ring(circular=False))
+    G_ig = ig.Graph.Ring(N_NODES, directed=False, circular=False)
+    print(f"igraph graph generated: {G_ig.vcount()} vertices, {G_ig.ecount()} edges")
+
+    # Calculate layout
+    print("Calculating Keçeci Layout...")
+    # Call the layout function from the imported module
+    pos_ig = kl.kececi_layout_v4(G_ig, **LAYOUT_PARAMS)
+    # print("igraph positions (dict):", pos_ig) # Debug print if needed
+
+    # Convert positions dict to list ordered by vertex index for ig.plot
+    layout_list_ig = []
+    plot_possible = True
+    if pos_ig: # Check if dictionary is not empty
+        try:
+            # Generate list: [pos_ig[0], pos_ig[1], ..., pos_ig[N-1]]
+            layout_list_ig = [pos_ig[i] for i in range(G_ig.vcount())]
+            # print("igraph layout (list):", layout_list_ig) # Debug print if needed
+        except KeyError as e:
+             print(f"ERROR: Key {e} not found while creating position list for igraph.")
+             print("The layout function might not have returned positions for all vertices.")
+             plot_possible = False # Cannot plot if list is incomplete
+    else:
+        print("ERROR: Keçeci Layout returned empty positions for igraph.")
+        plot_possible = False
+
+    # Plot using igraph's plotting capabilities
+    print("Plotting graph using igraph.plot...")
+    fig, ax = plt.subplots(figsize=(6, 8)) # Generate matplotlib figure and axes
+
+    if plot_possible:
+        ig.plot(G_ig,
+                target=ax,           # Draw on the matplotlib axes
+                layout=layout_list_ig, # Use the ORDERED LIST of coordinates
+                vertex_label=[str(i) for i in range(G_ig.vcount())], # Labels 0, 1,...
+                vertex_color='lightgreen',
+                vertex_size=30,      # Note: igraph vertex_size scale differs
+                edge_color='gray')
+    else:
+         ax.text(0.5, 0.5, "Plotting failed:\nMissing or incomplete layout positions.",
+                 ha='center', va='center', color='red', fontsize=12) # Error message on plot
+
+    ax.set_title(f"igraph ({N_NODES} Nodes) with Keçeci Layout") # Plot title
+    ax.set_aspect('equal', adjustable='box') # Ensure equal aspect ratio
+    # ax.grid(False) # Ensure grid is off
+    plt.show()              # Display the plot
+
+except ImportError:
+    print("python-igraph is not installed. Skipping this example.")
+except Exception as e:
+    print(f"An error occurred in the igraph example: {e}")
+    import traceback
+    traceback.print_exc()
+
+print("\n--- igraph Example Finished ---")
+```python
+
 ---
 
 ## Supported Backends / Desteklenen Kütüphaneler
