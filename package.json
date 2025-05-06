@@ -1,6 +1,6 @@
 {
   "name": "kececilayout",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Kececi Layout: kececilayout.",
   "main": "index.js",
   "scripts": {
@@ -15,9 +15,9 @@
   },
   "keywords": [
     "Kececi-Layout",
-    "Kececi-Layout",
+    "KececiLayout",
     "Layout",
-    "python",
+    "Python"
   ],
   "author": "Mehmet Keçeci",
   "license": "MIT",
