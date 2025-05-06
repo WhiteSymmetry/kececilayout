@@ -76,6 +76,7 @@ The layout function generally accepts a graph object and returns positions.
 import networkx as nx
 import matplotlib.pyplot as plt
 import kececilayout as kl # Assuming the main function is imported like this
+import random
 
 # Create a graph
 G = nx.path_graph(10)
@@ -101,6 +102,7 @@ import matplotlib.pyplot as plt
 import math
 import networkx as nx
 import kececilayout as kl
+import random
 
 try:
     import kececilayout as kl
@@ -170,6 +172,7 @@ import igraph as ig
 import matplotlib.pyplot as plt
 # Assuming a specific function for igraph exists or the generic one handles it
 from kececilayout import kececi_layout_v4_igraph # Adjust import if needed
+import random
 
 # Create a graph
 G = ig.Graph.Ring(10, circular=False) # Path graph equivalent
@@ -296,6 +299,7 @@ from matplotlib.collections import LineCollection # Efficient edge drawing
 import math
 import rustworkx as rx
 import kececilayout as kl
+import random
 
 
 try:
@@ -392,6 +396,7 @@ from matplotlib.collections import LineCollection # Efficient edge drawing
 import math
 import networkit as nk
 import kececilayout as kl
+import random
 
 try:
     import kececilayout as kl
@@ -495,6 +500,7 @@ import math
 import itertools # Graphillion might implicitly need itertools if find_max_node_id uses it internally
 import graphillion as gg
 import kececilayout as kl
+import random
 
 
 try:
