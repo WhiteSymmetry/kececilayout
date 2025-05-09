@@ -1,12 +1,14 @@
 {
   "name": "kececilayout",
   "version": "0.2.1",
-  "description": "Kececi Layout: kececilayout.",
+  "description": "Kececi Layout: Deterministic graph layout algorithm for visualizing linear structures with zig-zag patterns.",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "npm run build",
+    "start": "node --experimental-specifier-resolution=node index.js",
+    "serve": "node --experimental-modules index.js",
+    "test": "jest",
+    "lint": "eslint .",
+    "build": "echo 'Build command not implemented yet.' && exit 1",
     "docs": "sphinx-build -b html docs/ docs/_build/html"
   },
   "repository": {
@@ -17,14 +19,18 @@
     "Kececi-Layout",
     "KececiLayout",
     "Layout",
-    "Python"
+    "Python",
+    "graph-layout",
+    "visualization",
+    "deterministic-layout",
+    "networkx-integration"
   ],
   "author": "Mehmet Keçeci",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/WhiteSymmetry/kececilayout/issues"
   },
-  "homepage": "https://github.com/WhiteSymmetry/kececilayout#readme",
+  "homepage": "https://github.com/WhiteSymmetry/kececilayout",
   "dependencies": {
     "express": "^4.18.2",
     "lodash": "^4.17.21"
