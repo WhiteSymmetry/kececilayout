@@ -39,15 +39,18 @@ jobs:
         run: echo "Package successfully published to PyPI."
 
   pypi-publish:
-  name: Upload release to PyPI
-  runs-on: ubuntu-latest
-  environment:
-    name: pypi
-    url: https://pypi.org/p/kececilayout
-  permissions:
-    id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
-  steps:
-  # retrieve your distributions here
-
-  - name: Publish package distributions to PyPI
-    uses: pypa/gh-action-pypi-publish@release/v1
+    name: Upload release to PyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/kececilayout
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+    # retrieve your distributions here
+  
+    - name: Publish package distributions to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}
