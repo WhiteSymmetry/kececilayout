@@ -1,31 +1,28 @@
 # Workflow for building and deploying a Jekyll site to GitHub Pages
-name: Deploy Jekyll with GitHub Pages dependencies preinstalled
+name: Deploy Jekyll Site
 
 on:
   push:
     branches: ["main"]
   workflow_dispatch:
 
-# Sets permissions for deployment
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Limits to one concurrent deployment
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
-  # Build job
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
 
-      - name: Cache dependencies
+      - name: Cache Ruby dependencies
         uses: actions/cache@v3
         with:
           path: vendor/bundle
@@ -38,15 +35,11 @@ jobs:
         with:
           ruby-version: '3.1'
 
-      - name: Build Project
-        shell: bash
-        timeout-minutes: 5  # Maksimum bekleme süresi
-        run: npm run build
-
       - name: Install dependencies
         run: |
           gem install bundler
-          # bundle install --path vendor/bundle # [DEPRECATED] The `--path` flag is deprecated because it relies on being remembered across bundler invocations, which bundler will no longer do in future versions. Instead please use `bundle config set path 'vendor/bundle'`, and stop using this flag. Could not locate Gemfile
+          bundle config path vendor/bundle
+          bundle install --without development
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v4
@@ -59,27 +52,9 @@ jobs:
 
       - name: Upload build artifact
         uses: actions/upload-pages-artifact@v3
-
-      - name: Measure build duration
-        shell: bash
-        run: |
-          start=$(date +%s)
-          npm run build
-          end=$(date +%s)
-          echo "Build took $((end - start)) seconds."
-
-      - name: Cache node modules
-        uses: actions/cache@v3
         with:
-          path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
+          path: ./_site
 
-      - name: Install dependencies
-        run: npm ci
-
-  # Deployment job
   deploy:
     environment:
       name: github-pages
@@ -91,6 +66,5 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      - name: Check for errors
-        run: echo "Jekyll site successfully built and deployed."
-        
+      - name: Confirm success
+        run: echo "✅ Jekyll site successfully built and deployed."
