@@ -41,8 +41,8 @@ jobs:
       - name: Check for requirements.txt and install Python deps
         shell: bash
         timeout-minutes: 5  # Maksimum bekleme süresi
-        run: npm run build
-        #run: |
+        #run: npm run build
+        run: |
           if [ -f requirements.txt ]; then
             pip install -r requirements.txt
           else
