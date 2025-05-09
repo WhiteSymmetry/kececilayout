@@ -41,7 +41,7 @@ jobs:
       - name: Build Project
         shell: bash
         timeout-minutes: 5  # Maksimum bekleme süresi
-        #run: npm run build
+        run: npm run build
 
       - name: Install dependencies
         run: |
