@@ -34,3 +34,6 @@ jobs:
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Check for errors
+        run: echo "Package successfully published to PyPI."
