@@ -32,5 +32,3 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.12.4
-        with:
-          project-name: kececilayout  # Paket adı
