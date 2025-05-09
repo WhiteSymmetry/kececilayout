@@ -1,17 +1,18 @@
 name: Publish Python Package to PyPI
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: ["main"]
   workflow_dispatch:
-
-permissions:
-  contents: read
-  packages: write
 
 jobs:
   publish:
+    name: Publish to PyPI
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Gerekli: OIDC token istemek için
+      contents: read   # Kod deposunu okumak için
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -30,27 +31,6 @@ jobs:
         run: python -m build
 
       - name: Publish to PyPI
-        run: |
+        uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
-
-      - name: Check for errors
-        run: echo "Package successfully published to PyPI."
-
-  pypi-publish:
-    name: Upload release to PyPI
-    runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/kececilayout
-    permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
-    steps:
-    # retrieve your distributions here
-  
-    - name: Publish package distributions to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_API_TOKEN }}
+          project-name: kececilayout  # Paket adı
