@@ -9,6 +9,7 @@ setup(
     author="Mehmet Keçeci",
     maintainer="Mehmet Keçeci",
     author_email="bilginomi@yaani.com",
+    maintainer_email="bilginomi@yaani.com",
     url="https://github.com/WhiteSymmetry/kececilayout",
     packages=find_packages(),
     install_requires=[
