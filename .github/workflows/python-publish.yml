@@ -1,29 +1,19 @@
-# Workflow for deploying static content to GitHub Pages
-name: Deploy static content to Pages
+name: Publish Python Package to PyPI
 
 on:
-  push:
-    branches: ["main"]
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
   contents: read
   packages: write
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out the repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -39,14 +29,8 @@ jobs:
       - name: Build the package
         run: python -m build
 
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload static content artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.10.0
         with:
-          path: './dist' # ya da uygun çıktı dizini
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
