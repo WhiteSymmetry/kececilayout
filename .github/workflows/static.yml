@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Deploy job for static content
+  # Build and deploy job
   deploy:
     environment:
       name: github-pages
@@ -28,16 +28,21 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v4
 
-      - name: Cache dependencies
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache node_modules
         uses: actions/cache@v3
         with:
-          path: ~/.npm
+          path: node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build static content
         run: npm run build
@@ -48,9 +53,8 @@ jobs:
       - name: Upload static content artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist' # Adjust this path to match your build output directory
+          path: './dist'  # Uygunsa build çıktısı dizininizi buraya yazın (örneğin: public, build, dist)
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-        
