@@ -8,8 +8,7 @@
     "serve": "node --experimental-modules index.js",
     "test": "jest",
     "lint": "eslint .",
-    #"build": "echo 'No JS build needed. Using Python build instead.' && exit 0"
-    #"build": "echo 'Build command not implemented yet.' && exit 1",
+    "build": "echo 'No JS build needed. Using Python build instead.' && exit 0",
     "docs": "sphinx-build -b html docs/ docs/_build/html"
   },
   "repository": {
