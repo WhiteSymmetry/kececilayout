@@ -1,15 +1,13 @@
-name: Publish Python Package to PyPI
+name: Build Python Package
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
