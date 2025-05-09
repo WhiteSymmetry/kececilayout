@@ -38,6 +38,9 @@ jobs:
         with:
           ruby-version: '3.1'
 
+      - name: Build Project
+        run: npm run build
+
       - name: Check for requirements.txt and install Python deps
         shell: bash
         timeout-minutes: 5  # Maksimum bekleme süresi
