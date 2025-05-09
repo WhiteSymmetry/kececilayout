@@ -30,6 +30,7 @@ jobs:
         run: python -m build
 
       - name: Publish to PyPI
+        run: |
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
