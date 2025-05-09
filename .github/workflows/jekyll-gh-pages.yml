@@ -66,6 +66,25 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-pages-artifact@v3
 
+      - name: Measure build duration
+        shell: bash
+        run: |
+          start=$(date +%s)
+          npm run build
+          end=$(date +%s)
+          echo "Build took $((end - start)) seconds."
+
+      - name: Cache node modules
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Install dependencies
+        run: npm ci
+
   # Deployment job
   deploy:
     environment:
