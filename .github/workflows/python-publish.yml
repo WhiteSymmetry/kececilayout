@@ -1,10 +1,10 @@
-# This workflow will upload a Python Package using Twine when a release is created
-# For more information, see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#publishing-to-package-registries
-name: Upload Python Package
+# Workflow for deploying static content to GitHub Pages
+name: Deploy static content to Pages
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: ["main"]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -12,32 +12,42 @@ permissions:
   pages: write
   id-token: write
 
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-    - name: Check out the repository
-      uses: actions/checkout@v4
+      - name: Check out the repository
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.x'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
-    - name: Upgrade pip and install build dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install --upgrade build
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
 
-    - name: Build the package
-      run: python -m build
+      - name: Build the package
+        run: python -m build
 
-    - name: Publish the package to PyPI
-      uses: pypa/gh-action-pypi-publish@v1
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v4
 
-    - name: Check for errors
-      run: echo "Package successfully published to PyPI."
-    
+      - name: Upload static content artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist' # ya da uygun çıktı dizini
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        
