@@ -14,7 +14,7 @@
 [![Open Source](https://img.shields.io/badge/Open%20Source-Open%20Source-brightgreen.svg)](https://opensource.org/)
 [![Documentation Status](https://app.readthedocs.org/projects/kececilayout/badge/?0.2.1=main)](https://kececilayout.readthedocs.io/en/main/?badge=main)
 
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/WhiteSymmetry/kececilayout/badge)](https://scorecard.dev/viewer/?uri=github.com/WhiteSymmetry/kececilayout})
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/WhiteSymmetry/kececilayout/badge)](https://scorecard.dev/viewer/?uri=github.com/WhiteSymmetry/kececilayout)
 
 **Kececi Layout (Keçeci Yerleşimi)**: A deterministic graph layout algorithm designed for visualizing linear or sequential structures with a characteristic "zig-zag" or "serpentine" pattern.
 
