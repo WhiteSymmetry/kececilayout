@@ -1,6 +1,6 @@
 {
   "name": "kececilayout",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Kececi Layout: Deterministic graph layout algorithm for visualizing linear structures with zig-zag patterns.",
   "main": "index.js",
   "scripts": {
