@@ -41,9 +41,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: Install dependencies
-        run: npm ci
-
       - name: Build static content
         run: npm run build
 
