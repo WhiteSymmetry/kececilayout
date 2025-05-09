@@ -40,6 +40,6 @@
     "jest": "^29.7.0"
   },
   "scripts": {
-    "build": "vite build"
+    "build": "build"
   }
 }
