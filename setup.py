@@ -7,6 +7,7 @@ setup(
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     author="Mehmet Keçeci",
+    maintainer="Mehmet Keçeci",
     author_email="bilginomi@yaani.com",
     url="https://github.com/WhiteSymmetry/kececilayout",
     packages=find_packages(),
