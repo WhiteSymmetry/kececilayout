@@ -43,9 +43,9 @@ jobs:
         timeout-minutes: 5  # Maksimum bekleme süresi
         run: npm run build
 
-      # - name: Install dependencies
-        # run: |
-          # gem install bundler
+      - name: Install dependencies
+        run: |
+          gem install bundler
           # bundle install --path vendor/bundle # [DEPRECATED] The `--path` flag is deprecated because it relies on being remembered across bundler invocations, which bundler will no longer do in future versions. Instead please use `bundle config set path 'vendor/bundle'`, and stop using this flag. Could not locate Gemfile
 
       - name: Configure GitHub Pages
