@@ -38,9 +38,18 @@ jobs:
         with:
           ruby-version: '3.1'
 
-      - name: Install dependencies
+      - name: Check for requirements.txt and install Python deps
+        shell: bash
         run: |
-          gem install bundler
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            echo "No requirements.txt found, skipping Python dependencies."
+          fi
+
+      # - name: Install dependencies
+        # run: |
+          # gem install bundler
           # bundle install --path vendor/bundle # [DEPRECATED] The `--path` flag is deprecated because it relies on being remembered across bundler invocations, which bundler will no longer do in future versions. Instead please use `bundle config set path 'vendor/bundle'`, and stop using this flag. Could not locate Gemfile
 
       - name: Configure GitHub Pages
