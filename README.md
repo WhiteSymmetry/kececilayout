@@ -12,7 +12,7 @@
 [![Anaconda-Server Badge](https://anaconda.org/bilgi/kececilayout/badges/license.svg)](https://anaconda.org/bilgi/kececilayout)
 
 [![Open Source](https://img.shields.io/badge/Open%20Source-Open%20Source-brightgreen.svg)](https://opensource.org/)
-[![Documentation Status](https://app.readthedocs.org/projects/kececilayout/badge/?0.2.1=main)](https://kececilayout.readthedocs.io/en/main/?badge=main)
+[![Documentation Status](https://app.readthedocs.org/projects/kececilayout/badge/?0.2.3=main)](https://kececilayout.readthedocs.io/en/latest)
 
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/10531/badge)](https://www.bestpractices.dev/projects/10531)
 
