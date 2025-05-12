@@ -19,6 +19,8 @@ identifiers:
     value: 10.5281/zenodo.15313947
   - type: doi
     value: 10.5281/zenodo.15314329
+  - type: doi
+    value: 10.5281/zenodo.15353535
 repository-code: 'https://github.com/WhiteSymmetry/kececilayout'
 url: 'https://github.com/WhiteSymmetry/kececilayout'
 repository: 'https://anaconda.org/bilgi/kececilayout'
@@ -38,6 +40,6 @@ keywords:
   - KececiLayout
   - Layout
 license: MIT
-commit: 'Revision: 1'
-version: 0.2.2
+commit: 'Revision: 2'
+version: 0.2.3
 date-released: '2025-04-30'
