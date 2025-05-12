@@ -5,6 +5,7 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15313947.svg)](https://doi.org/10.5281/zenodo.15313947)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15314329.svg)](https://doi.org/10.5281/zenodo.15314329)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15353535.svg)](https://doi.org/10.5281/zenodo.15353535)
 
 [![Anaconda-Server Badge](https://anaconda.org/bilgi/kececilayout/badges/version.svg)](https://anaconda.org/bilgi/kececilayout)
 [![Anaconda-Server Badge](https://anaconda.org/bilgi/kececilayout/badges/latest_release_date.svg)](https://anaconda.org/bilgi/kececilayout)
@@ -674,6 +675,8 @@ If this library was useful to you in your research, please cite us. Following th
 Keçeci, M. (2025). kececilayout (0.2.0). PyPI, Anaconda, GitHub, Zenodo. https://doi.org/10.5281/zenodo.15313947
 
 Keçeci, M. (2025). Keçeci Layout. https://doi.org/10.5281/zenodo.15314329
+
+Keçeci, M. (2025). kececilayout (0.2.3). Github, PyPI, Anaconda, Zenodo. https://doi.org/10.5281/zenodo.15353535
 ```
 
 ### Chicago
@@ -682,4 +685,6 @@ Keçeci, M. (2025). Keçeci Layout. https://doi.org/10.5281/zenodo.15314329
 Keçeci, Mehmet. "Kececilayout". PyPI, Anaconda, GitHub, Zenodo, 01 May 2025. https://doi.org/10.5281/zenodo.15313947.
 
 Keçeci, Mehmet. "Keçeci Layout", 01 May 2025. https://doi.org/10.5281/zenodo.15314329.
+
+Keçeci, Mehmet. "Kececilayout". Github, PyPI, Anaconda, Zenodo, 12 Mayıs 2025. https://doi.org/10.5281/zenodo.15353535.
 ```
