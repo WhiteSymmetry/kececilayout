@@ -1,0 +1,36 @@
+name: Publish to Zenodo on Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish-to-zenodo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create release archive
+        run: |
+          mkdir -p release-artifact
+          cp -r ./* release-artifact/
+          cd release-artifact
+          zip -r ../release.zip *
+
+      - name: Upload to Zenodo
+        uses: nasa/gh-action-upload-zenodo-release@main
+        with:
+          zenodo_token: ${{ secrets.ZENODO_TOKEN }}
+          dir: .
+          metadata: |
+            {
+              "title": "kececilayout",
+              "upload_type": "software",
+              "description": "A deterministic node placement algorithm used in graph visualization. In this layout, nodes are arranged sequentially along a defined primary axis. Each subsequent node is then alternately offset along a secondary, perpendicular axis, typically moving to one side of the primary axis and then the other. Often, the magnitude of this secondary offset increases as nodes progress along the primary axis, creating a characteristic zig-zag or serpentine pattern.",
+              "creators": [
+                {"name": "Keçeci, Mehmet", "orcid": "0000-0001-9937-9839"}
+              ],
+              "access_right": "open",
+              "license": "mit-license"
+            }
