@@ -679,7 +679,7 @@ Keçeci, M. (2025). Keçeci Layout. https://doi.org/10.5281/zenodo.15314329
 ### Chicago
 
 ```
-Keçeci, Mehmet. “Kececilayout”. PyPI, Anaconda, GitHub, Zenodo, 01 May 2025. https://doi.org/10.5281/zenodo.15313947.
+Keçeci, Mehmet. "Kececilayout". PyPI, Anaconda, GitHub, Zenodo, 01 May 2025. https://doi.org/10.5281/zenodo.15313947.
 
-Keçeci, Mehmet. “Keçeci Layout”, 01 May 2025. https://doi.org/10.5281/zenodo.15314329.
+Keçeci, Mehmet. "Keçeci Layout", 01 May 2025. https://doi.org/10.5281/zenodo.15314329.
 ```
