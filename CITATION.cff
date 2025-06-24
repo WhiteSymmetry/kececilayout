@@ -16,11 +16,11 @@ authors:
     orcid: 'https://orcid.org/0000-0001-9937-9839'
 identifiers:
   - type: doi
-    value: 10.5281/zenodo.15313947
+    value: 10.5281/zenodo.15313946
   - type: doi
     value: 10.5281/zenodo.15314329
   - type: doi
-    value: 10.5281/zenodo.15353535
+    value: 
 repository-code: 'https://github.com/WhiteSymmetry/kececilayout'
 url: 'https://github.com/WhiteSymmetry/kececilayout'
 repository: 'https://anaconda.org/bilgi/kececilayout'
