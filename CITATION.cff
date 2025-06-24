@@ -20,7 +20,7 @@ identifiers:
   - type: doi
     value: 10.5281/zenodo.15314329
   - type: doi
-    value: 
+    value: 10.48546/workflowhub.datafile.17.1
 repository-code: 'https://github.com/WhiteSymmetry/kececilayout'
 url: 'https://github.com/WhiteSymmetry/kececilayout'
 repository: 'https://anaconda.org/bilgi/kececilayout'
