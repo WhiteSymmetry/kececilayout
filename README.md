@@ -7,6 +7,8 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15314329.svg)](https://doi.org/10.5281/zenodo.15314329)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15353535.svg)](https://doi.org/10.5281/zenodo.15353535)
 
+[![WorkflowHub DOI](https://img.shields.io/badge/DOI-10.48546%2Fworkflowhub.datafile.17.1-blue)](https://doi.org/10.48546/workflowhub.datafile.17.1)
+
 [![Anaconda-Server Badge](https://anaconda.org/bilgi/kececilayout/badges/version.svg)](https://anaconda.org/bilgi/kececilayout)
 [![Anaconda-Server Badge](https://anaconda.org/bilgi/kececilayout/badges/latest_release_date.svg)](https://anaconda.org/bilgi/kececilayout)
 [![Anaconda-Server Badge](https://anaconda.org/bilgi/kececilayout/badges/platforms.svg)](https://anaconda.org/bilgi/kececilayout)
@@ -672,6 +674,8 @@ If this library was useful to you in your research, please cite us. Following th
 ### APA
 
 ```
+Keçeci, M. (2025). kececilayout [Data set]. WorkflowHub. https://doi.org/10.48546/workflowhub.datafile.17.1
+
 Keçeci, M. (2025). kececilayout. Zenodo. https://doi.org/10.5281/zenodo.15313946
 
 Keçeci, M. (2025). Keçeci Layout. https://doi.org/10.5281/zenodo.15314329
@@ -680,6 +684,8 @@ Keçeci, M. (2025). Keçeci Layout. https://doi.org/10.5281/zenodo.15314329
 ### Chicago
 
 ```
+Keçeci, Mehmet. kececilayout [Data set]. WorkflowHub, 2025. https://doi.org/10.48546/workflowhub.datafile.17.1
+
 Keçeci, Mehmet. "Kececilayout". Zenodo, 01 May 2025. https://doi.org/10.5281/zenodo.15313946.
 
 Keçeci, Mehmet. "Keçeci Layout", 01 May 2025. https://doi.org/10.5281/zenodo.15314329.
