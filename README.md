@@ -25,7 +25,7 @@
 [![Binder](https://terrarium.evidencepub.io/badge_logo.svg)](https://terrarium.evidencepub.io/v2/gh/WhiteSymmetry/kececilayout/HEAD)
 [![PyPI version](https://badge.fury.io/py/kececilayout.svg)](https://badge.fury.io/py/kececilayout)
 [![PyPI Downloads](https://static.pepy.tech/badge/kececilayout)](https://pepy.tech/projects/kececilayout)
-
+ 
 ---
 
 **Kececi Layout (Keçeci Yerleşimi)**: A deterministic graph layout algorithm designed for visualizing linear or sequential structures with a characteristic "zig-zag" or "serpentine" pattern.
