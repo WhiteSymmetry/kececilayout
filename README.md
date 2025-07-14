@@ -19,6 +19,15 @@
 
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/10531/badge)](https://www.bestpractices.dev/projects/10531)
 
+[![Python CI](https://github.com/WhiteSymmetry/kececilayout/actions/workflows/python_ci.yml/badge.svg?branch=main)](https://github.com/WhiteSymmetry/kececilayout/actions/workflows/python_ci.yml)
+[![codecov](https://codecov.io/gh/WhiteSymmetry/kececilayout/graph/badge.svg?token=1SDH8E9RAJ)](https://codecov.io/gh/WhiteSymmetry/kececilayout)
+[![Documentation Status](https://readthedocs.org/projects/kececilayout/badge/?version=latest)](https://kececilayout.readthedocs.io/en/latest/)
+[![Binder](https://terrarium.evidencepub.io/badge_logo.svg)](https://terrarium.evidencepub.io/v2/gh/WhiteSymmetry/kececilayout/HEAD)
+[![PyPI version](https://badge.fury.io/py/kececilayout.svg)](https://badge.fury.io/py/kececilayout)
+[![PyPI Downloads](https://static.pepy.tech/badge/kececilayout)](https://pepy.tech/projects/kececilayout)
+
+---
+
 **Kececi Layout (Keçeci Yerleşimi)**: A deterministic graph layout algorithm designed for visualizing linear or sequential structures with a characteristic "zig-zag" or "serpentine" pattern.
 
 *Python implementation of the Keçeci layout algorithm for graph visualization.*
