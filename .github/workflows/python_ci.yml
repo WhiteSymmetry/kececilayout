@@ -8,6 +8,11 @@ jobs:
     name: Run tests and collect coverage
     runs-on: ubuntu-latest
     steps:
+      - name: "My workflow"
+        permissions:
+          contents: read
+          pull-requests: write
+  
       - name: Checkout
         uses: actions/checkout@v4
         with:
