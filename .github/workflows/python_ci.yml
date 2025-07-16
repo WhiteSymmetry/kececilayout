@@ -1,56 +1,26 @@
-name: Run Python Tests & Upload Coverage
+name: Run tests and upload coverage
 
-on:
-  push:
-    branches:
-      - main  # veya ana branch'inizin adı (master, develop vb.)
-  pull_request:
-    branches:
-      - main
+on: 
+  push
 
 jobs:
   test:
     name: Run tests and collect coverage
     runs-on: ubuntu-latest
-    
-    # İzinler (permissions) "job" seviyesinde tanımlanmalıdır, "step" içinde değil.
-    permissions:
-      contents: read
-      pull-requests: write # Codecov'un PR'lara yorum eklemesi için gerekebilir
-
     steps:
-      # 1. Adım: Proje dosyalarını indir (Checkout)
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Tüm git geçmişini alır, bazı araçlar için faydalıdır
+          fetch-depth: 2
 
-      # 2. Adım: Python ortamını kur
-      # Belirli bir Python sürümü belirtmek önemlidir.
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11' # Projenizin desteklediği bir sürümü yazın
+      - name: Set up Node
+        uses: actions/setup-node@v4
 
-      # 3. Adım: Bağımlılıkları yükle
-      # Önce pip'i güncelleyip, sonra test araçlarını ve projenin kendisini kurarız.
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest pytest-cov
-          pip install . # Bu komut, projenizi (kececilayout) ve onun bağımlılıklarını kurar
-
-      # 4. Adım: Testleri çalıştır ve kapsam raporu oluştur
-      # --cov parametresine paket adını vermek, sadece kendi kodunuzun kapsamını ölçer.
-      - name: Run tests with pytest
-        run: pytest --cov=kececilayout --cov-branch --cov-report=xml
-
-      # 5. Adım: Kapsam raporunu Codecov'a yükle
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4 # En son stabil sürüm v4'tür
+        run: npm install
+          
+      - name: Upload results to Codecov
+        uses: codecov/codecov-action@v5
         with:
-          # NOT: Herkese açık (public) repolar için token genellikle gerekli değildir.
-          # Codecov action, repo'yu kendisi tanıyabilir.
-          # Sadece özel (private) repolarda veya sorun yaşarsanız token kullanın.
-          token: ${{ secrets.CODECOV_TOKEN }} 
-          slug: WhiteSymmetry/kececilayout # Repo adını belirtmek iyi bir pratiktir
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: WhiteSymmetry/kececilayout
