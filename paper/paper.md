@@ -29,7 +29,7 @@ To address this gap, the Keçeci Layout was developed as a structural approach f
 
 # The Keçeci Layout Algorithm
 
-The Keçeci Layout is fundamentally a sequential algorithm that places nodes one by one according to their given order. Its defining characteristic is the combination of linear progression along a primary axis and an alternating, expanding offset along a secondary axis. This creates the distinctive zigzag shape [@Kececi2025a]. The algorithm is deterministic: for a given list of nodes and a fixed set of parameters, the resulting layout is always identical [@Kececi2025i].
+The Keçeci Layout is fundamentally a sequential algorithm that places nodes one by one according to their given order. Its defining characteristic is the combination of linear progression along a primary axis and an alternating, expanding offset along a secondary axis. This generates the distinctive zigzag shape [@Kececi2025a]. The algorithm is deterministic: for a given list of nodes and a fixed set of parameters, the resulting layout is always identical [@Kececi2025i].
 
 ## Algorithmic Principles
 
@@ -91,7 +91,7 @@ import networkx as nx
 import kececilayout as kl
 import matplotlib.pyplot as plt
 
-# 1. Create a graph (e.g., a path graph with 25 nodes)
+# 1. Generate a graph (e.g., a path graph with 25 nodes)
 G = nx.path_graph(25)
 
 # 2. Compute the node positions using Kececi Layout
