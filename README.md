@@ -742,7 +742,7 @@ Keçeci, M. (2025, July 3). The Keçeci Layout: A Structural Approach for Interd
 
 Keçeci, M. (2025). Beyond Topology: Deterministic and Order-Preserving Graph Visualization with the Keçeci Layout. WorkflowHub. https://doi.org/10.48546/workflowhub.document.34.4
 
-Keçeci, M. (2025). A Graph-Theoretic Perspective on the Keçeci Layout: Structuring Cross-Disciplinary Inquiry. Preprints. https://doi.org/10.20944/preprints202507.0589
+Keçeci, M. (2025). A Graph-Theoretic Perspective on the Keçeci Layout: Structuring Cross-Disciplinary Inquiry. Preprints. https://doi.org/10.20944/preprints202507.0589.v1
 
 Keçeci, M. (2025). Keçeci Layout. Open Science Articles (OSAs), Zenodo. https://doi.org/10.5281/zenodo.15314328
 
