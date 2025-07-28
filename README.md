@@ -724,6 +724,8 @@ If this library was useful to you in your research, please cite us. Following th
 
 ```
 
+Keçeci, M. (2025). The Keçeci Layout: A Deterministic, Order-Preserving Visualization Algorithm for Structured Systems. Open Science Articles (OSAs), Zenodo. https://doi.org/10.5281/zenodo.16526799
+
 Keçeci, M. (2025). Keçeci Deterministic Zigzag Layout. WorkflowHub. https://doi.org/10.48546/workflowhub.document.31.1
 
 Keçeci, M. (2025). Keçeci Zigzag Layout Algorithm. Authorea. https://doi.org/10.22541/au.175087581.16524538/v1
@@ -755,9 +757,12 @@ Keçeci, M. (2025, May 1). Kececilayout. Open Science Articles (OSAs), Zenodo. h
 ### Chicago
 
 ```
+
+Keçeci, Mehmet. The Keçeci Layout: A Deterministic, Order-Preserving Visualization Algorithm for Structured Systems. Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.16526799
+
 Keçeci, Mehmet. kececilayout [Data set]. WorkflowHub, 2025. https://doi.org/10.48546/workflowhub.datafile.17.1
 
-Keçeci, Mehmet. "Kececilayout". Zenodo, 01 May 2025. https://doi.org/10.5281/zenodo.15313946.
+Keçeci, Mehmet. "Kececilayout". Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.15313946.
 
-Keçeci, Mehmet. "Keçeci Layout", 01 May 2025. https://doi.org/10.5281/zenodo.15314329.
+Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.15314329.
 ```
