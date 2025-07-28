@@ -1,7 +1,5 @@
 # KececiLayout
 
-[![status](https://joss.theoj.org/papers/99229893cbdc5dc7f57be7f48b8c1c3c/status.svg)](https://joss.theoj.org/papers/99229893cbdc5dc7f57be7f48b8c1c3c)
-
 [![PyPI version](https://badge.fury.io/py/kececilayout.svg)](https://badge.fury.io/py/kececilayout)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
