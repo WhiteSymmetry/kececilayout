@@ -159,7 +159,8 @@ def kececi_layout_v4(graph, primary_spacing=1.0, secondary_spacing=1.0,
             secondary_axis = 'y'
 
         # 2. Yan eksen ofsetini hesapla (zigzag)
-        if i == 0: secondary_offset_multiplier = 0.0
+        if i == 0: 
+            secondary_offset_multiplier = 0.0
         else:
             start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
             magnitude = math.ceil(i / 2.0)
@@ -168,8 +169,10 @@ def kececi_layout_v4(graph, primary_spacing=1.0, secondary_spacing=1.0,
         secondary_coord = secondary_offset_multiplier * secondary_spacing
 
         # 3. (x, y) koordinatlarını ata
-        if secondary_axis == 'x': x, y = secondary_coord, primary_coord
-        else: x, y = primary_coord, secondary_coord
+        if secondary_axis == 'x': 
+            x, y = secondary_coord, primary_coord
+        else: 
+            x, y = primary_coord, secondary_coord
 
         # Sonuç sözlüğüne ekle
         pos[node_id] = (x, y)
@@ -290,7 +293,8 @@ def kececi_layout(graph, primary_spacing=1.0, secondary_spacing=1.0,
             secondary_axis = 'y'
 
         # 2. Yan eksen ofsetini hesapla (zigzag)
-        if i == 0: secondary_offset_multiplier = 0.0
+        if i == 0: 
+            secondary_offset_multiplier = 0.0
         else:
             start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
             magnitude = math.ceil(i / 2.0)
@@ -299,8 +303,10 @@ def kececi_layout(graph, primary_spacing=1.0, secondary_spacing=1.0,
         secondary_coord = secondary_offset_multiplier * secondary_spacing
 
         # 3. (x, y) koordinatlarını ata
-        if secondary_axis == 'x': x, y = secondary_coord, primary_coord
-        else: x, y = primary_coord, secondary_coord
+        if secondary_axis == 'x': 
+            x, y = secondary_coord, primary_coord
+        else: 
+            x, y = primary_coord, secondary_coord
 
         # Sonuç sözlüğüne ekle
         pos[node_id] = (x, y)
@@ -317,19 +323,26 @@ def kececi_layout_v4_nx(graph, primary_spacing=1.0, secondary_spacing=1.0,
     # NetworkX 2.x ve 3.x uyumluluğu için listeye çevirme
     nodes = sorted(list(graph.nodes()))
     num_nodes = len(nodes)
-    if num_nodes == 0: return {}
+    if num_nodes == 0: 
+        return {}
 
     is_vertical = primary_direction in ['top-down', 'bottom-up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-    if not (is_vertical or is_horizontal): raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']: raise ValueError(f"Invalid secondary_start for vertical: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']: raise ValueError(f"Invalid secondary_start for horizontal: {secondary_start}")
+    if not (is_vertical or is_horizontal): 
+        raise ValueError(f"Invalid primary_direction: {primary_direction}")
+    if is_vertical and secondary_start not in ['right', 'left']: 
+        raise ValueError(f"Invalid secondary_start for vertical: {secondary_start}")
+    if is_horizontal and secondary_start not in ['up', 'down']: 
+        raise ValueError(f"Invalid secondary_start for horizontal: {secondary_start}")
 
     for i, node_id in enumerate(nodes):
         # 1. Ana Eksen Koordinatını Hesapla
-        if primary_direction == 'top-down': primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up': primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right': primary_coord, secondary_axis = i * primary_spacing, 'y'
+        if primary_direction == 'top-down': 
+            primary_coord, secondary_axis = i * -primary_spacing, 'x'
+        elif primary_direction == 'bottom-up': 
+            primary_coord, secondary_axis = i * primary_spacing, 'x'
+        elif primary_direction == 'left-to-right': 
+            primary_coord, secondary_axis = i * primary_spacing, 'y'
         else: # right-to-left
             primary_coord, secondary_axis = i * -primary_spacing, 'y'
 
@@ -363,19 +376,26 @@ def kececi_layout_v4_networkx(graph, primary_spacing=1.0, secondary_spacing=1.0,
     # NetworkX 2.x ve 3.x uyumluluğu için listeye çevirme
     nodes = sorted(list(graph.nodes()))
     num_nodes = len(nodes)
-    if num_nodes == 0: return {}
+    if num_nodes == 0: 
+        return {}
 
     is_vertical = primary_direction in ['top-down', 'bottom-up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-    if not (is_vertical or is_horizontal): raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']: raise ValueError(f"Invalid secondary_start for vertical: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']: raise ValueError(f"Invalid secondary_start for horizontal: {secondary_start}")
+    if not (is_vertical or is_horizontal): 
+        raise ValueError(f"Invalid primary_direction: {primary_direction}")
+    if is_vertical and secondary_start not in ['right', 'left']: 
+        raise ValueError(f"Invalid secondary_start for vertical: {secondary_start}")
+    if is_horizontal and secondary_start not in ['up', 'down']: 
+        raise ValueError(f"Invalid secondary_start for horizontal: {secondary_start}")
 
     for i, node_id in enumerate(nodes):
         # 1. Ana Eksen Koordinatını Hesapla
-        if primary_direction == 'top-down': primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up': primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right': primary_coord, secondary_axis = i * primary_spacing, 'y'
+        if primary_direction == 'top-down': 
+            primary_coord, secondary_axis = i * -primary_spacing, 'x'
+        elif primary_direction == 'bottom-up': 
+            primary_coord, secondary_axis = i * primary_spacing, 'x'
+        elif primary_direction == 'left-to-right': 
+            primary_coord, secondary_axis = i * primary_spacing, 'y'
         else: # right-to-left
             primary_coord, secondary_axis = i * -primary_spacing, 'y'
 
@@ -771,7 +791,8 @@ def kececi_layout_v4_gg(graph_set: gg.GraphSet,
             primary_coord = i * -primary_spacing; 
             secondary_axis = 'y'
 
-        if i == 0: secondary_offset_multiplier = 0.0
+        if i == 0: 
+            secondary_offset_multiplier = 0.0
         else:
             start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
             magnitude = math.ceil(i / 2.0)
@@ -779,8 +800,10 @@ def kececi_layout_v4_gg(graph_set: gg.GraphSet,
             secondary_offset_multiplier = start_mult * magnitude * side
         secondary_coord = secondary_offset_multiplier * secondary_spacing
 
-        if secondary_axis == 'x': x, y = secondary_coord, primary_coord
-        else: x, y = primary_coord, secondary_coord
+        if secondary_axis == 'x': 
+            x, y = secondary_coord, primary_coord
+        else: 
+            x, y = primary_coord, secondary_coord
         pos[node_id] = (x, y)
 
     return pos
@@ -836,7 +859,8 @@ def kececi_layout_v4_graphillion(graph_set: gg.GraphSet,
             primary_coord = i * -primary_spacing; 
             secondary_axis = 'y'
 
-        if i == 0: secondary_offset_multiplier = 0.0
+        if i == 0: 
+            secondary_offset_multiplier = 0.0
         else:
             start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
             magnitude = math.ceil(i / 2.0)
@@ -844,32 +868,44 @@ def kececi_layout_v4_graphillion(graph_set: gg.GraphSet,
             secondary_offset_multiplier = start_mult * magnitude * side
         secondary_coord = secondary_offset_multiplier * secondary_spacing
 
-        if secondary_axis == 'x': x, y = secondary_coord, primary_coord
-        else: x, y = primary_coord, secondary_coord
+        if secondary_axis == 'x': 
+            x, y = secondary_coord, primary_coord
+        else: 
+            x, y = primary_coord, secondary_coord
         pos[node_id] = (x, y)
 
     return pos
 
-def kececi_layout_v4_rx(graph: rx.PyGraph, primary_spacing=1.0, secondary_spacing=1.0,
+def kececi_layout_v4_rx(graph: 
+                        rx.PyGraph, primary_spacing=1.0, secondary_spacing=1.0,
                         primary_direction='top-down', secondary_start='right'):
     pos = {}
     nodes = sorted(graph.node_indices())
     num_nodes = len(nodes)
-    if num_nodes == 0: return {}
+    if num_nodes == 0: 
+        return {}
 
     is_vertical = primary_direction in ['top-down', 'bottom-up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-    if not (is_vertical or is_horizontal): raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']: raise ValueError(f"Invalid secondary_start for vertical: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']: raise ValueError(f"Invalid secondary_start for horizontal: {secondary_start}")
+    if not (is_vertical or is_horizontal): 
+        raise ValueError(f"Invalid primary_direction: {primary_direction}")
+    if is_vertical and secondary_start not in ['right', 'left']: 
+        raise ValueError(f"Invalid secondary_start for vertical: {secondary_start}")
+    if is_horizontal and secondary_start not in ['up', 'down']: 
+        raise ValueError(f"Invalid secondary_start for horizontal: {secondary_start}")
 
     for i, node_index in enumerate(nodes):
-        if primary_direction == 'top-down': primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up': primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right': primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else: primary_coord, secondary_axis = i * -primary_spacing, 'y'
+        if primary_direction == 'top-down': 
+            primary_coord, secondary_axis = i * -primary_spacing, 'x'
+        elif primary_direction == 'bottom-up': 
+            primary_coord, secondary_axis = i * primary_spacing, 'x'
+        elif primary_direction == 'left-to-right': 
+            primary_coord, secondary_axis = i * primary_spacing, 'y'
+        else: 
+            primary_coord, secondary_axis = i * -primary_spacing, 'y'
 
-        if i == 0: secondary_offset_multiplier = 0.0
+        if i == 0: 
+            secondary_offset_multiplier = 0.0
         else:
             start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
             magnitude = math.ceil(i / 2.0)
@@ -881,26 +917,36 @@ def kececi_layout_v4_rx(graph: rx.PyGraph, primary_spacing=1.0, secondary_spacin
         pos[node_index] = np.array([x, y])
     return pos
 
-def kececi_layout_v4_rustworkx(graph: rx.PyGraph, primary_spacing=1.0, secondary_spacing=1.0,
+def kececi_layout_v4_rustworkx(graph: 
+                               rx.PyGraph, primary_spacing=1.0, secondary_spacing=1.0,
                         primary_direction='top-down', secondary_start='right'):
     pos = {}
     nodes = sorted(graph.node_indices())
     num_nodes = len(nodes)
-    if num_nodes == 0: return {}
+    if num_nodes == 0: 
+        return {}
 
     is_vertical = primary_direction in ['top-down', 'bottom-up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-    if not (is_vertical or is_horizontal): raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']: raise ValueError(f"Invalid secondary_start for vertical: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']: raise ValueError(f"Invalid secondary_start for horizontal: {secondary_start}")
+    if not (is_vertical or is_horizontal): 
+        raise ValueError(f"Invalid primary_direction: {primary_direction}")
+    if is_vertical and secondary_start not in ['right', 'left']: 
+        raise ValueError(f"Invalid secondary_start for vertical: {secondary_start}")
+    if is_horizontal and secondary_start not in ['up', 'down']: 
+        raise ValueError(f"Invalid secondary_start for horizontal: {secondary_start}")
 
     for i, node_index in enumerate(nodes):
-        if primary_direction == 'top-down': primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up': primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right': primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else: primary_coord, secondary_axis = i * -primary_spacing, 'y'
+        if primary_direction == 'top-down': 
+            primary_coord, secondary_axis = i * -primary_spacing, 'x'
+        elif primary_direction == 'bottom-up': 
+            primary_coord, secondary_axis = i * primary_spacing, 'x'
+        elif primary_direction == 'left-to-right': 
+            primary_coord, secondary_axis = i * primary_spacing, 'y'
+        else: 
+            primary_coord, secondary_axis = i * -primary_spacing, 'y'
 
-        if i == 0: secondary_offset_multiplier = 0.0
+        if i == 0: 
+            secondary_offset_multiplier = 0.0
         else:
             start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
             magnitude = math.ceil(i / 2.0)
@@ -965,20 +1011,28 @@ def kececi_layout_v4_pure(nodes, primary_spacing=1.0, secondary_spacing=1.0,
         sorted_nodes = list(nodes)
 
     num_nodes = len(sorted_nodes)
-    if num_nodes == 0: return {}
+    if num_nodes == 0: 
+        return {}
     is_vertical = primary_direction in ['top-down', 'bottom-up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-    if not (is_vertical or is_horizontal): raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']: raise ValueError(f"Dikey yön için geçersiz secondary_start: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']: raise ValueError(f"Yatay yön için geçersiz secondary_start: {secondary_start}")
+    if not (is_vertical or is_horizontal): 
+        raise ValueError(f"Invalid primary_direction: {primary_direction}")
+    if is_vertical and secondary_start not in ['right', 'left']: 
+        raise ValueError(f"Dikey yön için geçersiz secondary_start: {secondary_start}")
+    if is_horizontal and secondary_start not in ['up', 'down']: 
+        raise ValueError(f"Yatay yön için geçersiz secondary_start: {secondary_start}")
 
     for i, node_id in enumerate(sorted_nodes):
         primary_coord = 0.0
         secondary_axis = ''
-        if primary_direction == 'top-down': primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up': primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right': primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else: primary_coord, secondary_axis = i * -primary_spacing, 'y'
+        if primary_direction == 'top-down': 
+            primary_coord, secondary_axis = i * -primary_spacing, 'x'
+        elif primary_direction == 'bottom-up': 
+            primary_coord, secondary_axis = i * primary_spacing, 'x'
+        elif primary_direction == 'left-to-right': 
+            primary_coord, secondary_axis = i * primary_spacing, 'y'
+        else: 
+            primary_coord, secondary_axis = i * -primary_spacing, 'y'
 
         secondary_offset_multiplier = 0.0
         if i > 0:
@@ -1046,4 +1100,5 @@ def generate_random_graph_ig(min_nodes=0, max_nodes=200, edge_prob_min=0.15, edg
     g.vs["label"] = [str(i) for i in range(g.vcount())]
     g.vs["degree"] = g.degree()
     return g
+
 
