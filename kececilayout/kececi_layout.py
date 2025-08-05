@@ -108,11 +108,16 @@ def kececi_layout_v4(graph, primary_spacing=1.0, secondary_spacing=1.0,
     else:
         # Desteklenmeyen tip veya kütüphane kurulu değilse
         supported_types = []
-        if nx: supported_types.append("NetworkX")
-        if rx: supported_types.append("Rustworkx")
-        if ig: supported_types.append("igraph")
-        if nk: supported_types.append("Networkit")
-        if gg: supported_types.append("Graphillion.GraphSet")
+        if nx: 
+            supported_types.append("NetworkX")
+        if rx: 
+            supported_types.append("Rustworkx")
+        if ig: 
+            supported_types.append("igraph")
+        if nk: 
+            supported_types.append("Networkit")
+        if gg: 
+            supported_types.append("Graphillion.GraphSet")
         raise TypeError(f"Unsupported graph type: {type(graph)}. Desteklenen türler: {', '.join(supported_types)}")
 
     # ----- Buradan sonrası tüm kütüphaneler için ortak -----
@@ -141,13 +146,17 @@ def kececi_layout_v4(graph, primary_spacing=1.0, secondary_spacing=1.0,
 
         # 1. Ana eksen koordinatını hesapla
         if primary_direction == 'top-down':
-            primary_coord = i * -primary_spacing; secondary_axis = 'x'
+            primary_coord = i * -primary_spacing; 
+            secondary_axis = 'x'
         elif primary_direction == 'bottom-up':
-            primary_coord = i * primary_spacing; secondary_axis = 'x'
+            primary_coord = i * primary_spacing; 
+            secondary_axis = 'x'
         elif primary_direction == 'left-to-right':
-            primary_coord = i * primary_spacing; secondary_axis = 'y'
+            primary_coord = i * primary_spacing; 
+            secondary_axis = 'y'
         else: # right-to-left
-            primary_coord = i * -primary_spacing; secondary_axis = 'y'
+            primary_coord = i * -primary_spacing; 
+            secondary_axis = 'y'
 
         # 2. Yan eksen ofsetini hesapla (zigzag)
         if i == 0: secondary_offset_multiplier = 0.0
@@ -230,11 +239,16 @@ def kececi_layout(graph, primary_spacing=1.0, secondary_spacing=1.0,
     else:
         # Desteklenmeyen tip veya kütüphane kurulu değilse
         supported_types = []
-        if nx: supported_types.append("NetworkX")
-        if rx: supported_types.append("Rustworkx")
-        if ig: supported_types.append("igraph")
-        if nk: supported_types.append("Networkit")
-        if gg: supported_types.append("Graphillion.GraphSet")
+        if nx: 
+            supported_types.append("NetworkX")
+        if rx: 
+            supported_types.append("Rustworkx")
+        if ig: 
+            supported_types.append("igraph")
+        if nk: 
+            supported_types.append("Networkit")
+        if gg: 
+            supported_types.append("Graphillion.GraphSet")
         raise TypeError(f"Unsupported graph type: {type(graph)}. Desteklenen türler: {', '.join(supported_types)}")
 
     # ----- Buradan sonrası tüm kütüphaneler için ortak -----
@@ -263,13 +277,17 @@ def kececi_layout(graph, primary_spacing=1.0, secondary_spacing=1.0,
 
         # 1. Ana eksen koordinatını hesapla
         if primary_direction == 'top-down':
-            primary_coord = i * -primary_spacing; secondary_axis = 'x'
+            primary_coord = i * -primary_spacing; 
+            secondary_axis = 'x'
         elif primary_direction == 'bottom-up':
-            primary_coord = i * primary_spacing; secondary_axis = 'x'
+            primary_coord = i * primary_spacing; 
+            secondary_axis = 'x'
         elif primary_direction == 'left-to-right':
-            primary_coord = i * primary_spacing; secondary_axis = 'y'
+            primary_coord = i * primary_spacing; 
+            secondary_axis = 'y'
         else: # right-to-left
-            primary_coord = i * -primary_spacing; secondary_axis = 'y'
+            primary_coord = i * -primary_spacing; 
+            secondary_axis = 'y'
 
         # 2. Yan eksen ofsetini hesapla (zigzag)
         if i == 0: secondary_offset_multiplier = 0.0
@@ -741,13 +759,17 @@ def kececi_layout_v4_gg(graph_set: gg.GraphSet,
     for i, node_id in enumerate(nodes):
         # ... (Koordinat hesaplama kısmı aynı kalır) ...
         if primary_direction == 'top-down':
-            primary_coord = i * -primary_spacing; secondary_axis = 'x'
+            primary_coord = i * -primary_spacing; 
+            secondary_axis = 'x'
         elif primary_direction == 'bottom-up':
-            primary_coord = i * primary_spacing; secondary_axis = 'x'
+            primary_coord = i * primary_spacing; 
+            secondary_axis = 'x'
         elif primary_direction == 'left-to-right':
-            primary_coord = i * primary_spacing; secondary_axis = 'y'
+            primary_coord = i * primary_spacing; 
+            secondary_axis = 'y'
         else: # right-to-left
-            primary_coord = i * -primary_spacing; secondary_axis = 'y'
+            primary_coord = i * -primary_spacing; 
+            secondary_axis = 'y'
 
         if i == 0: secondary_offset_multiplier = 0.0
         else:
@@ -802,13 +824,17 @@ def kececi_layout_v4_graphillion(graph_set: gg.GraphSet,
     for i, node_id in enumerate(nodes):
         # ... (Koordinat hesaplama kısmı aynı kalır) ...
         if primary_direction == 'top-down':
-            primary_coord = i * -primary_spacing; secondary_axis = 'x'
+            primary_coord = i * -primary_spacing; 
+            secondary_axis = 'x'
         elif primary_direction == 'bottom-up':
-            primary_coord = i * primary_spacing; secondary_axis = 'x'
+            primary_coord = i * primary_spacing; 
+            secondary_axis = 'x'
         elif primary_direction == 'left-to-right':
-            primary_coord = i * primary_spacing; secondary_axis = 'y'
+            primary_coord = i * primary_spacing; 
+            secondary_axis = 'y'
         else: # right-to-left
-            primary_coord = i * -primary_spacing; secondary_axis = 'y'
+            primary_coord = i * -primary_spacing; 
+            secondary_axis = 'y'
 
         if i == 0: secondary_offset_multiplier = 0.0
         else:
@@ -1020,3 +1046,4 @@ def generate_random_graph_ig(min_nodes=0, max_nodes=200, edge_prob_min=0.15, edg
     g.vs["label"] = [str(i) for i in range(g.vcount())]
     g.vs["degree"] = g.degree()
     return g
+
