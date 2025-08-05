@@ -962,8 +962,10 @@ def kececi_layout_v4_rustworkx(graph:
 # Rastgele Graf Oluşturma Fonksiyonu (Rustworkx ile - Düzeltilmiş subgraph)
 # =============================================================================
 def generate_random_rx_graph(min_nodes=5, max_nodes=15, edge_prob_min=0.15, edge_prob_max=0.4):
-    if min_nodes < 2: min_nodes = 2
-    if max_nodes < min_nodes: max_nodes = min_nodes
+    if min_nodes < 2: 
+        min_nodes = 2
+    if max_nodes < min_nodes: 
+        max_nodes = min_nodes
     while True:
         num_nodes_target = random.randint(min_nodes, max_nodes)
         edge_probability = random.uniform(edge_prob_min, edge_prob_max)
@@ -974,22 +976,29 @@ def generate_random_rx_graph(min_nodes=5, max_nodes=15, edge_prob_min=0.15, edge
                 if random.random() < edge_probability:
                     G_candidate.add_edge(node_indices[i], node_indices[j], None)
 
-        if G_candidate.num_nodes() == 0: continue
-        if num_nodes_target > 1 and G_candidate.num_edges() == 0: continue
+        if G_candidate.num_nodes() == 0: 
+            continue
+        if num_nodes_target > 1 and G_candidate.num_edges() == 0: 
+            continue
 
         if not rx.is_connected(G_candidate):
              components = rx.connected_components(G_candidate)
-             if not components: continue
+             if not components: 
+                 continue
              largest_cc_nodes_indices = max(components, key=len, default=set())
-             if len(largest_cc_nodes_indices) < 2 and num_nodes_target >=2 : continue
-             if not largest_cc_nodes_indices: continue
+             if len(largest_cc_nodes_indices) < 2 and num_nodes_target >=2 : 
+                 continue
+             if not largest_cc_nodes_indices: 
+                 continue
              # Set'i listeye çevirerek subgraph oluştur
              G = G_candidate.subgraph(list(largest_cc_nodes_indices))
-             if G.num_nodes() == 0: continue
+             if G.num_nodes() == 0: 
+                 continue
         else:
              G = G_candidate
 
-        if G.num_nodes() >= 2: break
+        if G.num_nodes() >= 2: 
+            break
     print(f"Oluşturulan Rustworkx Graf: {G.num_nodes()} Düğüm, {G.num_edges()} Kenar (Başlangıç p={edge_probability:.3f})")
     return G
 
@@ -1051,27 +1060,37 @@ def kececi_layout_v4_pure(nodes, primary_spacing=1.0, secondary_spacing=1.0,
 # =============================================================================
 def generate_random_graph(min_nodes=0, max_nodes=200, edge_prob_min=0.15, edge_prob_max=0.4):
 
-    if min_nodes < 2: min_nodes = 2
-    if max_nodes < min_nodes: max_nodes = min_nodes
+    if min_nodes < 2: 
+        min_nodes = 2
+    if max_nodes < min_nodes: 
+        max_nodes = min_nodes
     while True:
         num_nodes_target = random.randint(min_nodes, max_nodes)
         edge_probability = random.uniform(edge_prob_min, edge_prob_max)
         G_candidate = nx.gnp_random_graph(num_nodes_target, edge_probability, seed=None)
-        if G_candidate.number_of_nodes() == 0: continue
+        if G_candidate.number_of_nodes() == 0: 
+            continue
         # Düzeltme: 0 kenarlı ama >1 düğümlü grafı da tekrar dene
-        if num_nodes_target > 1 and G_candidate.number_of_edges() == 0 : continue
+        if num_nodes_target > 1 and G_candidate.number_of_edges() == 0 : 
+            continue
 
         if not nx.is_connected(G_candidate):
             # Düzeltme: default=set() kullanmak yerine önce kontrol et
             connected_components = list(nx.connected_components(G_candidate))
-            if not connected_components: continue # Bileşen yoksa tekrar dene
+            if not connected_components: 
+                continue # Bileşen yoksa tekrar dene
             largest_cc_nodes = max(connected_components, key=len)
-            if len(largest_cc_nodes) < 2 and num_nodes_target >=2 : continue
-            if not largest_cc_nodes: continue # Bu aslında gereksiz ama garanti olsun
+            if len(largest_cc_nodes) < 2 and num_nodes_target >=2 : 
+                continue
+            if not largest_cc_nodes: 
+                continue # Bu aslında gereksiz ama garanti olsun
             G = G_candidate.subgraph(largest_cc_nodes).copy()
-            if G.number_of_nodes() == 0: continue
-        else: G = G_candidate
-        if G.number_of_nodes() >= 2: break
+            if G.number_of_nodes() == 0: 
+                continue
+        else: 
+            G = G_candidate
+        if G.number_of_nodes() >= 2: 
+            break
     G = nx.convert_node_labels_to_integers(G, first_label=0)
     print(f"Oluşturulan Graf: {G.number_of_nodes()} Düğüm, {G.number_of_edges()} Kenar (Başlangıç p={edge_probability:.3f})")
     return G
@@ -1079,26 +1098,36 @@ def generate_random_graph(min_nodes=0, max_nodes=200, edge_prob_min=0.15, edge_p
 def generate_random_graph_ig(min_nodes=0, max_nodes=200, edge_prob_min=0.15, edge_prob_max=0.4):
     """igraph kullanarak rastgele bağlı bir graf oluşturur."""
 
-    if min_nodes < 2: min_nodes = 2
-    if max_nodes < min_nodes: max_nodes = min_nodes
+    if min_nodes < 2: 
+        min_nodes = 2
+    if max_nodes < min_nodes: 
+        max_nodes = min_nodes
     while True:
         num_nodes_target = random.randint(min_nodes, max_nodes)
         edge_probability = random.uniform(edge_prob_min, edge_prob_max)
         g_candidate = ig.Graph.Erdos_Renyi(n=num_nodes_target, p=edge_probability, directed=False)
-        if g_candidate.vcount() == 0: continue
-        if num_nodes_target > 1 and g_candidate.ecount() == 0 : continue
+        if g_candidate.vcount() == 0: 
+            continue
+        if num_nodes_target > 1 and g_candidate.ecount() == 0 : 
+            continue
         if not g_candidate.is_connected(mode='weak'):
             components = g_candidate.components(mode='weak')
-            if not components or len(components) == 0: continue
+            if not components or len(components) == 0: 
+                continue
             largest_cc_subgraph = components.giant()
-            if largest_cc_subgraph.vcount() < 2 and num_nodes_target >=2 : continue
+            if largest_cc_subgraph.vcount() < 2 and num_nodes_target >=2 : 
+                continue
             g = largest_cc_subgraph
-            if g.vcount() == 0: continue
-        else: g = g_candidate
-        if g.vcount() >= 2: break
+            if g.vcount() == 0: 
+                continue
+        else: 
+            g = g_candidate
+        if g.vcount() >= 2: 
+            break
     print(f"Oluşturulan igraph Graf: {g.vcount()} Düğüm, {g.ecount()} Kenar (Başlangıç p={edge_probability:.3f})")
     g.vs["label"] = [str(i) for i in range(g.vcount())]
     g.vs["degree"] = g.degree()
     return g
+
 
 
