@@ -82,6 +82,8 @@ This algorithm arranges nodes sequentially along a primary axis and offsets them
 
 *Bu algoritma, düğümleri birincil eksen boyunca sıralı olarak yerleştirir ve ikincil eksen boyunca dönüşümlü olarak kaydırır. Yol grafları, zincirler veya ilerlemeyi göstermek için özellikle kullanışlıdır.*
 
+=> 0.2.6: Curved, transparent, 3d, expanding=True
+
 ---
 
 ### English Description
@@ -772,5 +774,6 @@ Keçeci, Mehmet. "Kececilayout". Open Science Articles (OSAs), Zenodo, 2025. htt
 
 Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.15314329.
 ```
+
 
 
