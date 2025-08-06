@@ -24,7 +24,7 @@ import warnings
 # Ana bağımlılıklar (çizim için gerekli)
 try:
     import networkx as nx
-    from mpl_toolkits.mplot3d import Axes3D
+    #from mpl_toolkits.mplot3d import Axes3D
 except ImportError as e:
     raise ImportError(
         "Bu modülün çalışması için 'networkx' ve 'matplotlib' gereklidir. "
@@ -1060,10 +1060,14 @@ def _get_nodes_from_graph(graph):
             nodes = list(graph.nodes())
     else:
         supported = ["NetworkX"]
-        if rx: supported.append("Rustworkx")
-        if ig: supported.append("igraph")
-        if nk: supported.append("Networkit")
-        if gg: supported.append("Graphillion")
+        if rx: 
+            supported.append("Rustworkx")
+        if ig: 
+            supported.append("igraph")
+        if nk: 
+            supported.append("Networkit")
+        if gg: 
+            supported.append("Graphillion")
         raise TypeError(
             f"Unsupported graph type: {type(graph)}. Supported types: {', '.join(supported)}"
         )
@@ -1232,3 +1236,4 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
