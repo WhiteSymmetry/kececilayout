@@ -1,21 +1,37 @@
-# kececilayout/kececi_layout.py
+# -*- coding: utf-8 -*-
+# ruff: noqa: N806, N815
+"""
+kececilayout.py
+
+Bu modül, çeşitli Python graf kütüphaneleri için sıralı-zigzag ("Keçeci Layout")
+ve gelişmiş görselleştirme stilleri sağlar.
+"""
 
 import graphillion as gg
 import igraph as ig
 import itertools # Graphillion için eklendi
 import math
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import networkit as nk
 import networkx as nx
 import numpy as np # rustworkx
 import random
 import rustworkx as rx
+import warnings
 
 
-# Gerekli olabilecek kütüphane importları (type hinting veya isinstance için)
+# Ana bağımlılıklar (çizim için gerekli)
 try:
     import networkx as nx
-except ImportError:
-    nx = None # Yoksa None ata
+    from mpl_toolkits.mplot3d import Axes3D
+except ImportError as e:
+    raise ImportError(
+        "Bu modülün çalışması için 'networkx' ve 'matplotlib' gereklidir. "
+        "Lütfen `pip install networkx matplotlib` ile kurun."
+    ) from e
+
+# Opsiyonel graf kütüphaneleri
 try:
     import rustworkx as rx
 except ImportError:
@@ -29,9 +45,10 @@ try:
 except ImportError:
     nk = None
 try:
-    import graphillion as gg # Graphillion importu eklendi
+    import graphillion as gg
 except ImportError:
     gg = None
+
 
 def find_max_node_id(edges):
     """Verilen kenar listesindeki en büyük düğüm ID'sini bulur."""
@@ -45,270 +62,160 @@ def find_max_node_id(edges):
       print("Uyarı: Kenar formatı beklenenden farklı, max node ID 0 varsayıldı.")
       return 0
 
-def kececi_layout_v4(graph, primary_spacing=1.0, secondary_spacing=1.0,
-                     primary_direction='top-down', secondary_start='right'):
-    """
-    Keçeci Layout v4 - Graf düğümlerine sıralı-zigzag yerleşimi sağlar.
-    NetworkX, Rustworkx, igraph, Networkit ve Graphillion grafikleriyle çalışır.
 
-    Parametreler:
-    -------------
-    graph : Kütüphaneye özel graf nesnesi
-        NetworkX, Rustworkx, igraph, Networkit veya Graphillion nesnesi.
-        Graphillion için bir GraphSet nesnesi beklenir.
-    ... (diğer parametreler) ...
-
-    Dönüş:
-    ------
-    dict[node_identifier, tuple[float, float]]
-        Her düğümün koordinatını içeren sözlük. Anahtarlar kütüphaneye
-        göre değişir (NX: node obj/id, RW/NK/igraph: int index, GG: 1-based int index).
-    """
-
-    nodes = None
-
-    # Kütüphane Tespiti ve Düğüm Listesi Çıkarımı
-    # isinstance kullanmak hasattr'dan daha güvenilirdir.
-    # Önce daha spesifik tipleri kontrol etmek iyi olabilir.
-
-    if gg and isinstance(graph, gg.GraphSet): # Graphillion kontrolü EKLENDİ
-        edges = graph.universe()
-        max_node_id = find_max_node_id(edges)
-        if max_node_id > 0:
-            nodes = list(range(1, max_node_id + 1)) # 1-tabanlı indeksleme
-        else:
-            nodes = [] # Boş evren
-        print(f"DEBUG: Graphillion tespit edildi. Düğümler (1..{max_node_id}): {nodes[:10]}...") # Debug mesajı
-
-    elif ig and isinstance(graph, ig.Graph): # igraph
-        nodes = sorted([v.index for v in graph.vs]) # 0-tabanlı indeksleme
-        print(f"DEBUG: igraph tespit edildi. Düğümler (0..{len(nodes)-1}): {nodes[:10]}...")
-
-    elif nk and isinstance(graph, nk.graph.Graph): # Networkit
-        try:
-            # iterNodes genellikle 0..N-1 verir ama garanti değil
-            nodes = sorted(list(graph.iterNodes()))
-        except Exception:
-             nodes = list(range(graph.numberOfNodes()))
-        print(f"DEBUG: Networkit tespit edildi. Düğümler: {nodes[:10]}...")
-
-    elif rx and isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):  # Rustworkx (hem yönlü hem yönsüz)
-        nodes = sorted(graph.node_indices()) # 0-tabanlı indeksleme
-        print(f"DEBUG: Rustworkx tespit edildi. Düğümler (0..{len(nodes)-1}): {nodes[:10]}...")
-
-    elif nx and isinstance(graph, (nx.Graph, nx.DiGraph, nx.MultiGraph, nx.MultiDiGraph)): # NetworkX
-        try:
-            # Düğümler sıralanabilirse sırala (genelde int/str)
-            nodes = sorted(list(graph.nodes()))
-        except TypeError:
-             # Sıralanamayan düğüm tipleri varsa (örn. tuple, nesne) sırasız al
-             nodes = list(graph.nodes())
-        print(f"DEBUG: NetworkX tespit edildi. Düğümler: {nodes[:10]}...")
-
-    else:
-        # Desteklenmeyen tip veya kütüphane kurulu değilse
-        supported_types = []
-        if nx: 
-            supported_types.append("NetworkX")
-        if rx: 
-            supported_types.append("Rustworkx")
-        if ig: 
-            supported_types.append("igraph")
-        if nk: 
-            supported_types.append("Networkit")
-        if gg: 
-            supported_types.append("Graphillion.GraphSet")
-        raise TypeError(f"Unsupported graph type: {type(graph)}. Desteklenen türler: {', '.join(supported_types)}")
-
-    # ----- Buradan sonrası tüm kütüphaneler için ortak -----
-
-    num_nodes = len(nodes)
-    if num_nodes == 0:
-        return {}  # Boş graf için boş sözlük döndür
-
-    pos = {}  # Sonuç sözlüğü
-    is_vertical = primary_direction in ['top-down', 'bottom-up']
-    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-
-    # Parametre kontrolleri
-    if not (is_vertical or is_horizontal):
-        raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start ('{secondary_start}') for vertical primary_direction ('{primary_direction}'). Use 'right' or 'left'.")
-    if is_horizontal and secondary_start not in ['up', 'down']:
-         raise ValueError(f"Invalid secondary_start ('{secondary_start}') for horizontal primary_direction ('{primary_direction}'). Use 'up' or 'down'.")
-
-    # Ana döngü - Düğümleri sıralı indekslerine göre yerleştirir,
-    # sözlüğe ise gerçek düğüm ID/indeks/nesnesini anahtar olarak kullanır.
-    for i, node_id in enumerate(nodes):
-        # i: Düğümün sıralı listedeki 0-tabanlı indeksi (0, 1, 2, ...) - Yerleşim için kullanılır
-        # node_id: Gerçek düğüm kimliği/indeksi - Sonuç sözlüğünün anahtarı
-
-        # 1. Ana eksen koordinatını hesapla
-        if primary_direction == 'top-down':
-            primary_coord = i * -primary_spacing; 
-            secondary_axis = 'x'
-        elif primary_direction == 'bottom-up':
-            primary_coord = i * primary_spacing; 
-            secondary_axis = 'x'
-        elif primary_direction == 'left-to-right':
-            primary_coord = i * primary_spacing; 
-            secondary_axis = 'y'
-        else: # right-to-left
-            primary_coord = i * -primary_spacing; 
-            secondary_axis = 'y'
-
-        # 2. Yan eksen ofsetini hesapla (zigzag)
-        if i == 0: 
-            secondary_offset_multiplier = 0.0
-        else:
-            start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0)
-            side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_mult * magnitude * side
-        secondary_coord = secondary_offset_multiplier * secondary_spacing
-
-        # 3. (x, y) koordinatlarını ata
-        if secondary_axis == 'x': 
-            x, y = secondary_coord, primary_coord
-        else: 
-            x, y = primary_coord, secondary_coord
-
-        # Sonuç sözlüğüne ekle
-        pos[node_id] = (x, y)
-
-    return pos
- 
 def kececi_layout(graph, primary_spacing=1.0, secondary_spacing=1.0,
-                     primary_direction='top-down', secondary_start='right'):
+                  primary_direction='top_down', secondary_start='right',
+                  expanding=True):
     """
-    Keçeci Layout v4 - Graf düğümlerine sıralı-zigzag yerleşimi sağlar.
-    NetworkX, Rustworkx, igraph, Networkit ve Graphillion grafikleriyle çalışır.
+    Calculates 2D sequential-zigzag coordinates for the nodes of a graph.
 
-    Parametreler:
-    -------------
-    graph : Kütüphaneye özel graf nesnesi
-        NetworkX, Rustworkx, igraph, Networkit veya Graphillion nesnesi.
-        Graphillion için bir GraphSet nesnesi beklenir.
-    ... (diğer parametreler) ...
+    This function is compatible with graphs from NetworkX, Rustworkx, igraph,
+    Networkit, and Graphillion.
 
-    Dönüş:
-    ------
-    dict[node_identifier, tuple[float, float]]
-        Her düğümün koordinatını içeren sözlük. Anahtarlar kütüphaneye
-        göre değişir (NX: node obj/id, RW/NK/igraph: int index, GG: 1-based int index).
+    Args:
+        graph: A graph object from a supported library.
+        primary_spacing (float): The distance between nodes along the primary axis.
+        secondary_spacing (float): The base unit for the zigzag offset.
+        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
+        secondary_start (str): Initial direction for the zigzag ('up', 'down', 'left', 'right').
+        expanding (bool): If True (default), the zigzag offset grows (the 'v4' style).
+                          If False, the offset is constant (parallel lines).
+
+    Returns:
+        dict: A dictionary of positions formatted as {node_id: (x, y)}.
     """
+    # Bu blok, farklı kütüphanelerden düğüm listelerini doğru şekilde alır.
+    nx_graph = to_networkx(graph) # Emin olmak için en başta dönüştür
+    try:
+        nodes = sorted(list(nx_graph.nodes()))
+    except TypeError:
+        nodes = list(nx_graph.nodes())
 
-    nodes = None
-
-    # Kütüphane Tespiti ve Düğüm Listesi Çıkarımı
-    # isinstance kullanmak hasattr'dan daha güvenilirdir.
-    # Önce daha spesifik tipleri kontrol etmek iyi olabilir.
-
-    if gg and isinstance(graph, gg.GraphSet): # Graphillion kontrolü EKLENDİ
-        edges = graph.universe()
-        max_node_id = find_max_node_id(edges)
-        if max_node_id > 0:
-            nodes = list(range(1, max_node_id + 1)) # 1-tabanlı indeksleme
-        else:
-            nodes = [] # Boş evren
-        print(f"DEBUG: Graphillion tespit edildi. Düğümler (1..{max_node_id}): {nodes[:10]}...") # Debug mesajı
-
-    elif ig and isinstance(graph, ig.Graph): # igraph
-        nodes = sorted([v.index for v in graph.vs]) # 0-tabanlı indeksleme
-        print(f"DEBUG: igraph tespit edildi. Düğümler (0..{len(nodes)-1}): {nodes[:10]}...")
-
-    elif nk and isinstance(graph, nk.graph.Graph): # Networkit
-        try:
-            # iterNodes genellikle 0..N-1 verir ama garanti değil
-            nodes = sorted(list(graph.iterNodes()))
-        except Exception:
-             nodes = list(range(graph.numberOfNodes()))
-        print(f"DEBUG: Networkit tespit edildi. Düğümler: {nodes[:10]}...")
-
-    elif rx and isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):  # Rustworkx (hem yönlü hem yönsüz)
-        nodes = sorted(graph.node_indices()) # 0-tabanlı indeksleme
-        print(f"DEBUG: Rustworkx tespit edildi. Düğümler (0..{len(nodes)-1}): {nodes[:10]}...")
-
-    elif nx and isinstance(graph, (nx.Graph, nx.DiGraph, nx.MultiGraph, nx.MultiDiGraph)): # NetworkX
-        try:
-            # Düğümler sıralanabilirse sırala (genelde int/str)
-            nodes = sorted(list(graph.nodes()))
-        except TypeError:
-             # Sıralanamayan düğüm tipleri varsa (örn. tuple, nesne) sırasız al
-             nodes = list(graph.nodes())
-        print(f"DEBUG: NetworkX tespit edildi. Düğümler: {nodes[:10]}...")
-
-    else:
-        # Desteklenmeyen tip veya kütüphane kurulu değilse
-        supported_types = []
-        if nx: 
-            supported_types.append("NetworkX")
-        if rx: 
-            supported_types.append("Rustworkx")
-        if ig: 
-            supported_types.append("igraph")
-        if nk: 
-            supported_types.append("Networkit")
-        if gg: 
-            supported_types.append("Graphillion.GraphSet")
-        raise TypeError(f"Unsupported graph type: {type(graph)}. Desteklenen türler: {', '.join(supported_types)}")
-
-    # ----- Buradan sonrası tüm kütüphaneler için ortak -----
-
-    num_nodes = len(nodes)
-    if num_nodes == 0:
-        return {}  # Boş graf için boş sözlük döndür
-
-    pos = {}  # Sonuç sözlüğü
+    pos = {}
+    
+    # --- DOĞRULANMIŞ KONTROL BLOĞU ---
     is_vertical = primary_direction in ['top-down', 'bottom-up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
 
-    # Parametre kontrolleri
+    if not (is_vertical or is_horizontal):
+        raise ValueError(f"Invalid primary_direction: '{primary_direction}'")
+    if is_vertical and secondary_start not in ['right', 'left']:
+        raise ValueError(f"Invalid secondary_start for vertical direction: '{secondary_start}'")
+    if is_horizontal and secondary_start not in ['up', 'down']:
+        raise ValueError(f"Invalid secondary_start for horizontal direction: '{secondary_start}'")
+    # --- BİTİŞ ---
+
+    for i, node_id in enumerate(nodes):
+        primary_coord, secondary_axis = 0.0, ''
+        if primary_direction == 'top-down':
+            primary_coord, secondary_axis = i * -primary_spacing, 'x'
+        elif primary_direction == 'bottom-up':
+            primary_coord, secondary_axis = i * primary_spacing, 'x'
+        elif primary_direction == 'left-to-right':
+            primary_coord, secondary_axis = i * primary_spacing, 'y'
+        else:
+            primary_coord, secondary_axis = i * -primary_spacing, 'y'
+
+        secondary_offset = 0.0
+        if i > 0:
+            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
+            magnitude = math.ceil(i / 2.0) if expanding else 1.0
+            side = 1 if i % 2 != 0 else -1
+            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
+
+        x, y = ((secondary_offset, primary_coord) if secondary_axis == 'x' else
+                (primary_coord, secondary_offset))
+        pos[node_id] = (x, y)
+    return pos
+
+# =============================================================================
+# 1. TEMEL LAYOUT HESAPLAMA FONKSİYONU (2D)
+# Bu fonksiyon sadece koordinatları hesaplar, çizim yapmaz.
+# 1. LAYOUT CALCULATION FUNCTION (UNIFIED AND IMPROVED)
+# =============================================================================
+
+def kececi_layout_v4(graph, primary_spacing=1.0, secondary_spacing=1.0,
+                  primary_direction='top_down', secondary_start='right',
+                  expanding=True): # v4 davranışını kontrol etmek için parametre eklendi
+    """
+    Calculates 2D sequential-zigzag coordinates for the nodes of a graph.
+
+    This function is compatible with graphs from NetworkX, Rustworkx, igraph,
+    Networkit, and Graphillion.
+
+    Args:
+        graph: A graph object from a supported library.
+        primary_spacing (float): The distance between nodes along the primary axis.
+        secondary_spacing (float): The base unit for the zigzag offset.
+        primary_direction (str): 'top_down', 'bottom_up', 'left_to_right', 'right_to_left'.
+        secondary_start (str): Initial direction for the zigzag ('up', 'down', 'left', 'right').
+        expanding (bool): If True (default), the zigzag offset grows, creating the
+                          triangle-like 'v4' style. If False, the offset is constant,
+                          creating parallel lines.
+
+    Returns:
+        dict: A dictionary of positions formatted as {node_id: (x, y)}.
+    """
+    # ==========================================================
+    # Sizin orijinal, çoklu kütüphane uyumluluk bloğunuz burada korunuyor.
+    # Bu, kodun sağlamlığını garanti eder.
+    # ==========================================================
+    nodes = None
+    if gg and isinstance(graph, gg.GraphSet):
+        edges = graph.universe()
+        max_node_id = max(set(itertools.chain.from_iterable(edges))) if edges else 0
+        nodes = list(range(1, max_node_id + 1)) if max_node_id > 0 else []
+    elif ig and isinstance(graph, ig.Graph):
+        nodes = sorted([v.index for v in graph.vs])
+    elif nk and isinstance(graph, nk.graph.Graph):
+        nodes = sorted(list(graph.iterNodes()))
+    elif rx and isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):
+        nodes = sorted(graph.node_indices())
+    elif isinstance(graph, nx.Graph):
+        try:
+            nodes = sorted(list(graph.nodes()))
+        except TypeError:
+            nodes = list(graph.nodes())
+    else:
+        supported = ["NetworkX", "Rustworkx", "igraph", "Networkit", "Graphillion"]
+        raise TypeError(f"Unsupported graph type: {type(graph)}. Supported: {', '.join(supported)}")
+    # ==========================================================
+
+    pos = {}
+    is_vertical = primary_direction in ['top_down', 'bottom_up']
+    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
+
     if not (is_vertical or is_horizontal):
         raise ValueError(f"Invalid primary_direction: {primary_direction}")
     if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start ('{secondary_start}') for vertical primary_direction ('{primary_direction}'). Use 'right' or 'left'.")
+        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
     if is_horizontal and secondary_start not in ['up', 'down']:
-         raise ValueError(f"Invalid secondary_start ('{secondary_start}') for horizontal primary_direction ('{primary_direction}'). Use 'up' or 'down'.")
+        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
 
-    # Ana döngü - Düğümleri sıralı indekslerine göre yerleştirir,
-    # sözlüğe ise gerçek düğüm ID/indeks/nesnesini anahtar olarak kullanır.
     for i, node_id in enumerate(nodes):
-        # i: Düğümün sıralı listedeki 0-tabanlı indeksi (0, 1, 2, ...) - Yerleşim için kullanılır
-        # node_id: Gerçek düğüm kimliği/indeksi - Sonuç sözlüğünün anahtarı
-
-        # 1. Ana eksen koordinatını hesapla
+        primary_coord, secondary_axis = 0.0, ''
         if primary_direction == 'top-down':
-            primary_coord = i * -primary_spacing; 
-            secondary_axis = 'x'
-        elif primary_direction == 'bottom-up':
-            primary_coord = i * primary_spacing; 
-            secondary_axis = 'x'
+            primary_coord, secondary_axis = i * -primary_spacing, 'x'
+        elif primary_direction == 'bottom_up':
+            primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
-            primary_coord = i * primary_spacing; 
-            secondary_axis = 'y'
-        else: # right-to-left
-            primary_coord = i * -primary_spacing; 
-            secondary_axis = 'y'
+            primary_coord, secondary_axis = i * primary_spacing, 'y'
+        else:  # 'right_to_left'
+            primary_coord, secondary_axis = i * -primary_spacing, 'y'
 
-        # 2. Yan eksen ofsetini hesapla (zigzag)
-        if i == 0: 
-            secondary_offset_multiplier = 0.0
-        else:
-            start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0)
+        secondary_offset = 0.0
+        if i > 0:
+            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
+            
+            # --- YENİ ESNEK MANTIK BURADA ---
+            # `expanding` True ise 'v4' stili gibi genişler, değilse sabit kalır.
+            magnitude = math.ceil(i / 2.0) if expanding else 1.0
+            
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_mult * magnitude * side
-        secondary_coord = secondary_offset_multiplier * secondary_spacing
+            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
 
-        # 3. (x, y) koordinatlarını ata
-        if secondary_axis == 'x': 
-            x, y = secondary_coord, primary_coord
-        else: 
-            x, y = primary_coord, secondary_coord
-
-        # Sonuç sözlüğüne ekle
+        x, y = ((secondary_offset, primary_coord) if secondary_axis == 'x' else
+                (primary_coord, secondary_offset))
         pos[node_id] = (x, y)
 
     return pos
@@ -1129,6 +1036,199 @@ def generate_random_graph_ig(min_nodes=0, max_nodes=200, edge_prob_min=0.15, edg
     g.vs["degree"] = g.degree()
     return g
 
+# =============================================================================
+# 1. GRAPH PROCESSING AND CONVERSION HELPERS
+# =============================================================================
+
+def _get_nodes_from_graph(graph):
+    """Extracts a sorted list of nodes from various graph library objects."""
+    nodes = None
+    if gg and isinstance(graph, gg.GraphSet):
+        edges = graph.universe()
+        max_node_id = max(set(itertools.chain.from_iterable(edges))) if edges else 0
+        nodes = list(range(1, max_node_id + 1)) if max_node_id > 0 else []
+    elif ig and isinstance(graph, ig.Graph):
+        nodes = sorted([v.index for v in graph.vs])
+    elif nk and isinstance(graph, nk.graph.Graph):
+        nodes = sorted(list(graph.iterNodes()))
+    elif rx and isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):
+        nodes = sorted(graph.node_indices())
+    elif isinstance(graph, nx.Graph):
+        try:
+            nodes = sorted(list(graph.nodes()))
+        except TypeError:  # For non-sortable node types
+            nodes = list(graph.nodes())
+    else:
+        supported = ["NetworkX"]
+        if rx: supported.append("Rustworkx")
+        if ig: supported.append("igraph")
+        if nk: supported.append("Networkit")
+        if gg: supported.append("Graphillion")
+        raise TypeError(
+            f"Unsupported graph type: {type(graph)}. Supported types: {', '.join(supported)}"
+        )
+    return nodes
 
 
+def to_networkx(graph):
+    """Converts any supported graph type to a NetworkX graph."""
+    if isinstance(graph, nx.Graph):
+        return graph.copy()
+    nx_graph = nx.Graph()
+    if rx and isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):
+        nx_graph.add_nodes_from(graph.node_indices())
+        nx_graph.add_edges_from(graph.edge_list())
+    elif ig and isinstance(graph, ig.Graph):
+        nx_graph.add_nodes_from(v.index for v in graph.vs)
+        nx_graph.add_edges_from(graph.get_edgelist())
+    elif nk and isinstance(graph, nk.graph.Graph):
+        nx_graph.add_nodes_from(graph.iterNodes())
+        nx_graph.add_edges_from(graph.iterEdges())
+    elif gg and isinstance(graph, gg.GraphSet):
+        edges = graph.universe()
+        max_node_id = max(set(itertools.chain.from_iterable(edges))) if edges else 0
+        if max_node_id > 0:
+            nx_graph.add_nodes_from(range(1, max_node_id + 1))
+            nx_graph.add_edges_from(edges)
+    else:
+        # This block is rarely reached as _get_nodes_from_graph would fail first
+        raise TypeError(f"Unsupported graph type {type(graph)} could not be converted to NetworkX.")
+        #raise TypeError(f"Desteklenmeyen graf tipi {type(graph)} NetworkX'e dönüştürülemedi.")
+    return nx_graph
 
+
+def _kececi_layout_3d_helix(nx_graph):
+    """Internal function: Arranges nodes in a helix along the Z-axis."""
+    pos_3d = {}
+    nodes = sorted(list(nx_graph.nodes()))
+    for i, node_id in enumerate(nodes):
+        angle, radius, z_step = i * (np.pi / 2.5), 1.0, i * 0.8
+        pos_3d[node_id] = (np.cos(angle) * radius, np.sin(angle) * radius, z_step)
+    return pos_3d
+
+
+# =============================================================================
+# 3. INTERNAL DRAWING STYLE IMPLEMENTATIONS
+# =============================================================================
+
+def _draw_internal(nx_graph, ax, style, **kwargs):
+    """Internal router that handles the different drawing styles."""
+    layout_params = {
+        k: v for k, v in kwargs.items()
+        if k in ['primary_spacing', 'secondary_spacing', 'primary_direction',
+                 'secondary_start', 'expanding']
+    }
+    draw_params = {k: v for k, v in kwargs.items() if k not in layout_params}
+
+    if style == 'curved':
+        pos = kececi_layout(nx_graph, **layout_params)
+        final_params = {'ax': ax, 'with_labels': True, 'node_color': '#1f78b4',
+                        'node_size': 700, 'font_color': 'white',
+                        'connectionstyle': 'arc3,rad=0.2', 'arrows': True}
+        final_params.update(draw_params)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            nx.draw(nx_graph, pos, **final_params)
+        ax.set_title("Keçeci Layout: Curved Edges")
+
+    elif style == 'transparent':
+        pos = kececi_layout(nx_graph, **layout_params)
+        nx.draw_networkx_nodes(nx_graph, pos, ax=ax, node_color='#2ca02c', node_size=700, **draw_params)
+        nx.draw_networkx_labels(nx_graph, pos, ax=ax, font_color='white')
+        edge_lengths = {e: np.linalg.norm(np.array(pos[e[0]]) - np.array(pos[e[1]])) for e in nx_graph.edges()}
+        max_len = max(edge_lengths.values()) if edge_lengths else 1.0
+        for edge, length in edge_lengths.items():
+            alpha = 0.15 + 0.85 * (1 - length / max_len)
+            nx.draw_networkx_edges(nx_graph, pos, edgelist=[edge], ax=ax, width=1.5, edge_color='black', alpha=alpha)
+        ax.set_title("Keçeci Layout: Transparent Edges")
+
+    elif style == '3d':
+        pos_3d = _kececi_layout_3d_helix(nx_graph)
+        node_color = draw_params.get('node_color', '#d62728')
+        edge_color = draw_params.get('edge_color', 'gray')
+        for node, (x, y, z) in pos_3d.items():
+            ax.scatter([x], [y], [z], s=200, c=[node_color], depthshade=True)
+            ax.text(x, y, z, f'  {node}', size=10, zorder=1, color='k')
+        for u, v in nx_graph.edges():
+            coords = np.array([pos_3d[u], pos_3d[v]])
+            ax.plot(coords[:, 0], coords[:, 1], coords[:, 2], color=edge_color, alpha=0.8)
+        ax.set_title("Keçeci Layout: 3D Helix")
+        ax.set_axis_off()
+        ax.view_init(elev=20, azim=-60)
+
+
+# =============================================================================
+# 4. MAIN USER-FACING DRAWING FUNCTION
+# =============================================================================
+
+def draw_kececi(graph, style='curved', ax=None, **kwargs):
+    """
+    Draws a graph using the Keçeci Layout with a specified style.
+
+    This function automatically handles graphs from different libraries
+    (NetworkX, Rustworkx, igraph, etc.).
+
+    Args:
+        graph: The graph object to be drawn.
+        style (str): The drawing style. Options: 'curved', 'transparent', '3d'.
+        ax (matplotlib.axis.Axis, optional): The axis to draw on. If not
+            provided, a new figure and axis are created.
+        **kwargs: Additional keyword arguments passed to both `kececi_layout`
+                  and the drawing functions (e.g., expanding=True, node_size=500).
+
+    Returns:
+        matplotlib.axis.Axis: The axis object where the graph was drawn.
+    """
+    nx_graph = to_networkx(graph)
+    is_3d = (style.lower() == '3d')
+
+    if ax is None:
+        fig = plt.figure(figsize=(10, 8))
+        projection = '3d' if is_3d else None
+        ax = fig.add_subplot(111, projection=projection)
+
+    if is_3d and getattr(ax, 'name', '') != '3d':
+        raise ValueError("The '3d' style requires an axis with 'projection=\"3d\"'.")
+
+    draw_styles = ['curved', 'transparent', '3d']
+    if style.lower() not in draw_styles:
+        raise ValueError(f"Invalid style: '{style}'. Options are: {draw_styles}")
+
+    _draw_internal(nx_graph, ax, style.lower(), **kwargs)
+    return ax
+
+
+# =============================================================================
+# MODULE TEST CODE
+# =============================================================================
+
+if __name__ == '__main__':
+    print("Testing kececilayout.py module...")
+    G_test = nx.gnp_random_graph(12, 0.3, seed=42)
+
+    # Compare expanding=False (parallel) vs. expanding=True ('v4' style)
+    fig_v4 = plt.figure(figsize=(16, 7))
+    fig_v4.suptitle("Effect of the `expanding` Parameter", fontsize=20)
+    ax_v4_1 = fig_v4.add_subplot(1, 2, 1)
+    draw_kececi(G_test, ax=ax_v4_1, style='curved',
+                primary_direction='left_to_right', secondary_start='up',
+                expanding=False)
+    ax_v4_1.set_title("Parallel Style (expanding=False)", fontsize=16)
+
+    ax_v4_2 = fig_v4.add_subplot(1, 2, 2)
+    draw_kececi(G_test, ax=ax_v4_2, style='curved',
+                primary_direction='left_to_right', secondary_start='up',
+                expanding=True)
+    ax_v4_2.set_title("Expanding 'v4' Style (expanding=True)", fontsize=16)
+    plt.show()
+
+    # Test all advanced drawing styles
+    fig_styles = plt.figure(figsize=(18, 12))
+    fig_styles.suptitle("Advanced Drawing Styles Test", fontsize=20)
+    draw_kececi(G_test, style='curved', ax=fig_styles.add_subplot(2, 2, 1),
+                primary_direction='left_to_right', secondary_start='up', expanding=True)
+    draw_kececi(G_test, style='transparent', ax=fig_styles.add_subplot(2, 2, 2),
+                primary_direction='top_down', secondary_start='left', expanding=True, node_color='purple')
+    draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.show()
