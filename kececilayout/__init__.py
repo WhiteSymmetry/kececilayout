@@ -1,78 +1,59 @@
 # __init__.py
-# Bu dosya paketin başlangıç noktası olarak çalışır.
-# Alt modülleri yükler, sürüm bilgileri tanımlar ve geriye dönük uyumluluk için uyarılar sağlar.
+
+"""
+kececilayout - A Python package for sequential-zigzag graph layouts
+and advanced visualizations compatible with multiple graph libraries.
+"""
 
 from __future__ import annotations
-import importlib
-import os
+import inspect
 import warnings
 
-# if os.getenv("DEVELOPMENT") == "true":
-    # importlib.reload(kececi_layout) # F821 undefined name 'kececi_layout'
+# Paket sürüm numarası
+__version__ = "0.2.6"
 
-# Dışa aktarılacak semboller listesi
-__all__ = [
-    'kececi_layout_v4',
-    'kececi_layout',
-    'kececi_layout_v4_nx',
-    'kececi_layout_v4_networkx',
-    'kececi_layout_v4_ig',
-    'kececi_layout_v4_igraph',
-    'kececi_layout_v4_nk',
-    'kececi_layout_v4_networkit',
-    'kececi_layout_v4_gg',
-    'kececi_layout_v4_graphillion',
-    'kececi_layout_v4_rx',
-    'kececi_layout_v4_rustworkx',
-    'generate_random_rx_graph',
-    'kececi_layout_v4_pure',
-    'generate_random_graph',
-    'generate_random_graph_ig'
-]
+# =============================================================================
+# OTOMATİK İÇE AKTARMA VE __all__ OLUŞTURMA
+# Bu bölüm, yeni fonksiyon eklediğinizde elle güncelleme yapma
+# ihtiyacını ortadan kaldırır.
+# =============================================================================
 
-# Göreli modül içe aktarmaları
-# F401 hatasını önlemek için sadece kullanacağınız şeyleri dışa aktarın
-# Aksi halde linter'lar "imported but unused" uyarısı verir
-try:
-    #from .kececi_layout import *  # gerekirse burada belirli fonksiyonları seçmeli yapmak daha güvenlidir
-    #from . import kececi_layout  # Modülün kendisine doğrudan erişim isteniyorsa
-    from .kececi_layout import (
-        kececi_layout_v4, 
-        kececi_layout, 
-        kececi_layout_v4_nx, 
-        kececi_layout_v4_networkx, 
-        kececi_layout_v4_ig, 
-        kececi_layout_v4_igraph, 
-        kececi_layout_v4_nk, 
-        kececi_layout_v4_networkit, 
-        kececi_layout_v4_gg,
-        kececi_layout_v4_graphillion,
-        kececi_layout_v4_rx,
-        kececi_layout_v4_rustworkx,
-        generate_random_rx_graph,
-        kececi_layout_v4_pure,
-        generate_random_graph,
-        generate_random_graph_ig
-    )
-except ImportError as e:
-    warnings.warn(f"Gerekli modül yüklenemedi: {e}", ImportWarning)
+# Ana modülümüzü içe aktarıyoruz
+from . import kececi_layout
 
-# Eski bir fonksiyonun yer tutucusu - gelecekte kaldırılacak
-def eski_fonksiyon():
+# __all__ listesini dinamik olarak dolduracağız
+__all__ = []
+
+# kececi_layout modülünün içindeki tüm üyelere (fonksiyonlar, sınıflar vb.) bak
+for name, member in inspect.getmembers(kececi_layout):
+    # Eğer üye bir fonksiyonsa VE adı '_' ile başlamıyorsa (yani public ise)
+    if inspect.isfunction(member) and not name.startswith('_'):
+        # Onu paketin ana seviyesine taşı (örn: kl.draw_kececi)
+        globals()[name] = member
+        # Ve dışa aktarılacaklar listesine ekle
+        __all__.append(name)
+
+# Temizlik: Döngüde kullanılan geçici değişkenleri sil
+del inspect, name, member
+
+# =============================================================================
+# GERİYE DÖNÜK UYUMLULUK VE UYARILAR
+# =============================================================================
+
+def old_function_placeholder():
     """
-    Kaldırılması planlanan eski bir fonksiyondur.
-    Lütfen alternatif fonksiyonları kullanın.
+    This is an old function scheduled for removal.
+    Please use alternative functions.
     """
     warnings.warn(
-        "eski_fonksiyon() artık kullanılmamaktadır ve gelecekte kaldırılacaktır. "
-        "Lütfen yeni alternatif fonksiyonları kullanın. "
-        "Keçeci Layout; Python 3.7-3.14 sürümlerinde sorunsuz çalışmalıdır.",
+        (
+            "old_function_placeholder() is deprecated and will be removed in a future version. "
+            "Please use the new alternative functions. "
+            "Keçeci Layout should work smoothly on Python 3.7-3.14."
+        ),
         category=DeprecationWarning,
         stacklevel=2
     )
 
-# Paket sürüm numarası
-__version__ = "0.2.5"
-
-
-
+# Eğer bu eski fonksiyonu da dışa aktarmak istiyorsanız, __all__ listesine ekleyin
+# __all__.append('old_function_placeholder')
