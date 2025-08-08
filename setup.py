@@ -1,3 +1,4 @@
+import re
 from setuptools import setup, find_packages
 
 # __version__'ı __init__.py'den oku
@@ -39,4 +40,5 @@ setup(
     python_requires='>=3.9',
     license="MIT",
 )
+
 
