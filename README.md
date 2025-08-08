@@ -29,11 +29,11 @@
 
 | **Documentation** | **Paper** |
 |:-----------------:|:---------:|
-| [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://whitesymmetry.github.io/kececilayout/) | [![Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.15314328.svg)](https://doi.org/10.5281/zenodo.15314328) |
+| [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://kececilayout.readthedocs.io/) | [![Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.15314328.svg)](https://doi.org/10.5281/zenodo.15314328) |
 
 ---
 
-## 🌐 English (1st Language)
+## 🌐 English
 
 ### Kececi Layout (Keçeci Yerleşimi)
 
@@ -211,7 +211,7 @@ If this library was useful in your research, please cite:
 
 ---
 
-## 🇹🇷 Türkçe (2. Dil)
+## 🇹🇷 Türkçe
 
 ### Keçeci Yerleşimi (Kececi Layout)
 
@@ -1175,6 +1175,7 @@ Keçeci, Mehmet. "Kececilayout". Open Science Articles (OSAs), Zenodo, 2025. htt
 
 Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.15314328.
 ```
+
 
 
 
