@@ -8,6 +8,13 @@ copyright = '2025, Mehmet Keçeci'
 author = 'Mehmet Keçeci'
 release = '0.2.7'
 
+autodoc_mock_imports = [
+    "igraph",
+    "networkit",
+    "rustworkx",
+    "graphillion",
+]
+
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
