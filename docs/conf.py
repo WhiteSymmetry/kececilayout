@@ -6,7 +6,6 @@ sys.path.insert(0, os.path.abspath('..'))  # kececilayout modülünü dahil et
 project = 'kececilayout'
 copyright = '2025, Mehmet Keçeci'
 author = 'Mehmet Keçeci'
-release = '0.2.7'
 
 # Version Management
 # from setuptools_scm import get_version
