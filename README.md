@@ -3,9 +3,9 @@
 [![PyPI version](https://badge.fury.io/py/kececilayout.svg)](https://badge.fury.io/py/kececilayout)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15313946.svg)](https://doi.org/10.5281/zenodo.15313946)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15314329.svg)](https://doi.org/10.5281/zenodo.15314329)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15353535.svg)](https://doi.org/10.5281/zenodo.15353535)
+[![Zenodo DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15313946.svg)](https://doi.org/10.5281/zenodo.15313946)
+[![Zenodo DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15314328.svg)](https://doi.org/10.5281/zenodo.15314328)
+[![Zenodo DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15353535.svg)](https://doi.org/10.5281/zenodo.15353535)
 
 [![WorkflowHub DOI](https://img.shields.io/badge/DOI-10.48546%2Fworkflowhub.datafile.17.1-blue)](https://doi.org/10.48546/workflowhub.datafile.17.1)
 
@@ -28,6 +28,10 @@
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md) 
 [![CI/CD](https://github.com/WhiteSymmetry/kececilayout/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/WhiteSymmetry/kececilayout/actions/workflows/ci-cd.yml)
 [![Linted with Ruff](https://img.shields.io/badge/Linted%20with-Ruff-green?logo=python&logoColor=white)](https://github.com/astral-sh/ruff)
+
+| **Documentation**| **Paper**|
+|:----------------:|:--------:|
+|[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://whitesymmetry.github.io/kececilayout/)|[![Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.15314328.svg)](https://doi.org/10.5281/zenodo.15314328)|
 
 ---
 
@@ -772,8 +776,9 @@ Keçeci, Mehmet. kececilayout [Data set]. WorkflowHub, 2025. https://doi.org/10.
 
 Keçeci, Mehmet. "Kececilayout". Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.15313946.
 
-Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.15314329.
+Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.15314328.
 ```
+
 
 
 
