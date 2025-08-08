@@ -41,4 +41,4 @@ Eğer bu kütüphaneyi araştırmanızda kullandıysanız, lütfen aşağıdaki 
 
       Keçeci, Mehmet. *kececilayout*. Zenodo, 2025. https://doi.org/10.5281/zenodo.15313946.
 
-Daha fazla yayın için: `Zenodo Profili <https://zenodo.org/communities/kececilayout/>`_.
+Daha fazla yayın için: `Github Profili <https://github.com/WhiteSymmetry/kececilayout/>`_.
