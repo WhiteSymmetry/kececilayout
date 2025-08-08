@@ -15,6 +15,403 @@
 [![Anaconda-Server Badge](https://anaconda.org/bilgi/kececilayout/badges/license.svg)](https://anaconda.org/bilgi/kececilayout)
 
 [![Open Source](https://img.shields.io/badge/Open%20Source-Open%20Source-brightgreen.svg)](https://opensource.org/)
+[![Documentation Status](https://app.readthedocs.org/projects/kececilayout/badge/?version=latest)](https://kececilayout.readthedocs.io/en/latest)
+
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/10531/badge)](https://www.bestpractices.dev/projects/10531)
+
+[![Python CI](https://github.com/WhiteSymmetry/kececilayout/actions/workflows/python_ci.yml/badge.svg?branch=main)](https://github.com/WhiteSymmetry/kececilayout/actions/workflows/python_ci.yml)
+[![codecov](https://codecov.io/gh/WhiteSymmetry/kececilayout/graph/badge.svg?token=1SDH8E9RAJ)](https://codecov.io/gh/WhiteSymmetry/kececilayout)
+[![Binder](https://terrarium.evidencepub.io/badge_logo.svg)](https://terrarium.evidencepub.io/v2/gh/WhiteSymmetry/kececilayout/HEAD)
+[![PyPI Downloads](https://static.pepy.tech/badge/kececilayout)](https://pepy.tech/projects/kececilayout)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+[![CI/CD](https://github.com/WhiteSymmetry/kececilayout/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/WhiteSymmetry/kececilayout/actions/workflows/ci-cd.yml)
+[![Linted with Ruff](https://img.shields.io/badge/Linted%20with-Ruff-green?logo=python&logoColor=white)](https://github.com/astral-sh/ruff)
+
+| **Documentation** | **Paper** |
+|:-----------------:|:---------:|
+| [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://whitesymmetry.github.io/kececilayout/) | [![Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.15314328.svg)](https://doi.org/10.5281/zenodo.15314328) |
+
+---
+
+## 🌐 English (1st Language)
+
+### Kececi Layout (Keçeci Yerleşimi)
+
+**KececiLayout** is a deterministic graph layout algorithm designed for visualizing linear or sequential structures with a characteristic "zig-zag" or "serpentine" pattern.
+
+*Python implementation of the Keçeci layout algorithm for graph visualization.*
+
+---
+
+### Description
+
+This algorithm arranges nodes sequentially along a primary axis and offsets them alternately along a secondary axis. It's particularly useful for path graphs, chains, or showing progression.
+
+**Key Features:**
+*   **Linear Focus:** Ideal for visualizing paths, chains, or ordered processes.
+*   **Deterministic:** Produces identical results for the same input.
+*   **Overlap Reduction:** Prevents node collisions by spreading them across axes.
+*   **Parametric:** Fully customizable with parameters like `primary_spacing`, `secondary_spacing`, `primary_direction`, and `secondary_start`.
+
+=> **v0.2.7**: Curved, transparent, 3D, and `expanding=True` styles supported.
+
+---
+
+### Installation
+
+```bash
+conda install bilgi::kececilayout -y
+pip install kececilayout
+```
+
+🔗 [PyPI](https://pypi.org/project/kececilayout/) | [Conda](https://anaconda.org/bilgi/kececilayout) | [GitHub](https://github.com/WhiteSymmetry/kececilayout)
+
+---
+
+### Usage
+
+#### Example with NetworkX
+
+```python
+import networkx as nx
+import matplotlib.pyplot as plt
+import kececilayout as kl
+
+G = nx.path_graph(10)
+pos = kl.kececi_layout_v4(
+    G,
+    primary_spacing=1.0,
+    secondary_spacing=0.5,
+    primary_direction='top-down',
+    secondary_start='right'
+)
+
+plt.figure(figsize=(6, 8))
+nx.draw(G, pos=pos, with_labels=True, node_color='skyblue', node_size=500)
+plt.title("Kececi Layout with NetworkX")
+plt.axis('equal')
+plt.show()
+```
+
+![NetworkX Example](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/nx-1.png?raw=true)
+
+#### Example with iGraph
+
+```python
+import igraph as ig
+import matplotlib.pyplot as plt
+from kececilayout import kececi_layout_v4_igraph
+
+G = ig.Graph.Ring(10, circular=False)
+pos_list = kececi_layout_v4_igraph(G, primary_direction='left-to-right', secondary_start='up')
+layout = ig.Layout(pos_list)
+
+fig, ax = plt.subplots(figsize=(8, 6))
+ig.plot(G, target=ax, layout=layout, vertex_label=[f"N{i}" for i in range(10)])
+ax.set_aspect('equal')
+plt.show()
+```
+
+![iGraph Example](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/ig-1.png?raw=true)
+
+#### Example with RustworkX
+
+```python
+import rustworkx as rx
+import kececilayout as kl
+import matplotlib.pyplot as plt
+
+G = rx.generators.path_graph(10)
+pos = kl.kececi_layout_v4(G, primary_direction='bottom-up')
+# Use matplotlib for drawing (see full example in repo)
+```
+
+![Rustworkx Example](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/rx-1.png?raw=true)
+
+#### Example with Networkit
+
+```python
+import networkit as nk
+import kececilayout as kl
+import matplotlib.pyplot as plt
+
+G = nk.graph.Graph(10)
+for i in range(9):
+    G.addEdge(i, i+1)
+pos = kl.kececi_layout_v4(G)
+# Draw with matplotlib
+```
+
+![Networkit Example](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/nk-1.png?raw=true)
+
+#### Example with Graphillion
+
+```python
+import graphillion as gg
+import kececilayout as kl
+import matplotlib.pyplot as plt
+
+universe = [(i, i+1) for i in range(1, 10)]
+gg.GraphSet.set_universe(universe)
+gs = gg.GraphSet()
+pos = kl.kececi_layout_v4(gs)
+# Draw with matplotlib
+```
+
+![Graphillion Example](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/gg-1.png?raw=true)
+
+---
+
+### Supported Backends
+
+- **NetworkX**
+- **igraph**
+- **Rustworkx**
+- **Networkit**
+- **Graphillion**
+
+*Note: All backends are supported via unified `kececi_layout_v4` function.*
+
+---
+
+### Advanced Drawing Styles
+
+Use `draw_kececi` for enhanced visualizations:
+
+```python
+kl.draw_kececi(G, style='curved')        # Smooth curved edges
+kl.draw_kececi(G, style='transparent')   # Opacity based on edge length
+kl.draw_kececi(G, style='3d')            # 3D helix layout
+```
+
+---
+
+### License
+
+MIT License. See [LICENSE](LICENSE) for details.
+
+---
+
+### Citation
+
+If this library was useful in your research, please cite:
+
+```bibtex
+@misc{kececi_2025_15313946,
+  author       = {Keçeci, Mehmet},
+  title        = {kececilayout},
+  month        = may,
+  year         = 2025,
+  publisher    = {Zenodo},
+  version      = {0.2.7},
+  doi          = {10.5281/zenodo.15313946},
+  url          = {https://doi.org/10.5281/zenodo.15313946}
+}
+```
+
+---
+
+## 🇹🇷 Türkçe (2. Dil)
+
+### Keçeci Yerleşimi (Kececi Layout)
+
+**KececiLayout**, doğrusal veya ardışık yapıları görselleştirmek için tasarlanmış, karakteristik bir "zıgzag" veya "yılanvari" desen oluşturan deterministik bir graf yerleşim algoritmasıdır.
+
+*Graf görselleştirme için Keçeci yerleşim algoritmasının Python uygulaması.*
+
+---
+
+### Açıklama
+
+Bu algoritma, düğümleri birincil eksen boyunca sıralı olarak yerleştirir ve ikincil eksen boyunca dönüşümlü olarak kaydırır. Yol grafları, zincirler veya ilerlemeyi göstermek için özellikle kullanışlıdır.
+
+**Temel Özellikler:**
+*   **Doğrusal Odak:** Yollar, zincirler veya sıralı süreçler için idealdir.
+*   **Deterministik:** Aynı giriş için her zaman aynı çıktıyı üretir.
+*   **Çakışmayı Azaltma:** Düğümleri eksenler boyunca yayarak çakışmaları önler.
+*   **Parametrik:** `primary_spacing`, `secondary_spacing`, `primary_direction`, `secondary_start` gibi parametrelerle özelleştirilebilir.
+
+=> **v0.2.7**: Eğri, şeffaf, 3B ve `expanding=True` stilleri desteklenir.
+
+---
+
+### Kurulum
+
+```bash
+conda install bilgi::kececilayout -y
+pip install kececilayout
+```
+
+🔗 [PyPI](https://pypi.org/project/kececilayout/) | [Conda](https://anaconda.org/bilgi/kececilayout) | [GitHub](https://github.com/WhiteSymmetry/kececilayout)
+
+---
+
+### Kullanım
+
+#### NetworkX ile Örnek
+
+```python
+import networkx as nx
+import matplotlib.pyplot as plt
+import kececilayout as kl
+
+G = nx.path_graph(10)
+pos = kl.kececi_layout_v4(
+    G,
+    primary_spacing=1.0,
+    secondary_spacing=0.5,
+    primary_direction='top-down',
+    secondary_start='right'
+)
+
+plt.figure(figsize=(6, 8))
+nx.draw(G, pos=pos, with_labels=True, node_color='skyblue', node_size=500)
+plt.title("Kececi Layout with NetworkX")
+plt.axis('equal')
+plt.show()
+```
+
+![NetworkX Örneği](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/nx-1.png?raw=true)
+
+#### iGraph ile Örnek
+
+```python
+import igraph as ig
+import matplotlib.pyplot as plt
+from kececilayout import kececi_layout_v4_igraph
+
+G = ig.Graph.Ring(10, circular=False)
+pos_list = kececi_layout_v4_igraph(G, primary_direction='left-to-right', secondary_start='up')
+layout = ig.Layout(pos_list)
+
+fig, ax = plt.subplots(figsize=(8, 6))
+ig.plot(G, target=ax, layout=layout, vertex_label=[f"N{i}" for i in range(10)])
+ax.set_aspect('equal')
+plt.show()
+```
+
+![iGraph Örneği](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/ig-1.png?raw=true)
+
+#### RustworkX ile Örnek
+
+```python
+import rustworkx as rx
+import kececilayout as kl
+import matplotlib.pyplot as plt
+
+G = rx.generators.path_graph(10)
+pos = kl.kececi_layout_v4(G, primary_direction='bottom-up')
+# Matplotlib ile çizim yapılabilir
+```
+
+![RustworkX Örneği](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/rx-1.png?raw=true)
+
+#### Networkit ile Örnek
+
+```python
+import networkit as nk
+import kececilayout as kl
+import matplotlib.pyplot as plt
+
+G = nk.graph.Graph(10)
+for i in range(9):
+    G.addEdge(i, i+1)
+pos = kl.kececi_layout_v4(G)
+# Matplotlib ile çizim
+```
+
+![Networkit Örneği](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/nk-1.png?raw=true)
+
+#### Graphillion ile Örnek
+
+```python
+import graphillion as gg
+import kececilayout as kl
+import matplotlib.pyplot as plt
+
+universe = [(i, i+1) for i in range(1, 10)]
+gg.GraphSet.set_universe(universe)
+gs = gg.GraphSet()
+pos = kl.kececi_layout_v4(gs)
+# Matplotlib ile çizim
+```
+
+![Graphillion Örneği](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/gg-1.png?raw=true)
+
+---
+
+### Desteklenen Kütüphaneler
+
+- **NetworkX**
+- **igraph**
+- **Rustworkx**
+- **Networkit**
+- **Graphillion**
+
+*Not: Tüm kütüphaneler `kececi_layout_v4` fonksiyonu ile desteklenir.*
+
+---
+
+### Gelişmiş Çizim Stilleri
+
+`draw_kececi` ile gelişmiş görselleştirmeler:
+
+```python
+kl.draw_kececi(G, style='curved')        # Eğri kenarlar
+kl.draw_kececi(G, style='transparent')   # Kenar uzunluğuna göre şeffaflık
+kl.draw_kececi(G, style='3d')            # 3B heliks yerleşimi
+```
+
+---
+
+### Lisans
+
+MIT Lisansı. Detaylar için [LICENSE](LICENSE) dosyasına bakın.
+
+---
+
+### Atıf
+
+Araştırmanızda bu kütüphaneyi kullandıysanız, lütfen aşağıdaki gibi atıf yapın:
+
+```bibtex
+@misc{kececi_2025_15313946,
+  author       = {Keçeci, Mehmet},
+  title        = {kececilayout},
+  month        = may,
+  year         = 2025,
+  publisher    = {Zenodo},
+  version      = {0.2.7},
+  doi          = {10.5281/zenodo.15313946},
+  url          = {https://doi.org/10.5281/zenodo.15313946}
+}
+```
+
+---
+
+## 📚 Documentation
+
+For full documentation, visit:  
+[**https://kececilayout.readthedocs.io**](https://kececilayout.readthedocs.io)
+
+---
+# KececiLayout
+
+[![PyPI version](https://badge.fury.io/py/kececilayout.svg)](https://badge.fury.io/py/kececilayout)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+[![Zenodo DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15313946.svg)](https://doi.org/10.5281/zenodo.15313946)
+[![Zenodo DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15314328.svg)](https://doi.org/10.5281/zenodo.15314328)
+[![Zenodo DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15353535.svg)](https://doi.org/10.5281/zenodo.15353535)
+
+[![WorkflowHub DOI](https://img.shields.io/badge/DOI-10.48546%2Fworkflowhub.datafile.17.1-blue)](https://doi.org/10.48546/workflowhub.datafile.17.1)
+
+[![Anaconda-Server Badge](https://anaconda.org/bilgi/kececilayout/badges/version.svg)](https://anaconda.org/bilgi/kececilayout)
+[![Anaconda-Server Badge](https://anaconda.org/bilgi/kececilayout/badges/latest_release_date.svg)](https://anaconda.org/bilgi/kececilayout)
+[![Anaconda-Server Badge](https://anaconda.org/bilgi/kececilayout/badges/platforms.svg)](https://anaconda.org/bilgi/kececilayout)
+[![Anaconda-Server Badge](https://anaconda.org/bilgi/kececilayout/badges/license.svg)](https://anaconda.org/bilgi/kececilayout)
+
+[![Open Source](https://img.shields.io/badge/Open%20Source-Open%20Source-brightgreen.svg)](https://opensource.org/)
 [![Documentation Status](https://app.readthedocs.org/projects/kececilayout/badge/?0.2.3=main)](https://kececilayout.readthedocs.io/en/latest)
 
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/10531/badge)](https://www.bestpractices.dev/projects/10531)
@@ -778,6 +1175,7 @@ Keçeci, Mehmet. "Kececilayout". Open Science Articles (OSAs), Zenodo, 2025. htt
 
 Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.15314328.
 ```
+
 
 
 
