@@ -35,15 +35,3 @@ html_theme_options = {
     'sticky_navigation': True,
     'logo_only': True,
 }
-
-# intersphinx mapping
-intersphinx_mapping = {
-    'python': ('https://docs.python.org/3', None),
-    'networkx': ('https://networkx.org/documentation/stable/', None),
-    'matplotlib': ('https://matplotlib.org/stable/', None),
-    'numpy': ('https://numpy.org/doc/stable/', None),
-    'igraph': ('https://igraph.org/python/doc/', None),
-    'rustworkx': ('https://qiskit.org/rustworkx/', None),
-    'networkit': ('https://networkit.github.io/documentation/', None),
-    'graphillion': ('https://graphillion.readthedocs.io/en/latest/', None),
-}
