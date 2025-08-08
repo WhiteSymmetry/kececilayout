@@ -1,11 +1,11 @@
-==================
-Hızlı Başlangıç
-==================
+============
+Quick Start
+============
 
-Bu bölümde, KeçeciLayout'un temel kullanımını 5 dakikada öğreneceksiniz.
+Learn how to use KeçeciLayout in under 5 minutes.
 
 ------------------------
-1. Gerekli Kütüphaneleri İçe Aktar
+1. Import Required Libraries
 ------------------------
 
 .. code-block:: python
@@ -15,17 +15,17 @@ Bu bölümde, KeçeciLayout'un temel kullanımını 5 dakikada öğreneceksiniz.
    import kececilayout as kl
 
 ------------------------
-2. Bir Graf Oluştur
+2. Create a Graph
 ------------------------
 
-Basit bir yol (path) grafiği oluşturalım:
+Let's create a simple path graph:
 
 .. code-block:: python
 
-   G = nx.path_graph(8)  # 8 düğümlü doğrusal graf
+   G = nx.path_graph(8)  # 8-node linear graph
 
 ------------------------
-3. Keçeci Layout Uygula
+3. Apply Keçeci Layout
 ------------------------
 
 .. code-block:: python
@@ -39,14 +39,14 @@ Basit bir yol (path) grafiği oluşturalım:
        expanding=True
    )
 
-- ``primary_spacing``: Ana eksen boyunca düğümler arası mesafe.
-- ``secondary_spacing``: Zıgzag ofsetinin temel birimi.
-- ``primary_direction``: Ana yön (`top-down`, `bottom-up`, `left-to-right`, `right-to-left`).
-- ``secondary_start``: Zıgzagın başlangıç yönü (`right`, `left`, `up`, `down`).
-- ``expanding=True``: Zıgzag genliği ilerledikçe artar (üçgen desen).
+- ``primary_spacing``: Distance between nodes along the primary axis.
+- ``secondary_spacing``: Base offset for the zigzag.
+- ``primary_direction``: Main direction (`top-down`, `bottom-up`, etc.).
+- ``secondary_start``: Zigzag starts to `right` or `left`.
+- ``expanding=True``: Zigzag amplitude increases with distance.
 
 ------------------------
-4. Grafi Görselleştir
+4. Visualize the Graph
 ------------------------
 
 .. code-block:: python
@@ -62,20 +62,20 @@ Basit bir yol (path) grafiği oluşturalım:
        edge_color='gray',
        connectionstyle='arc3,rad=0.1'
    )
-   plt.title("KeçeciLayout ile 8 Düğümlü Yol Grafiği")
+   plt.title("8-Node Path Graph with KeçeciLayout")
    plt.axis('equal')
    plt.show()
 
 .. image:: https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/nx-1.png?raw=true
-   :alt: KeçeciLayout Örneği
+   :alt: KeçeciLayout Example
    :align: center
    :width: 60%
 
 ------------------------
-5. Diğer Kütüphanelerle Kullanım
+5. Use with Other Libraries
 ------------------------
 
-KeçeciLayout, diğer graf kütüphaneleriyle de çalışır:
+KeçeciLayout supports multiple graph backends:
 
 .. tabs::
 
@@ -96,7 +96,6 @@ KeçeciLayout, diğer graf kütüphaneleriyle de çalışır:
          import rustworkx as rx
          G_rx = rx.generators.path_graph(8)
          pos_rx = kl.kececi_layout_v4(G_rx, primary_direction='bottom-up')
-         # Matplotlib ile çizim yapılabilir
 
    .. tab:: Graphillion
 
@@ -108,7 +107,5 @@ KeçeciLayout, diğer graf kütüphaneleriyle de çalışır:
          gs = gg.GraphSet()
          pos_gg = kl.kececi_layout_v4(gs, secondary_start='left')
 
-KeçeciLayout, graf türüne otomatik olarak uyum sağlar!
-
 .. tip::
-   Daha fazla örnek için `examples/` klasörüne göz atın veya `Jupyter Notebook` ile deneyin: `Binder <https://terrarium.evidencepub.io/v2/gh/WhiteSymmetry/kececilayout/HEAD>`_.
+   For more examples, check the `examples/` folder or try live with `Binder <https://terrarium.evidencepub.io/v2/gh/WhiteSymmetry/kececilayout/HEAD>`_.
