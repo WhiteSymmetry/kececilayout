@@ -1,2 +1,10 @@
+networkx
+matplotlib
+numpy
 sphinx
-sphinx_rtd_theme
+sphinx-rtd-theme
+sphinx-autobuild
+graphillion ; python_version >= "3.8"
+igraph ; python_version >= "3.8"
+networkit ; python_version >= "3.8"
+rustworkx ; python_version >= "3.8"
