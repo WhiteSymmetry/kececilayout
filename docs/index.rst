@@ -1,7 +1,9 @@
 =================================================
 KeçeciLayout: Deterministic Zigzag Graph Layout
 =================================================
-KeçeciLayout, doğrusal, sıralı veya ardışık yapıdaki graf sistemlerini görselleştirmek için tasarlanmış, deterministik bir graf yerleşim algoritmasıdır. Düğümleri birincil eksende sıralar ve ikincil eksende artan bir "zıgzag" (zigzag) desenle düzenler. Bu yaklaşım, özellikle yollar, zincirler, kimyasal yapılar, çevresel ağlar ve sıralı süreçler gibi yapıların net bir şekilde görselleştirilmesini sağlar.
+KeçeciLayout is a deterministic graph layout algorithm designed to visualize linear, sequential, or consecutive graph structures. It arranges nodes along a primary axis and orders them in an increasing "zigzag" pattern along a secondary axis. This approach enables clear visualization of structures such as paths, chains, chemical compounds, environmental networks, and sequential processes.
+
+KeçeciLayout, doğrusal, sıralı veya ardışık yapıdaki graf sistemlerini görselleştirmek için tasarlanmış, deterministik bir graf yerleşim algoritmasıdır. Düğümleri birincil eksende sıralar ve ikincil eksende artan bir "zigzag" desenle düzenler. Bu yaklaşım, özellikle yollar, zincirler, kimyasal yapılar, çevresel ağlar ve sıralı süreçler gibi yapıların net bir şekilde görselleştirilmesini sağlar.
 
 This package is designed to work seamlessly with various graph libraries (`NetworkX`, `igraph`, `rustworkx`, `networkit`, `graphillion`) and offers high flexibility for users.
 
