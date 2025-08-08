@@ -11,12 +11,14 @@ copyright = '2025, Mehmet Keçeci'
 author = 'Mehmet Keçeci'
 
 # Sürüm Bilgisi (setuptools_scm kullanmıyorsanız sabit olarak tanımlayın)
+# Gerçek sürümü modülden al (eğer mümkünse)
 try:
     from kececilayout import __version__
     version = __version__
     release = __version__
-except (ImportError, AttributeError):
-    pass
+except (ImportError, AttributeError) as e:
+    print(f"Warning: Could not import __version__ from kececilayout: {e}")
+    # Varsayılan değerler korunur
 # version = '0.2.7'  # Geliştirme sürümü
 # release = '0.2.7'  # Yayın sürümü
 
