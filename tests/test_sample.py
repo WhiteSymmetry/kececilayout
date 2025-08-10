@@ -106,7 +106,7 @@ class TestKececiLayout:
     def test_invalid_secondary_start_vertical(self, nx_graph_simple):
         """Should raise ValueError for an invalid secondary_start in vertical mode."""
         with pytest.raises(ValueError, match="Invalid secondary_start for vertical"):
-            kececi_layout(nx_graph_simple, primary_direction='top-down', secondary_start='up')
+            kececi_layout(nx_graph_simple, primary_direction='top_down', secondary_start='up')
 
     def test_invalid_secondary_start_horizontal(self, nx_graph_simple):
         """Should raise ValueError for an invalid secondary_start in horizontal mode."""
@@ -127,7 +127,7 @@ class TestKececiLayout:
     def test_expanding_parameter(self, nx_graph_simple, expanding, expected_x_coords):
         """Test the effect of the 'expanding' parameter on coordinates."""
         pos = kececi_layout(nx_graph_simple,
-                                primary_direction='top-down',
+                                primary_direction='top_down',
                                 secondary_start='right',
                                 expanding=expanding)
         
