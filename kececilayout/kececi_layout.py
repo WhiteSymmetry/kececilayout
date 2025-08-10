@@ -265,19 +265,15 @@ def kececi_layout_nx(graph, primary_spacing=1.0, secondary_spacing=1.0,
         else:
             primary_coord, secondary_axis = i * -primary_spacing, 'y'
 
-        # 2. Calculate Secondary Axis Coordinate (Expanding Offset)
-        if i == 0:
+        # 2. Calculate Secondary Axis Offset
         secondary_offset = 0.0
         if i > 0:
             start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            
-            # 'expanding' bayrağına göre ofset büyüklüğünü belirle
-            # Burası artık sabit değil, parametreye bağlı.
             magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            
             side = 1 if i % 2 != 0 else -1
             secondary_offset = start_multiplier * magnitude * side * secondary_spacing
 
+        # 3. Assign Coordinates
         x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
         pos[node_id] = (x, y)
 
@@ -328,46 +324,47 @@ def kececi_layout_networkx(graph, primary_spacing=1.0, secondary_spacing=1.0,
         else:
             primary_coord, secondary_axis = i * -primary_spacing, 'y'
 
-        # 2. Calculate Secondary Axis Coordinate (Expanding Offset)
-        if i == 0:
+        # 2. Calculate Secondary Axis Offset
         secondary_offset = 0.0
         if i > 0:
             start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            
-            # 'expanding' bayrağına göre ofset büyüklüğünü belirle
-            # Burası artık sabit değil, parametreye bağlı.
             magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            
             side = 1 if i % 2 != 0 else -1
             secondary_offset = start_multiplier * magnitude * side * secondary_spacing
 
+        # 3. Assign Coordinates
         x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
         pos[node_id] = (x, y)
 
     return pos
 
-def kececi_layout_v4_ig(graph: ig.Graph, primary_spacing=1.0, secondary_spacing=1.0,
-                            primary_direction='top-down', secondary_start='right'):
-    """igraph.Graph nesnesi için Keçeci layout.
+
+def kececi_layout_ig(graph: "ig.Graph", primary_spacing=1.0, secondary_spacing=1.0,
+                         primary_direction='top-down', secondary_start='right',
+                           expanding=True):
+    """
+    Expanding Kececi Layout: Progresses along the primary axis, with an offset
+    on the secondary axis.
+    Kececi layout for an igraph.Graph object.
 
     Args:
-        graph: igraph.Graph nesnesi.
-        primary_spacing: Ana eksendeki düğümler arasındaki boşluk.
-        secondary_spacing: İkincil eksendeki ofset boşluğu.
-        primary_direction: Ana eksenin yönü ('top-down', 'bottom-up', 'left-to-right', 'right-to-left').
-        secondary_start: İkincil eksendeki ilk ofsetin yönü ('right', 'left', 'up', 'down').
+        graph (igraph.Graph): An igraph.Graph object.
+        primary_spacing (float): The spacing between nodes on the primary axis.
+        secondary_spacing (float): The offset spacing on the secondary axis.
+        primary_direction (str): Direction of the primary axis ('top-down', 'bottom-up', 'left-to-right', 'right-to-left').
+        secondary_start (str): Direction of the initial offset on the secondary axis ('right', 'left', 'up', 'down').
 
     Returns:
-        Vertex ID'lerine göre sıralanmış koordinatların listesi (ör: [[x0,y0], [x1,y1], ...]).
+        list: A list of coordinates sorted by vertex ID (e.g., [[x0,y0], [x1,y1], ...]).
     """
     num_nodes = graph.vcount()
     if num_nodes == 0:
         return []
 
-    # Koordinat listesi oluştur (vertex ID'leri 0'dan N-1'e sıralı olacak şekilde)
+    # Create coordinate list (will be ordered by vertex IDs 0 to N-1)
     pos_list = [[0.0, 0.0]] * num_nodes
-    # Vertex ID'leri zaten 0'dan N-1'e olduğu için doğrudan range kullanabiliriz
-    nodes = range(num_nodes) # Vertex ID'leri
+    # Since vertex IDs are already 0 to N-1, we can use range directly
+    nodes = range(num_nodes)  # Vertex IDs
 
     is_vertical = primary_direction in ['top-down', 'bottom-up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
@@ -375,60 +372,63 @@ def kececi_layout_v4_ig(graph: ig.Graph, primary_spacing=1.0, secondary_spacing=
     if not (is_vertical or is_horizontal):
         raise ValueError(f"Invalid primary_direction: {primary_direction}")
     if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start for vertical: {secondary_start}")
+        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
     if is_horizontal and secondary_start not in ['up', 'down']:
-        raise ValueError(f"Invalid secondary_start for horizontal: {secondary_start}")
+        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
 
-    for i in nodes: # i burada vertex index'i (0, 1, 2...)
+    for i in nodes:  # Here, i is the vertex index (0, 1, 2...)
         if primary_direction == 'top-down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
         elif primary_direction == 'bottom-up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else: # right-to-left
+        else:  # right-to-left
             primary_coord, secondary_axis = i * -primary_spacing, 'y'
 
-        if i == 0:
-            secondary_offset_multiplier = 0.0
-        else:
+        # 2. Calculate Secondary Axis Offset
+        secondary_offset = 0.0
+        if i > 0:
             start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0)
+            magnitude = math.ceil(i / 2.0) if expanding else 1.0
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_multiplier * magnitude * side
+            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
 
-        secondary_coord = secondary_offset_multiplier * secondary_spacing
+        # 3. Assign Coordinates
+        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
+        pos_list[i] = [x, y]  # Add [x, y] to the list at the correct index
 
-        x, y = (secondary_coord, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_coord)
-        pos_list[i] = [x, y] # Listeye doğru index'e [x, y] olarak ekle
+    # Returning a direct list is the most common and flexible approach.
+    # The plot function accepts a list of coordinates directly.
+    return pos_list
 
-    # igraph Layout nesnesi gibi davranması için basit bir nesne döndürelim
-    # veya doğrudan koordinat listesini kullanalım. Çizim fonksiyonu listeyi kabul eder.
-    # return ig.Layout(pos_list) # İsterseniz Layout nesnesi de döndürebilirsiniz
-    return pos_list # Doğrudan liste döndürmek en yaygın ve esnek yoldur
 
-def kececi_layout_v4_igraph(graph: ig.Graph, primary_spacing=1.0, secondary_spacing=1.0,
-                            primary_direction='top-down', secondary_start='right'):
-    """igraph.Graph nesnesi için Keçeci layout.
+def kececi_layout_igraph(graph: "ig.Graph", primary_spacing=1.0, secondary_spacing=1.0,
+                         primary_direction='top-down', secondary_start='right',
+                           expanding=True):
+    """
+    Expanding Kececi Layout: Progresses along the primary axis, with an offset
+    on the secondary axis.
+    Kececi layout for an igraph.Graph object.
 
     Args:
-        graph: igraph.Graph nesnesi.
-        primary_spacing: Ana eksendeki düğümler arasındaki boşluk.
-        secondary_spacing: İkincil eksendeki ofset boşluğu.
-        primary_direction: Ana eksenin yönü ('top-down', 'bottom-up', 'left-to-right', 'right-to-left').
-        secondary_start: İkincil eksendeki ilk ofsetin yönü ('right', 'left', 'up', 'down').
+        graph (igraph.Graph): An igraph.Graph object.
+        primary_spacing (float): The spacing between nodes on the primary axis.
+        secondary_spacing (float): The offset spacing on the secondary axis.
+        primary_direction (str): Direction of the primary axis ('top-down', 'bottom-up', 'left-to-right', 'right-to-left').
+        secondary_start (str): Direction of the initial offset on the secondary axis ('right', 'left', 'up', 'down').
 
     Returns:
-        Vertex ID'lerine göre sıralanmış koordinatların listesi (ör: [[x0,y0], [x1,y1], ...]).
+        list: A list of coordinates sorted by vertex ID (e.g., [[x0,y0], [x1,y1], ...]).
     """
     num_nodes = graph.vcount()
     if num_nodes == 0:
         return []
 
-    # Koordinat listesi oluştur (vertex ID'leri 0'dan N-1'e sıralı olacak şekilde)
+    # Create coordinate list (will be ordered by vertex IDs 0 to N-1)
     pos_list = [[0.0, 0.0]] * num_nodes
-    # Vertex ID'leri zaten 0'dan N-1'e olduğu için doğrudan range kullanabiliriz
-    nodes = range(num_nodes) # Vertex ID'leri
+    # Since vertex IDs are already 0 to N-1, we can use range directly
+    nodes = range(num_nodes)  # Vertex IDs
 
     is_vertical = primary_direction in ['top-down', 'bottom-up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
@@ -436,498 +436,431 @@ def kececi_layout_v4_igraph(graph: ig.Graph, primary_spacing=1.0, secondary_spac
     if not (is_vertical or is_horizontal):
         raise ValueError(f"Invalid primary_direction: {primary_direction}")
     if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start for vertical: {secondary_start}")
+        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
     if is_horizontal and secondary_start not in ['up', 'down']:
-        raise ValueError(f"Invalid secondary_start for horizontal: {secondary_start}")
+        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
 
-    for i in nodes: # i burada vertex index'i (0, 1, 2...)
+    for i in nodes:  # Here, i is the vertex index (0, 1, 2...)
         if primary_direction == 'top-down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
         elif primary_direction == 'bottom-up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else: # right-to-left
+        else:  # right-to-left
             primary_coord, secondary_axis = i * -primary_spacing, 'y'
 
-        if i == 0:
-            secondary_offset_multiplier = 0.0
-        else:
+        # 2. Calculate Secondary Axis Offset
+        secondary_offset = 0.0
+        if i > 0:
             start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0)
+            magnitude = math.ceil(i / 2.0) if expanding else 1.0
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_multiplier * magnitude * side
+            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
 
-        secondary_coord = secondary_offset_multiplier * secondary_spacing
+        # 3. Assign Coordinates
+        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
+        pos_list[i] = [x, y]  # Add [x, y] to the list at the correct index
 
-        x, y = (secondary_coord, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_coord)
-        pos_list[i] = [x, y] # Listeye doğru index'e [x, y] olarak ekle
+    # Returning a direct list is the most common and flexible approach.
+    # The plot function accepts a list of coordinates directly.
+    return pos_list
 
-    # igraph Layout nesnesi gibi davranması için basit bir nesne döndürelim
-    # veya doğrudan koordinat listesini kullanalım. Çizim fonksiyonu listeyi kabul eder.
-    # return ig.Layout(pos_list) # İsterseniz Layout nesnesi de döndürebilirsiniz
-    return pos_list # Doğrudan liste döndürmek en yaygın ve esnek yoldur
 
-def kececi_layout_v4_nk(graph: nk.graph.Graph,
-                               primary_spacing=1.0,
-                               secondary_spacing=1.0,
-                               primary_direction='top-down',
-                               secondary_start='right'):
+def kececi_layout_nk(graph: "nk.graph.Graph", primary_spacing=1.0, secondary_spacing=1.0,
+                            primary_direction='top-down', secondary_start='right',
+                           expanding=True):
     """
-    Keçeci Layout v4 - Networkit graf düğümlerine sıralı-zigzag yerleşimi sağlar.
+    Expanding Kececi Layout: Progresses along the primary axis, with an offset
+    on the secondary axis.
+    Kececi Layout - Provides a sequential-zigzag layout for nodes in a NetworKit graph.
 
-    Parametreler:
-    -------------
-    graph : networkit.graph.Graph
-        Kenar ve düğüm bilgisi içeren Networkit graf nesnesi.
-    primary_spacing : float
-        Ana yön mesafesi.
-    secondary_spacing : float
-        Yan yön mesafesi.
-    primary_direction : str
-        'top-down', 'bottom-up', 'left-to-right', 'right-to-left'.
-    secondary_start : str
-        Başlangıç yönü ('right', 'left', 'up', 'down').
+    Args:
+        graph (networkit.graph.Graph): A NetworKit graph object.
+        primary_spacing (float): The distance on the primary axis.
+        secondary_spacing (float): The distance on the secondary axis.
+        primary_direction (str): 'top-down', 'bottom-up', 'left-to-right', 'right-to-left'.
+        secondary_start (str): The starting direction for the offset ('right', 'left', 'up', 'down').
 
-    Dönüş:
-    ------
-    dict[int, tuple[float, float]]
-        Her düğüm ID'sinin (Networkit'te genelde integer olur)
-        koordinatını içeren sözlük.
+    Returns:
+        dict[int, tuple[float, float]]: A dictionary containing the coordinate
+        for each node ID (typically an integer in NetworKit).
     """
-
-    # Networkit'te düğüm ID'leri genellikle 0'dan N-1'e sıralıdır,
-    # ancak garantiye almak için sıralı bir liste alalım.
-    # iterNodes() düğüm ID'lerini döndürür.
+    # In NetworKit, node IDs are generally sequential, but let's get a sorted
+    # list to be safe. iterNodes() returns the node IDs.
     try:
-        # Networkit'te node ID'lerinin contiguous (0..n-1) olup olmadığını kontrol edebiliriz
-        # ama her zaman böyle olmayabilir. iterNodes en genel yöntem.
         nodes = sorted(list(graph.iterNodes()))
     except Exception as e:
-        print(f"Networkit düğüm listesi alınırken hata: {e}")
-        # Alternatif olarak, eğer ID'lerin 0'dan başladığı varsayılıyorsa:
-        # nodes = list(range(graph.numberOfNodes()))
-        # Ancak iterNodes daha güvenlidir.
-        return {} # Hata durumunda boş dön
+        print(f"Error getting NetworKit node list: {e}")
+        return {}  # Return empty on error
 
-    num_nodes = len(nodes) # Veya graph.numberOfNodes()
+    num_nodes = len(nodes)
     if num_nodes == 0:
-        return {}  # Boş graf için boş sözlük döndür
+        return {}
 
-    pos = {}  # Sonuç sözlüğü
+    pos = {}
     is_vertical = primary_direction in ['top-down', 'bottom-up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
 
-    # Parametre kontrolleri
     if not (is_vertical or is_horizontal):
         raise ValueError(f"Invalid primary_direction: {primary_direction}")
     if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start ('{secondary_start}') for vertical primary_direction ('{primary_direction}'). Use 'right' or 'left'.")
+        raise ValueError(f"Invalid secondary_start ('{secondary_start}') for vertical primary_direction. Use 'right' or 'left'.")
     if is_horizontal and secondary_start not in ['up', 'down']:
-         raise ValueError(f"Invalid secondary_start ('{secondary_start}') for horizontal primary_direction ('{primary_direction}'). Use 'up' or 'down'.")
+        raise ValueError(f"Invalid secondary_start ('{secondary_start}') for horizontal primary_direction. Use 'up' or 'down'.")
 
-    # Ana döngü
+    # Main loop
     for i, node_id in enumerate(nodes):
-        # i: Düğümün sıralı listedeki indeksi (0, 1, 2, ...) - Yerleşim için kullanılır
-        # node_id: Gerçek Networkit düğüm ID'si - Sonuç sözlüğünün anahtarı
-
-        # 1. Ana eksen koordinatını hesapla
+        # i: The index in the sorted list (0, 1, 2, ...), used for positioning.
+        # node_id: The actual NetworKit node ID, used as the key in the result dictionary.
+        
+        # 1. Calculate Primary Axis Coordinate
         if primary_direction == 'top-down':
-            primary_coord = i * -primary_spacing
-            secondary_axis = 'x'
+            primary_coord, secondary_axis = i * -primary_spacing, 'x'
         elif primary_direction == 'bottom-up':
-            primary_coord = i * primary_spacing
-            secondary_axis = 'x'
+            primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
-            primary_coord = i * primary_spacing
-            secondary_axis = 'y'
-        else: # primary_direction == 'right-to-left'
-            primary_coord = i * -primary_spacing
-            secondary_axis = 'y'
+            primary_coord, secondary_axis = i * primary_spacing, 'y'
+        else: # 'right-to-left'
+            primary_coord, secondary_axis = i * -primary_spacing, 'y'
 
-        # 2. Yan eksen ofsetini hesapla (zigzag)
-        if i == 0:
-            secondary_offset_multiplier = 0.0
-        else:
+        # 2. Calculate Secondary Axis Offset
+        secondary_offset = 0.0
+        if i > 0:
             start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0)
+            magnitude = math.ceil(i / 2.0) if expanding else 1.0
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_multiplier * magnitude * side
+            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
 
-        secondary_coord = secondary_offset_multiplier * secondary_spacing
-
-        # 3. (x, y) koordinatlarını ata
-        if secondary_axis == 'x':
-            x, y = secondary_coord, primary_coord
-        else: # secondary_axis == 'y'
-            x, y = primary_coord, secondary_coord
-
-        # Sonuç sözlüğüne ekle: anahtar=düğüm ID, değer=(x, y) tuple'ı
+        # 3. Assign Coordinates
+        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
         pos[node_id] = (x, y)
 
     return pos
 
-def kececi_layout_v4_networkit(graph: nk.graph.Graph,
-                               primary_spacing=1.0,
-                               secondary_spacing=1.0,
-                               primary_direction='top-down',
-                               secondary_start='right'):
+
+def kececi_layout_networkit(graph: "nk.graph.Graph", primary_spacing=1.0, secondary_spacing=1.0,
+                            primary_direction='top-down', secondary_start='right',
+                           expanding=True):
     """
-    Keçeci Layout v4 - Networkit graf düğümlerine sıralı-zigzag yerleşimi sağlar.
+    Expanding Kececi Layout: Progresses along the primary axis, with an offset
+    on the secondary axis.
+    Kececi Layout - Provides a sequential-zigzag layout for nodes in a NetworKit graph.
 
-    Parametreler:
-    -------------
-    graph : networkit.graph.Graph
-        Kenar ve düğüm bilgisi içeren Networkit graf nesnesi.
-    primary_spacing : float
-        Ana yön mesafesi.
-    secondary_spacing : float
-        Yan yön mesafesi.
-    primary_direction : str
-        'top-down', 'bottom-up', 'left-to-right', 'right-to-left'.
-    secondary_start : str
-        Başlangıç yönü ('right', 'left', 'up', 'down').
+    Args:
+        graph (networkit.graph.Graph): A NetworKit graph object.
+        primary_spacing (float): The distance on the primary axis.
+        secondary_spacing (float): The distance on the secondary axis.
+        primary_direction (str): 'top-down', 'bottom-up', 'left-to-right', 'right-to-left'.
+        secondary_start (str): The starting direction for the offset ('right', 'left', 'up', 'down').
 
-    Dönüş:
-    ------
-    dict[int, tuple[float, float]]
-        Her düğüm ID'sinin (Networkit'te genelde integer olur)
-        koordinatını içeren sözlük.
+    Returns:
+        dict[int, tuple[float, float]]: A dictionary containing the coordinate
+        for each node ID (typically an integer in NetworKit).
     """
-
-    # Networkit'te düğüm ID'leri genellikle 0'dan N-1'e sıralıdır,
-    # ancak garantiye almak için sıralı bir liste alalım.
-    # iterNodes() düğüm ID'lerini döndürür.
+    # In NetworKit, node IDs are generally sequential, but let's get a sorted
+    # list to be safe. iterNodes() returns the node IDs.
     try:
-        # Networkit'te node ID'lerinin contiguous (0..n-1) olup olmadığını kontrol edebiliriz
-        # ama her zaman böyle olmayabilir. iterNodes en genel yöntem.
         nodes = sorted(list(graph.iterNodes()))
     except Exception as e:
-        print(f"Networkit düğüm listesi alınırken hata: {e}")
-        # Alternatif olarak, eğer ID'lerin 0'dan başladığı varsayılıyorsa:
-        # nodes = list(range(graph.numberOfNodes()))
-        # Ancak iterNodes daha güvenlidir.
-        return {} # Hata durumunda boş dön
+        print(f"Error getting NetworKit node list: {e}")
+        return {}  # Return empty on error
 
-    num_nodes = len(nodes) # Veya graph.numberOfNodes()
+    num_nodes = len(nodes)
     if num_nodes == 0:
-        return {}  # Boş graf için boş sözlük döndür
+        return {}
 
-    pos = {}  # Sonuç sözlüğü
+    pos = {}
     is_vertical = primary_direction in ['top-down', 'bottom-up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
 
-    # Parametre kontrolleri
     if not (is_vertical or is_horizontal):
         raise ValueError(f"Invalid primary_direction: {primary_direction}")
     if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start ('{secondary_start}') for vertical primary_direction ('{primary_direction}'). Use 'right' or 'left'.")
+        raise ValueError(f"Invalid secondary_start ('{secondary_start}') for vertical primary_direction. Use 'right' or 'left'.")
     if is_horizontal and secondary_start not in ['up', 'down']:
-         raise ValueError(f"Invalid secondary_start ('{secondary_start}') for horizontal primary_direction ('{primary_direction}'). Use 'up' or 'down'.")
+        raise ValueError(f"Invalid secondary_start ('{secondary_start}') for horizontal primary_direction. Use 'up' or 'down'.")
 
-    # Ana döngü
+    # Main loop
     for i, node_id in enumerate(nodes):
-        # i: Düğümün sıralı listedeki indeksi (0, 1, 2, ...) - Yerleşim için kullanılır
-        # node_id: Gerçek Networkit düğüm ID'si - Sonuç sözlüğünün anahtarı
-
-        # 1. Ana eksen koordinatını hesapla
+        # i: The index in the sorted list (0, 1, 2, ...), used for positioning.
+        # node_id: The actual NetworKit node ID, used as the key in the result dictionary.
+        
+        # 1. Calculate Primary Axis Coordinate
         if primary_direction == 'top-down':
-            primary_coord = i * -primary_spacing
-            secondary_axis = 'x'
+            primary_coord, secondary_axis = i * -primary_spacing, 'x'
         elif primary_direction == 'bottom-up':
-            primary_coord = i * primary_spacing
-            secondary_axis = 'x'
+            primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
-            primary_coord = i * primary_spacing
-            secondary_axis = 'y'
-        else: # primary_direction == 'right-to-left'
-            primary_coord = i * -primary_spacing
-            secondary_axis = 'y'
+            primary_coord, secondary_axis = i * primary_spacing, 'y'
+        else: # 'right-to-left'
+            primary_coord, secondary_axis = i * -primary_spacing, 'y'
 
-        # 2. Yan eksen ofsetini hesapla (zigzag)
-        if i == 0:
-            secondary_offset_multiplier = 0.0
-        else:
+        # 2. Calculate Secondary Axis Offset
+        secondary_offset = 0.0
+        if i > 0:
             start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0)
+            magnitude = math.ceil(i / 2.0) if expanding else 1.0
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_multiplier * magnitude * side
+            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
 
-        secondary_coord = secondary_offset_multiplier * secondary_spacing
-
-        # 3. (x, y) koordinatlarını ata
-        if secondary_axis == 'x':
-            x, y = secondary_coord, primary_coord
-        else: # secondary_axis == 'y'
-            x, y = primary_coord, secondary_coord
-
-        # Sonuç sözlüğüne ekle: anahtar=düğüm ID, değer=(x, y) tuple'ı
+        # 3. Assign Coordinates
+        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
         pos[node_id] = (x, y)
 
     return pos
 
-def kececi_layout_v4_gg(graph_set: gg.GraphSet,
-                                 primary_spacing=1.0,
-                                 secondary_spacing=1.0,
-                                 primary_direction='top-down',
-                                 secondary_start='right'):
-    """
-    Keçeci Layout v4 - Graphillion evren grafının düğümlerine
-    sıralı-zigzag yerleşimi sağlar.
-    """
+# Helper function assumed to be available for Graphillion
+def find_max_node_id(edges):
+    if not edges:
+        return 0
+    return max(max(u, v) for u, v in edges)
 
-    # DÜZELTME: Evrenden kenar listesini al
+
+def kececi_layout_gg(graph_set: "gg.GraphSet", primary_spacing=1.0, secondary_spacing=1.0,
+                              primary_direction='top-down', secondary_start='right',
+                           expanding=True):
+    """
+    Expanding Kececi Layout: Progresses along the primary axis, with an offset
+    on the secondary axis.
+    Kececi Layout - Provides a sequential-zigzag layout for nodes in a Graphillion universe.
+
+    Args:
+        graph_set (graphillion.GraphSet): A Graphillion GraphSet object.
+        primary_spacing (float): The distance on the primary axis.
+        secondary_spacing (float): The distance on the secondary axis.
+        primary_direction (str): 'top-down', 'bottom-up', 'left-to-right', 'right-to-left'.
+        secondary_start (str): The starting direction for the offset ('right', 'left', 'up', 'down').
+    Returns:
+        dict: A dictionary of positions keyed by node ID.
+    """
+    # CORRECTION: Get the edge list from the universe.
     edges_in_universe = graph_set.universe()
-
-    # DÜZELTME: Düğüm sayısını kenarlardan türet
+    # CORRECTION: Derive the number of nodes from the edges.
     num_vertices = find_max_node_id(edges_in_universe)
 
     if num_vertices == 0:
         return {}
 
-    # Graphillion genellikle 1-tabanlı düğüm indekslemesi kullanır.
-    # Düğüm ID listesini oluştur: 1, 2, ..., num_vertices
-    nodes = list(range(1, num_vertices + 1)) # En yüksek ID'ye kadar tüm nodları varsay
+    # Graphillion often uses 1-based node indexing.
+    # Create the node ID list: 1, 2, ..., num_vertices
+    nodes = list(range(1, num_vertices + 1))
 
-    pos = {}  # Sonuç sözlüğü
+    pos = {}
     is_vertical = primary_direction in ['top-down', 'bottom-up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
 
-    # Parametre kontrolleri (değişiklik yok)
     if not (is_vertical or is_horizontal):
         raise ValueError(f"Invalid primary_direction: {primary_direction}")
     if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start ('{secondary_start}') for vertical primary_direction ('{primary_direction}'). Use 'right' or 'left'.")
+        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
     if is_horizontal and secondary_start not in ['up', 'down']:
-         raise ValueError(f"Invalid secondary_start ('{secondary_start}') for horizontal primary_direction ('{primary_direction}'). Use 'up' or 'down'.")
+        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
 
-    # Ana döngü (değişiklik yok)
     for i, node_id in enumerate(nodes):
-        # ... (Koordinat hesaplama kısmı aynı kalır) ...
         if primary_direction == 'top-down':
-            primary_coord = i * -primary_spacing; 
-            secondary_axis = 'x'
+            primary_coord, secondary_axis = i * -primary_spacing, 'x'
         elif primary_direction == 'bottom-up':
-            primary_coord = i * primary_spacing; 
-            secondary_axis = 'x'
+            primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
-            primary_coord = i * primary_spacing; 
-            secondary_axis = 'y'
+            primary_coord, secondary_axis = i * primary_spacing, 'y'
         else: # right-to-left
-            primary_coord = i * -primary_spacing; 
-            secondary_axis = 'y'
+            primary_coord, secondary_axis = i * -primary_spacing, 'y'
 
-        if i == 0: 
-            secondary_offset_multiplier = 0.0
-        else:
+        # 2. Calculate Secondary Axis Offset
+        secondary_offset = 0.0
+        if i > 0:
             start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0)
+            magnitude = math.ceil(i / 2.0) if expanding else 1.0
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_multiplier * magnitude * side
-        secondary_coord = secondary_offset_multiplier * secondary_spacing
+            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
 
-        if secondary_axis == 'x': 
-            x, y = secondary_coord, primary_coord
-        else: 
-            x, y = primary_coord, secondary_coord
+        # 3. Assign Coordinates
+        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
         pos[node_id] = (x, y)
 
     return pos
 
-def kececi_layout_v4_graphillion(graph_set: gg.GraphSet,
-                                 primary_spacing=1.0,
-                                 secondary_spacing=1.0,
-                                 primary_direction='top-down',
-                                 secondary_start='right'):
-    """
-    Keçeci Layout v4 - Graphillion evren grafının düğümlerine
-    sıralı-zigzag yerleşimi sağlar.
-    """
 
-    # DÜZELTME: Evrenden kenar listesini al
+def kececi_layout_graphillion(graph_set: "gg.GraphSet", primary_spacing=1.0, secondary_spacing=1.0,
+                              primary_direction='top-down', secondary_start='right',
+                           expanding=True):
+    """
+    Expanding Kececi Layout: Progresses along the primary axis, with an offset
+    on the secondary axis.
+    Kececi Layout - Provides a sequential-zigzag layout for nodes in a Graphillion universe.
+
+    Args:
+        graph_set (graphillion.GraphSet): A Graphillion GraphSet object.
+        primary_spacing (float): The distance on the primary axis.
+        secondary_spacing (float): The distance on the secondary axis.
+        primary_direction (str): 'top-down', 'bottom-up', 'left-to-right', 'right-to-left'.
+        secondary_start (str): The starting direction for the offset ('right', 'left', 'up', 'down').
+    Returns:
+        dict: A dictionary of positions keyed by node ID.
+    """
+    # CORRECTION: Get the edge list from the universe.
     edges_in_universe = graph_set.universe()
-
-    # DÜZELTME: Düğüm sayısını kenarlardan türet
+    # CORRECTION: Derive the number of nodes from the edges.
     num_vertices = find_max_node_id(edges_in_universe)
 
     if num_vertices == 0:
         return {}
 
-    # Graphillion genellikle 1-tabanlı düğüm indekslemesi kullanır.
-    # Düğüm ID listesini oluştur: 1, 2, ..., num_vertices
-    nodes = list(range(1, num_vertices + 1)) # En yüksek ID'ye kadar tüm nodları varsay
+    # Graphillion often uses 1-based node indexing.
+    # Create the node ID list: 1, 2, ..., num_vertices
+    nodes = list(range(1, num_vertices + 1))
 
-    pos = {}  # Sonuç sözlüğü
+    pos = {}
     is_vertical = primary_direction in ['top-down', 'bottom-up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
 
-    # Parametre kontrolleri (değişiklik yok)
     if not (is_vertical or is_horizontal):
         raise ValueError(f"Invalid primary_direction: {primary_direction}")
     if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start ('{secondary_start}') for vertical primary_direction ('{primary_direction}'). Use 'right' or 'left'.")
+        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
     if is_horizontal and secondary_start not in ['up', 'down']:
-         raise ValueError(f"Invalid secondary_start ('{secondary_start}') for horizontal primary_direction ('{primary_direction}'). Use 'up' or 'down'.")
+        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
 
-    # Ana döngü (değişiklik yok)
     for i, node_id in enumerate(nodes):
-        # ... (Koordinat hesaplama kısmı aynı kalır) ...
         if primary_direction == 'top-down':
-            primary_coord = i * -primary_spacing; 
-            secondary_axis = 'x'
+            primary_coord, secondary_axis = i * -primary_spacing, 'x'
         elif primary_direction == 'bottom-up':
-            primary_coord = i * primary_spacing; 
-            secondary_axis = 'x'
+            primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
-            primary_coord = i * primary_spacing; 
-            secondary_axis = 'y'
+            primary_coord, secondary_axis = i * primary_spacing, 'y'
         else: # right-to-left
-            primary_coord = i * -primary_spacing; 
-            secondary_axis = 'y'
+            primary_coord, secondary_axis = i * -primary_spacing, 'y'
 
-        if i == 0: 
-            secondary_offset_multiplier = 0.0
-        else:
+        # 2. Calculate Secondary Axis Offset
+        secondary_offset = 0.0
+        if i > 0:
             start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0)
+            magnitude = math.ceil(i / 2.0) if expanding else 1.0
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_multiplier * magnitude * side
-        secondary_coord = secondary_offset_multiplier * secondary_spacing
+            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
 
-        if secondary_axis == 'x': 
-            x, y = secondary_coord, primary_coord
-        else: 
-            x, y = primary_coord, secondary_coord
+        # 3. Assign Coordinates
+        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
         pos[node_id] = (x, y)
 
     return pos
 
-def kececi_layout_v4_rx(graph: 
-                        rx.PyGraph, primary_spacing=1.0, secondary_spacing=1.0,
-                        primary_direction='top-down', secondary_start='right'):
+
+def kececi_layout_rx(graph: "rx.PyGraph", primary_spacing=1.0, secondary_spacing=1.0,
+                            primary_direction='top-down', secondary_start='right',
+                           expanding=True):
+    """
+    Expanding Kececi Layout: Progresses along the primary axis, with an offset
+    on the secondary axis.
+    Kececi layout for a Rustworkx PyGraph object.
+
+    Args:
+        graph (rustworkx.PyGraph): A Rustworkx graph object.
+        primary_spacing (float): The spacing between nodes on the primary axis.
+        secondary_spacing (float): The offset spacing on the secondary axis.
+        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
+        secondary_start (str): Initial direction for the offset ('right', 'left', 'up', 'down').
+
+    Returns:
+        dict: A dictionary of positions keyed by node index, where values are numpy arrays.
+    """
     pos = {}
     nodes = sorted(graph.node_indices())
     num_nodes = len(nodes)
-    if num_nodes == 0: 
+    if num_nodes == 0:
         return {}
 
     is_vertical = primary_direction in ['top-down', 'bottom-up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-    if not (is_vertical or is_horizontal): 
+    if not (is_vertical or is_horizontal):
         raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']: 
-        raise ValueError(f"Invalid secondary_start for vertical: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']: 
-        raise ValueError(f"Invalid secondary_start for horizontal: {secondary_start}")
+    if is_vertical and secondary_start not in ['right', 'left']:
+        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
+    if is_horizontal and secondary_start not in ['up', 'down']:
+        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
 
     for i, node_index in enumerate(nodes):
-        if primary_direction == 'top-down': 
+        if primary_direction == 'top-down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up': 
+        elif primary_direction == 'bottom-up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right': 
+        elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else: 
+        else:
             primary_coord, secondary_axis = i * -primary_spacing, 'y'
 
-        if i == 0: 
-            secondary_offset_multiplier = 0.0
-        else:
+        # 2. Calculate Secondary Axis Offset
+        secondary_offset = 0.0
+        if i > 0:
             start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0)
+            magnitude = math.ceil(i / 2.0) if expanding else 1.0
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_multiplier * magnitude * side
-        secondary_coord = secondary_offset_multiplier * secondary_spacing
+            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
 
-        x, y = (secondary_coord, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_coord)
+        # 3. Assign Coordinates
+        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
         pos[node_index] = np.array([x, y])
+        
     return pos
 
-def kececi_layout_v4_rustworkx(graph: 
-                               rx.PyGraph, primary_spacing=1.0, secondary_spacing=1.0,
-                        primary_direction='top-down', secondary_start='right'):
+
+def kececi_layout_rustworkx(graph: "rx.PyGraph", primary_spacing=1.0, secondary_spacing=1.0,
+                            primary_direction='top-down', secondary_start='right',
+                           expanding=True):
+    """
+    Expanding Kececi Layout: Progresses along the primary axis, with an offset
+    on the secondary axis.
+    Kececi layout for a Rustworkx PyGraph object.
+
+    Args:
+        graph (rustworkx.PyGraph): A Rustworkx graph object.
+        primary_spacing (float): The spacing between nodes on the primary axis.
+        secondary_spacing (float): The offset spacing on the secondary axis.
+        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
+        secondary_start (str): Initial direction for the offset ('right', 'left', 'up', 'down').
+
+    Returns:
+        dict: A dictionary of positions keyed by node index, where values are numpy arrays.
+    """
     pos = {}
     nodes = sorted(graph.node_indices())
     num_nodes = len(nodes)
-    if num_nodes == 0: 
+    if num_nodes == 0:
         return {}
 
     is_vertical = primary_direction in ['top-down', 'bottom-up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-    if not (is_vertical or is_horizontal): 
+    if not (is_vertical or is_horizontal):
         raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']: 
-        raise ValueError(f"Invalid secondary_start for vertical: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']: 
-        raise ValueError(f"Invalid secondary_start for horizontal: {secondary_start}")
+    if is_vertical and secondary_start not in ['right', 'left']:
+        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
+    if is_horizontal and secondary_start not in ['up', 'down']:
+        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
 
     for i, node_index in enumerate(nodes):
-        if primary_direction == 'top-down': 
+        if primary_direction == 'top-down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up': 
+        elif primary_direction == 'bottom-up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right': 
+        elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else: 
+        else:
             primary_coord, secondary_axis = i * -primary_spacing, 'y'
 
-        if i == 0: 
-            secondary_offset_multiplier = 0.0
-        else:
+        # 2. Calculate Secondary Axis Offset
+        secondary_offset = 0.0
+        if i > 0:
             start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0)
+            magnitude = math.ceil(i / 2.0) if expanding else 1.0
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_multiplier * magnitude * side
-        secondary_coord = secondary_offset_multiplier * secondary_spacing
+            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
 
-        x, y = (secondary_coord, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_coord)
+        # 3. Assign Coordinates
+        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
         pos[node_index] = np.array([x, y])
+        
     return pos
-
-# =============================================================================
-# Rastgele Graf Oluşturma Fonksiyonu (Rustworkx ile - Düzeltilmiş subgraph)
-# =============================================================================
-def generate_random_rx_graph(min_nodes=5, max_nodes=15, edge_prob_min=0.15, edge_prob_max=0.4):
-    if min_nodes < 2: 
-        min_nodes = 2
-    if max_nodes < min_nodes: 
-        max_nodes = min_nodes
-    while True:
-        num_nodes_target = random.randint(min_nodes, max_nodes)
-        edge_probability = random.uniform(edge_prob_min, edge_prob_max)
-        G_candidate = rx.PyGraph()
-        node_indices = G_candidate.add_nodes_from([None] * num_nodes_target)
-        for i in range(num_nodes_target):
-            for j in range(i + 1, num_nodes_target):
-                if random.random() < edge_probability:
-                    G_candidate.add_edge(node_indices[i], node_indices[j], None)
-
-        if G_candidate.num_nodes() == 0: 
-            continue
-        if num_nodes_target > 1 and G_candidate.num_edges() == 0: 
-            continue
-
-        if not rx.is_connected(G_candidate):
-             components = rx.connected_components(G_candidate)
-             if not components: 
-                 continue
-             largest_cc_nodes_indices = max(components, key=len, default=set())
-             if len(largest_cc_nodes_indices) < 2 and num_nodes_target >=2 : 
-                 continue
-             if not largest_cc_nodes_indices: 
-                 continue
-             # Set'i listeye çevirerek subgraph oluştur
-             G = G_candidate.subgraph(list(largest_cc_nodes_indices))
-             if G.num_nodes() == 0: 
-                 continue
-        else:
-             G = G_candidate
-
-        if G.num_nodes() >= 2: 
-            break
-    print(f"Oluşturulan Rustworkx Graf: {G.num_nodes()} Düğüm, {G.num_edges()} Kenar (Başlangıç p={edge_probability:.3f})")
-    return G
-
 
 def kececi_layout_pure(nodes, primary_spacing=1.0, secondary_spacing=1.0,
                          primary_direction='top_down', secondary_start='right',
@@ -1002,6 +935,50 @@ def kececi_layout_pure(nodes, primary_spacing=1.0, secondary_spacing=1.0,
         pos[node_id] = (x, y)
         
     return pos
+
+# =============================================================================
+# Rastgele Graf Oluşturma Fonksiyonu (Rustworkx ile - Düzeltilmiş subgraph)
+# =============================================================================
+def generate_random_rx_graph(min_nodes=5, max_nodes=15, edge_prob_min=0.15, edge_prob_max=0.4):
+    if min_nodes < 2: 
+        min_nodes = 2
+    if max_nodes < min_nodes: 
+        max_nodes = min_nodes
+    while True:
+        num_nodes_target = random.randint(min_nodes, max_nodes)
+        edge_probability = random.uniform(edge_prob_min, edge_prob_max)
+        G_candidate = rx.PyGraph()
+        node_indices = G_candidate.add_nodes_from([None] * num_nodes_target)
+        for i in range(num_nodes_target):
+            for j in range(i + 1, num_nodes_target):
+                if random.random() < edge_probability:
+                    G_candidate.add_edge(node_indices[i], node_indices[j], None)
+
+        if G_candidate.num_nodes() == 0: 
+            continue
+        if num_nodes_target > 1 and G_candidate.num_edges() == 0: 
+            continue
+
+        if not rx.is_connected(G_candidate):
+             components = rx.connected_components(G_candidate)
+             if not components: 
+                 continue
+             largest_cc_nodes_indices = max(components, key=len, default=set())
+             if len(largest_cc_nodes_indices) < 2 and num_nodes_target >=2 : 
+                 continue
+             if not largest_cc_nodes_indices: 
+                 continue
+             # Set'i listeye çevirerek subgraph oluştur
+             G = G_candidate.subgraph(list(largest_cc_nodes_indices))
+             if G.num_nodes() == 0: 
+                 continue
+        else:
+             G = G_candidate
+
+        if G.num_nodes() >= 2: 
+            break
+    print(f"Oluşturulan Rustworkx Graf: {G.num_nodes()} Düğüm, {G.num_edges()} Kenar (Başlangıç p={edge_probability:.3f})")
+    return G
 
 # =============================================================================
 # Rastgele Graf Oluşturma Fonksiyonu (NetworkX)
@@ -1277,7 +1254,3 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
-
-
-
-
