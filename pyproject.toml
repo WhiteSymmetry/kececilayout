@@ -35,6 +35,7 @@ dependencies = [
 [project.optional-dependencies]
 test = [
     "pytest",
+    "pytest-cov",
     "pytest-mock",
     "ruff",
     "igraph",
@@ -46,5 +47,6 @@ test = [
 [project.urls]
 "Homepage" = "https://github.com/WhiteSymmetry/kececilayout"
 "Bug Tracker" = "https://github.com/WhiteSymmetry/kececilayout/issues"
+
 
 
