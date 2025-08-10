@@ -1,11 +1,48 @@
+# pyproject.toml
+
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "kececilayout"
+version = "0.2.9"
+
+# Diğer proje bilgileri (isteğe bağlı ama tavsiye edilir)
+authors = [
+    { name="Mehmet Keçeci", email="mkececi@yaani.com" },
+]
+description = "Çeşitli graf kütüphaneleri için sıralı-zigzag yerleşimleri sağlayan bir Python paketi."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file="LICENSE" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+
+# Ana bağımlılıklarınız
+dependencies = [
+    "networkx",
+    "matplotlib",
+    "numpy",
+    # Diğer kütüphaneler (eğer varsa)...
+]
 
 [project.optional-dependencies]
 test = [
     "pytest",
     "pytest-mock",
-    "ruff"
-    # Diğer test için gerekli kütüphaneler...
+    "ruff",
+    "igraph",
+    "rustworkx",
+    "networkit",
+    "graphillion",
 ]
+
+[project.urls]
+"Homepage" = "https://github.com/WhiteSymmetry/kececilayout"
+"Bug Tracker" = "https://github.com/WhiteSymmetry/kececilayout/issues"
