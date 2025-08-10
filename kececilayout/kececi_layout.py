@@ -220,112 +220,131 @@ def kececi_layout_v4(graph, primary_spacing=1.0, secondary_spacing=1.0,
 
     return pos
 
-def kececi_layout_v4_nx(graph, primary_spacing=1.0, secondary_spacing=1.0,
-                     primary_direction='top-down', secondary_start='right'):
+def kececi_layout_nx(graph, primary_spacing=1.0, secondary_spacing=1.0,
+                           primary_direction='top-down', secondary_start='right',
+                           expanding=True):
     """
-    Genişletilmiş Keçeci Düzeni: Ana eksen boyunca ilerler, ikincil eksende artan şekilde sapar.
-    Düğümler ikincil eksende daha geniş bir alana yayılır.
+    Expanding Kececi Layout: Progresses along the primary axis, with an offset
+    on the secondary axis.
+
+    Args:
+        graph (networkx.Graph): A NetworkX graph object.
+        primary_spacing (float): The distance between nodes along the primary axis.
+        secondary_spacing (float): The base unit for the zigzag offset.
+        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
+        secondary_start (str): Initial direction for the zigzag offset.
+        expanding (bool): If True (default), the zigzag offset grows.
+                          If False, the offset is constant (parallel lines). # <-- 2. DOKÜMANTASYON GÜNCELLENDİ
+
+    Returns:
+        dict: A dictionary of positions keyed by node ID.
     """
     pos = {}
-    # NetworkX 2.x ve 3.x uyumluluğu için listeye çevirme
     nodes = sorted(list(graph.nodes()))
-    num_nodes = len(nodes)
-    if num_nodes == 0: 
+    if not nodes:
         return {}
 
     is_vertical = primary_direction in ['top-down', 'bottom-up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-    if not (is_vertical or is_horizontal): 
+    if not (is_vertical or is_horizontal):
         raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']: 
-        raise ValueError(f"Invalid secondary_start for vertical: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']: 
-        raise ValueError(f"Invalid secondary_start for horizontal: {secondary_start}")
+    if is_vertical and secondary_start not in ['right', 'left']:
+        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
+    if is_horizontal and secondary_start not in ['up', 'down']:
+        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
+
 
     for i, node_id in enumerate(nodes):
-        # 1. Ana Eksen Koordinatını Hesapla
-        if primary_direction == 'top-down': 
+        # 1. Calculate Primary Axis Coordinate
+        if primary_direction == 'top-down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up': 
+        elif primary_direction == 'bottom-up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right': 
+        elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else: # right-to-left
+        else:
             primary_coord, secondary_axis = i * -primary_spacing, 'y'
 
-        # 2. İkincil Eksen Koordinatını Hesapla (Genişletilmiş Sapma)
+        # 2. Calculate Secondary Axis Coordinate (Expanding Offset)
         if i == 0:
-            secondary_offset_multiplier = 0.0
-        else:
-            # Sapma yönünü belirle (sağ/yukarı +1, sol/aşağı -1)
+        secondary_offset = 0.0
+        if i > 0:
             start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            # Sapma büyüklüğünü belirle (i arttıkça artar: 1, 1, 2, 2, 3, 3, ...)
-            magnitude = math.ceil(i / 2.0)
-            # Sapma tarafını belirle (tek i için pozitif, çift i için negatif)
+            
+            # 'expanding' bayrağına göre ofset büyüklüğünü belirle
+            # Burası artık sabit değil, parametreye bağlı.
+            magnitude = math.ceil(i / 2.0) if expanding else 1.0
+            
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_multiplier * magnitude * side
+            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
 
-        secondary_coord = secondary_offset_multiplier * secondary_spacing
-
-        # 3. (x, y) Koordinatlarını Ata
-        x, y = (secondary_coord, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_coord)
+        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
         pos[node_id] = (x, y)
 
     return pos
 
-def kececi_layout_v4_networkx(graph, primary_spacing=1.0, secondary_spacing=1.0,
-                     primary_direction='top-down', secondary_start='right'):
+def kececi_layout_networkx(graph, primary_spacing=1.0, secondary_spacing=1.0,
+                           primary_direction='top-down', secondary_start='right',
+                           expanding=True):
     """
-    Genişletilmiş Keçeci Düzeni: Ana eksen boyunca ilerler, ikincil eksende artan şekilde sapar.
-    Düğümler ikincil eksende daha geniş bir alana yayılır.
+    Expanding Kececi Layout: Progresses along the primary axis, with an offset
+    on the secondary axis.
+
+    Args:
+        graph (networkx.Graph): A NetworkX graph object.
+        primary_spacing (float): The distance between nodes along the primary axis.
+        secondary_spacing (float): The base unit for the zigzag offset.
+        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
+        secondary_start (str): Initial direction for the zigzag offset.
+        expanding (bool): If True (default), the zigzag offset grows.
+                          If False, the offset is constant (parallel lines). # <-- 2. DOKÜMANTASYON GÜNCELLENDİ
+
+    Returns:
+        dict: A dictionary of positions keyed by node ID.
     """
     pos = {}
-    # NetworkX 2.x ve 3.x uyumluluğu için listeye çevirme
     nodes = sorted(list(graph.nodes()))
-    num_nodes = len(nodes)
-    if num_nodes == 0: 
+    if not nodes:
         return {}
 
     is_vertical = primary_direction in ['top-down', 'bottom-up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-    if not (is_vertical or is_horizontal): 
+    if not (is_vertical or is_horizontal):
         raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']: 
-        raise ValueError(f"Invalid secondary_start for vertical: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']: 
-        raise ValueError(f"Invalid secondary_start for horizontal: {secondary_start}")
+    if is_vertical and secondary_start not in ['right', 'left']:
+        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
+    if is_horizontal and secondary_start not in ['up', 'down']:
+        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
+
 
     for i, node_id in enumerate(nodes):
-        # 1. Ana Eksen Koordinatını Hesapla
-        if primary_direction == 'top-down': 
+        # 1. Calculate Primary Axis Coordinate
+        if primary_direction == 'top-down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up': 
+        elif primary_direction == 'bottom-up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right': 
+        elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else: # right-to-left
+        else:
             primary_coord, secondary_axis = i * -primary_spacing, 'y'
 
-        # 2. İkincil Eksen Koordinatını Hesapla (Genişletilmiş Sapma)
+        # 2. Calculate Secondary Axis Coordinate (Expanding Offset)
         if i == 0:
-            secondary_offset_multiplier = 0.0
-        else:
-            # Sapma yönünü belirle (sağ/yukarı +1, sol/aşağı -1)
+        secondary_offset = 0.0
+        if i > 0:
             start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            # Sapma büyüklüğünü belirle (i arttıkça artar: 1, 1, 2, 2, 3, 3, ...)
-            magnitude = math.ceil(i / 2.0)
-            # Sapma tarafını belirle (tek i için pozitif, çift i için negatif)
+            
+            # 'expanding' bayrağına göre ofset büyüklüğünü belirle
+            # Burası artık sabit değil, parametreye bağlı.
+            magnitude = math.ceil(i / 2.0) if expanding else 1.0
+            
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_multiplier * magnitude * side
+            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
 
-        secondary_coord = secondary_offset_multiplier * secondary_spacing
-
-        # 3. (x, y) Koordinatlarını Ata
-        x, y = (secondary_coord, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_coord)
+        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
         pos[node_id] = (x, y)
 
     return pos
-
 
 def kececi_layout_v4_ig(graph: ig.Graph, primary_spacing=1.0, secondary_spacing=1.0,
                             primary_direction='top-down', secondary_start='right'):
@@ -1258,6 +1277,7 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
 
 
 
