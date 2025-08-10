@@ -115,7 +115,7 @@ def kececi_layout(graph, primary_spacing=1.0, secondary_spacing=1.0,
     pos = {}
     
     # --- DOĞRULANMIŞ KONTROL BLOĞU ---
-    is_vertical = primary_direction in ['top-down', 'bottom-up']
+    is_vertical = primary_direction in ['top_down', 'bottom_up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
 
     if not (is_vertical or is_horizontal):
@@ -128,9 +128,9 @@ def kececi_layout(graph, primary_spacing=1.0, secondary_spacing=1.0,
 
     for i, node_id in enumerate(nodes):
         primary_coord, secondary_axis = 0.0, ''
-        if primary_direction == 'top-down':
+        if primary_direction == 'top_down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up':
+        elif primary_direction == 'bottom_up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
@@ -215,7 +215,7 @@ def kececi_layout_v4(graph, primary_spacing=1.0, secondary_spacing=1.0,
 
     for i, node_id in enumerate(nodes):
         primary_coord, secondary_axis = 0.0, ''
-        if primary_direction == 'top-down':
+        if primary_direction == 'top_down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
         elif primary_direction == 'bottom_up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
@@ -242,7 +242,7 @@ def kececi_layout_v4(graph, primary_spacing=1.0, secondary_spacing=1.0,
     return pos
 
 def kececi_layout_nx(graph, primary_spacing=1.0, secondary_spacing=1.0,
-                           primary_direction='top-down', secondary_start='right',
+                           primary_direction='top_down', secondary_start='right',
                            expanding=True):
     """
     Expanding Kececi Layout: Progresses along the primary axis, with an offset
@@ -265,7 +265,7 @@ def kececi_layout_nx(graph, primary_spacing=1.0, secondary_spacing=1.0,
     if not nodes:
         return {}
 
-    is_vertical = primary_direction in ['top-down', 'bottom-up']
+    is_vertical = primary_direction in ['top_down', 'bottom_up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
     if not (is_vertical or is_horizontal):
         raise ValueError(f"Invalid primary_direction: {primary_direction}")
@@ -277,9 +277,9 @@ def kececi_layout_nx(graph, primary_spacing=1.0, secondary_spacing=1.0,
 
     for i, node_id in enumerate(nodes):
         # 1. Calculate Primary Axis Coordinate
-        if primary_direction == 'top-down':
+        if primary_direction == 'top_down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up':
+        elif primary_direction == 'bottom_up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
@@ -301,7 +301,7 @@ def kececi_layout_nx(graph, primary_spacing=1.0, secondary_spacing=1.0,
     return pos
 
 def kececi_layout_networkx(graph, primary_spacing=1.0, secondary_spacing=1.0,
-                           primary_direction='top-down', secondary_start='right',
+                           primary_direction='top_down', secondary_start='right',
                            expanding=True):
     """
     Expanding Kececi Layout: Progresses along the primary axis, with an offset
@@ -324,7 +324,7 @@ def kececi_layout_networkx(graph, primary_spacing=1.0, secondary_spacing=1.0,
     if not nodes:
         return {}
 
-    is_vertical = primary_direction in ['top-down', 'bottom-up']
+    is_vertical = primary_direction in ['top_down', 'bottom_up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
     if not (is_vertical or is_horizontal):
         raise ValueError(f"Invalid primary_direction: {primary_direction}")
@@ -336,9 +336,9 @@ def kececi_layout_networkx(graph, primary_spacing=1.0, secondary_spacing=1.0,
 
     for i, node_id in enumerate(nodes):
         # 1. Calculate Primary Axis Coordinate
-        if primary_direction == 'top-down':
+        if primary_direction == 'top_down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up':
+        elif primary_direction == 'bottom_up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
@@ -361,7 +361,7 @@ def kececi_layout_networkx(graph, primary_spacing=1.0, secondary_spacing=1.0,
 
 
 def kececi_layout_ig(graph: "ig.Graph", primary_spacing=1.0, secondary_spacing=1.0,
-                         primary_direction='top-down', secondary_start='right',
+                         primary_direction='top_down', secondary_start='right',
                            expanding=True):
     """
     Expanding Kececi Layout: Progresses along the primary axis, with an offset
@@ -372,7 +372,7 @@ def kececi_layout_ig(graph: "ig.Graph", primary_spacing=1.0, secondary_spacing=1
         graph (igraph.Graph): An igraph.Graph object.
         primary_spacing (float): The spacing between nodes on the primary axis.
         secondary_spacing (float): The offset spacing on the secondary axis.
-        primary_direction (str): Direction of the primary axis ('top-down', 'bottom-up', 'left-to-right', 'right-to-left').
+        primary_direction (str): Direction of the primary axis ('top_down', 'bottom_up', 'left-to-right', 'right-to-left').
         secondary_start (str): Direction of the initial offset on the secondary axis ('right', 'left', 'up', 'down').
 
     Returns:
@@ -387,7 +387,7 @@ def kececi_layout_ig(graph: "ig.Graph", primary_spacing=1.0, secondary_spacing=1
     # Since vertex IDs are already 0 to N-1, we can use range directly
     nodes = range(num_nodes)  # Vertex IDs
 
-    is_vertical = primary_direction in ['top-down', 'bottom-up']
+    is_vertical = primary_direction in ['top_down', 'bottom_up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
 
     if not (is_vertical or is_horizontal):
@@ -398,9 +398,9 @@ def kececi_layout_ig(graph: "ig.Graph", primary_spacing=1.0, secondary_spacing=1
         raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
 
     for i in nodes:  # Here, i is the vertex index (0, 1, 2...)
-        if primary_direction == 'top-down':
+        if primary_direction == 'top_down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up':
+        elif primary_direction == 'bottom_up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
@@ -425,7 +425,7 @@ def kececi_layout_ig(graph: "ig.Graph", primary_spacing=1.0, secondary_spacing=1
 
 
 def kececi_layout_igraph(graph: "ig.Graph", primary_spacing=1.0, secondary_spacing=1.0,
-                         primary_direction='top-down', secondary_start='right',
+                         primary_direction='top_down', secondary_start='right',
                            expanding=True):
     """
     Expanding Kececi Layout: Progresses along the primary axis, with an offset
@@ -436,7 +436,7 @@ def kececi_layout_igraph(graph: "ig.Graph", primary_spacing=1.0, secondary_spaci
         graph (igraph.Graph): An igraph.Graph object.
         primary_spacing (float): The spacing between nodes on the primary axis.
         secondary_spacing (float): The offset spacing on the secondary axis.
-        primary_direction (str): Direction of the primary axis ('top-down', 'bottom-up', 'left-to-right', 'right-to-left').
+        primary_direction (str): Direction of the primary axis ('top_down', 'bottom_up', 'left-to-right', 'right-to-left').
         secondary_start (str): Direction of the initial offset on the secondary axis ('right', 'left', 'up', 'down').
 
     Returns:
@@ -451,7 +451,7 @@ def kececi_layout_igraph(graph: "ig.Graph", primary_spacing=1.0, secondary_spaci
     # Since vertex IDs are already 0 to N-1, we can use range directly
     nodes = range(num_nodes)  # Vertex IDs
 
-    is_vertical = primary_direction in ['top-down', 'bottom-up']
+    is_vertical = primary_direction in ['top_down', 'bottom_up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
 
     if not (is_vertical or is_horizontal):
@@ -462,9 +462,9 @@ def kececi_layout_igraph(graph: "ig.Graph", primary_spacing=1.0, secondary_spaci
         raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
 
     for i in nodes:  # Here, i is the vertex index (0, 1, 2...)
-        if primary_direction == 'top-down':
+        if primary_direction == 'top_down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up':
+        elif primary_direction == 'bottom_up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
@@ -489,7 +489,7 @@ def kececi_layout_igraph(graph: "ig.Graph", primary_spacing=1.0, secondary_spaci
 
 
 def kececi_layout_nk(graph: "nk.graph.Graph", primary_spacing=1.0, secondary_spacing=1.0,
-                            primary_direction='top-down', secondary_start='right',
+                            primary_direction='top_down', secondary_start='right',
                            expanding=True):
     """
     Expanding Kececi Layout: Progresses along the primary axis, with an offset
@@ -500,7 +500,7 @@ def kececi_layout_nk(graph: "nk.graph.Graph", primary_spacing=1.0, secondary_spa
         graph (networkit.graph.Graph): A NetworKit graph object.
         primary_spacing (float): The distance on the primary axis.
         secondary_spacing (float): The distance on the secondary axis.
-        primary_direction (str): 'top-down', 'bottom-up', 'left-to-right', 'right-to-left'.
+        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
         secondary_start (str): The starting direction for the offset ('right', 'left', 'up', 'down').
 
     Returns:
@@ -520,7 +520,7 @@ def kececi_layout_nk(graph: "nk.graph.Graph", primary_spacing=1.0, secondary_spa
         return {}
 
     pos = {}
-    is_vertical = primary_direction in ['top-down', 'bottom-up']
+    is_vertical = primary_direction in ['top_down', 'bottom_up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
 
     if not (is_vertical or is_horizontal):
@@ -536,9 +536,9 @@ def kececi_layout_nk(graph: "nk.graph.Graph", primary_spacing=1.0, secondary_spa
         # node_id: The actual NetworKit node ID, used as the key in the result dictionary.
         
         # 1. Calculate Primary Axis Coordinate
-        if primary_direction == 'top-down':
+        if primary_direction == 'top_down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up':
+        elif primary_direction == 'bottom_up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
@@ -561,7 +561,7 @@ def kececi_layout_nk(graph: "nk.graph.Graph", primary_spacing=1.0, secondary_spa
 
 
 def kececi_layout_networkit(graph: "nk.graph.Graph", primary_spacing=1.0, secondary_spacing=1.0,
-                            primary_direction='top-down', secondary_start='right',
+                            primary_direction='top_down', secondary_start='right',
                            expanding=True):
     """
     Expanding Kececi Layout: Progresses along the primary axis, with an offset
@@ -572,7 +572,7 @@ def kececi_layout_networkit(graph: "nk.graph.Graph", primary_spacing=1.0, second
         graph (networkit.graph.Graph): A NetworKit graph object.
         primary_spacing (float): The distance on the primary axis.
         secondary_spacing (float): The distance on the secondary axis.
-        primary_direction (str): 'top-down', 'bottom-up', 'left-to-right', 'right-to-left'.
+        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
         secondary_start (str): The starting direction for the offset ('right', 'left', 'up', 'down').
 
     Returns:
@@ -592,7 +592,7 @@ def kececi_layout_networkit(graph: "nk.graph.Graph", primary_spacing=1.0, second
         return {}
 
     pos = {}
-    is_vertical = primary_direction in ['top-down', 'bottom-up']
+    is_vertical = primary_direction in ['top_down', 'bottom_up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
 
     if not (is_vertical or is_horizontal):
@@ -608,9 +608,9 @@ def kececi_layout_networkit(graph: "nk.graph.Graph", primary_spacing=1.0, second
         # node_id: The actual NetworKit node ID, used as the key in the result dictionary.
         
         # 1. Calculate Primary Axis Coordinate
-        if primary_direction == 'top-down':
+        if primary_direction == 'top_down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up':
+        elif primary_direction == 'bottom_up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
@@ -633,7 +633,7 @@ def kececi_layout_networkit(graph: "nk.graph.Graph", primary_spacing=1.0, second
 
 
 def kececi_layout_gg(graph_set: "gg.GraphSet", primary_spacing=1.0, secondary_spacing=1.0,
-                              primary_direction='top-down', secondary_start='right',
+                              primary_direction='top_down', secondary_start='right',
                            expanding=True):
     """
     Expanding Kececi Layout: Progresses along the primary axis, with an offset
@@ -644,7 +644,7 @@ def kececi_layout_gg(graph_set: "gg.GraphSet", primary_spacing=1.0, secondary_sp
         graph_set (graphillion.GraphSet): A Graphillion GraphSet object.
         primary_spacing (float): The distance on the primary axis.
         secondary_spacing (float): The distance on the secondary axis.
-        primary_direction (str): 'top-down', 'bottom-up', 'left-to-right', 'right-to-left'.
+        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
         secondary_start (str): The starting direction for the offset ('right', 'left', 'up', 'down').
     Returns:
         dict: A dictionary of positions keyed by node ID.
@@ -662,7 +662,7 @@ def kececi_layout_gg(graph_set: "gg.GraphSet", primary_spacing=1.0, secondary_sp
     nodes = list(range(1, num_vertices + 1))
 
     pos = {}
-    is_vertical = primary_direction in ['top-down', 'bottom-up']
+    is_vertical = primary_direction in ['top_down', 'bottom_up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
 
     if not (is_vertical or is_horizontal):
@@ -673,9 +673,9 @@ def kececi_layout_gg(graph_set: "gg.GraphSet", primary_spacing=1.0, secondary_sp
         raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
 
     for i, node_id in enumerate(nodes):
-        if primary_direction == 'top-down':
+        if primary_direction == 'top_down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up':
+        elif primary_direction == 'bottom_up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
@@ -698,7 +698,7 @@ def kececi_layout_gg(graph_set: "gg.GraphSet", primary_spacing=1.0, secondary_sp
 
 
 def kececi_layout_graphillion(graph_set: "gg.GraphSet", primary_spacing=1.0, secondary_spacing=1.0,
-                              primary_direction='top-down', secondary_start='right',
+                              primary_direction='top_down', secondary_start='right',
                            expanding=True):
     """
     Expanding Kececi Layout: Progresses along the primary axis, with an offset
@@ -709,7 +709,7 @@ def kececi_layout_graphillion(graph_set: "gg.GraphSet", primary_spacing=1.0, sec
         graph_set (graphillion.GraphSet): A Graphillion GraphSet object.
         primary_spacing (float): The distance on the primary axis.
         secondary_spacing (float): The distance on the secondary axis.
-        primary_direction (str): 'top-down', 'bottom-up', 'left-to-right', 'right-to-left'.
+        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
         secondary_start (str): The starting direction for the offset ('right', 'left', 'up', 'down').
     Returns:
         dict: A dictionary of positions keyed by node ID.
@@ -727,7 +727,7 @@ def kececi_layout_graphillion(graph_set: "gg.GraphSet", primary_spacing=1.0, sec
     nodes = list(range(1, num_vertices + 1))
 
     pos = {}
-    is_vertical = primary_direction in ['top-down', 'bottom-up']
+    is_vertical = primary_direction in ['top_down', 'bottom_up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
 
     if not (is_vertical or is_horizontal):
@@ -738,9 +738,9 @@ def kececi_layout_graphillion(graph_set: "gg.GraphSet", primary_spacing=1.0, sec
         raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
 
     for i, node_id in enumerate(nodes):
-        if primary_direction == 'top-down':
+        if primary_direction == 'top_down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up':
+        elif primary_direction == 'bottom_up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
@@ -763,7 +763,7 @@ def kececi_layout_graphillion(graph_set: "gg.GraphSet", primary_spacing=1.0, sec
 
 
 def kececi_layout_rx(graph: "rx.PyGraph", primary_spacing=1.0, secondary_spacing=1.0,
-                            primary_direction='top-down', secondary_start='right',
+                            primary_direction='top_down', secondary_start='right',
                            expanding=True):
     """
     Expanding Kececi Layout: Progresses along the primary axis, with an offset
@@ -786,7 +786,7 @@ def kececi_layout_rx(graph: "rx.PyGraph", primary_spacing=1.0, secondary_spacing
     if num_nodes == 0:
         return {}
 
-    is_vertical = primary_direction in ['top-down', 'bottom-up']
+    is_vertical = primary_direction in ['top_down', 'bottom_up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
     if not (is_vertical or is_horizontal):
         raise ValueError(f"Invalid primary_direction: {primary_direction}")
@@ -796,9 +796,9 @@ def kececi_layout_rx(graph: "rx.PyGraph", primary_spacing=1.0, secondary_spacing
         raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
 
     for i, node_index in enumerate(nodes):
-        if primary_direction == 'top-down':
+        if primary_direction == 'top_down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up':
+        elif primary_direction == 'bottom_up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
@@ -821,7 +821,7 @@ def kececi_layout_rx(graph: "rx.PyGraph", primary_spacing=1.0, secondary_spacing
 
 
 def kececi_layout_rustworkx(graph: "rx.PyGraph", primary_spacing=1.0, secondary_spacing=1.0,
-                            primary_direction='top-down', secondary_start='right',
+                            primary_direction='top_down', secondary_start='right',
                            expanding=True):
     """
     Expanding Kececi Layout: Progresses along the primary axis, with an offset
@@ -844,7 +844,7 @@ def kececi_layout_rustworkx(graph: "rx.PyGraph", primary_spacing=1.0, secondary_
     if num_nodes == 0:
         return {}
 
-    is_vertical = primary_direction in ['top-down', 'bottom-up']
+    is_vertical = primary_direction in ['top_down', 'bottom_up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
     if not (is_vertical or is_horizontal):
         raise ValueError(f"Invalid primary_direction: {primary_direction}")
@@ -854,9 +854,9 @@ def kececi_layout_rustworkx(graph: "rx.PyGraph", primary_spacing=1.0, secondary_
         raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
 
     for i, node_index in enumerate(nodes):
-        if primary_direction == 'top-down':
+        if primary_direction == 'top_down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up':
+        elif primary_direction == 'bottom_up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
@@ -906,7 +906,7 @@ def kececi_layout_pure(nodes, primary_spacing=1.0, secondary_spacing=1.0,
     pos = {}
     
     # --- Direction Validation Block ---
-    is_vertical = primary_direction in ['top-down', 'bottom-up']
+    is_vertical = primary_direction in ['top_down', 'bottom_up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
 
     if not (is_vertical or is_horizontal):
@@ -921,9 +921,9 @@ def kececi_layout_pure(nodes, primary_spacing=1.0, secondary_spacing=1.0,
         # 1. Calculate the Primary Axis Coordinate
         primary_coord = 0.0
         secondary_axis = ''
-        if primary_direction == 'top-down':
+        if primary_direction == 'top_down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up':
+        elif primary_direction == 'bottom_up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
@@ -1269,5 +1269,6 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
 
 
