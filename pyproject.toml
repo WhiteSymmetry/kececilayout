@@ -29,7 +29,8 @@ dependencies = [
     "networkx",
     "matplotlib",
     "numpy",
-    # Diğer kütüphaneler (eğer varsa)...
+    "pycairo",
+    "cairocffi"
 ]
 
 [project.optional-dependencies]
@@ -46,3 +47,4 @@ test = [
 [project.urls]
 "Homepage" = "https://github.com/WhiteSymmetry/kececilayout"
 "Bug Tracker" = "https://github.com/WhiteSymmetry/kececilayout/issues"
+
