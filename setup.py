@@ -31,7 +31,7 @@ setup(
         "cairocffi"
     ],
     extras_require={
-        "all": ["igraph", "networkit", "rustworkx", "graphillion"],
+        "all": ["python-louvain", "igraph", "networkit", "rustworkx", "graphillion"],
     },
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -41,6 +41,7 @@ setup(
     python_requires='>=3.9',
     license="MIT",
 )
+
 
 
 
