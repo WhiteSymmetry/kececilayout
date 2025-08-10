@@ -258,12 +258,12 @@ def kececi_layout_v4_nx(graph, primary_spacing=1.0, secondary_spacing=1.0,
             secondary_offset_multiplier = 0.0
         else:
             # Sapma yönünü belirle (sağ/yukarı +1, sol/aşağı -1)
-            start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
+            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
             # Sapma büyüklüğünü belirle (i arttıkça artar: 1, 1, 2, 2, 3, 3, ...)
             magnitude = math.ceil(i / 2.0)
             # Sapma tarafını belirle (tek i için pozitif, çift i için negatif)
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_mult * magnitude * side
+            secondary_offset_multiplier = start_multiplier * magnitude * side
 
         secondary_coord = secondary_offset_multiplier * secondary_spacing
 
@@ -311,12 +311,12 @@ def kececi_layout_v4_networkx(graph, primary_spacing=1.0, secondary_spacing=1.0,
             secondary_offset_multiplier = 0.0
         else:
             # Sapma yönünü belirle (sağ/yukarı +1, sol/aşağı -1)
-            start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
+            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
             # Sapma büyüklüğünü belirle (i arttıkça artar: 1, 1, 2, 2, 3, 3, ...)
             magnitude = math.ceil(i / 2.0)
             # Sapma tarafını belirle (tek i için pozitif, çift i için negatif)
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_mult * magnitude * side
+            secondary_offset_multiplier = start_multiplier * magnitude * side
 
         secondary_coord = secondary_offset_multiplier * secondary_spacing
 
@@ -373,10 +373,10 @@ def kececi_layout_v4_ig(graph: ig.Graph, primary_spacing=1.0, secondary_spacing=
         if i == 0:
             secondary_offset_multiplier = 0.0
         else:
-            start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
+            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
             magnitude = math.ceil(i / 2.0)
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_mult * magnitude * side
+            secondary_offset_multiplier = start_multiplier * magnitude * side
 
         secondary_coord = secondary_offset_multiplier * secondary_spacing
 
@@ -434,10 +434,10 @@ def kececi_layout_v4_igraph(graph: ig.Graph, primary_spacing=1.0, secondary_spac
         if i == 0:
             secondary_offset_multiplier = 0.0
         else:
-            start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
+            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
             magnitude = math.ceil(i / 2.0)
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_mult * magnitude * side
+            secondary_offset_multiplier = start_multiplier * magnitude * side
 
         secondary_coord = secondary_offset_multiplier * secondary_spacing
 
@@ -530,10 +530,10 @@ def kececi_layout_v4_nk(graph: nk.graph.Graph,
         if i == 0:
             secondary_offset_multiplier = 0.0
         else:
-            start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
+            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
             magnitude = math.ceil(i / 2.0)
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_mult * magnitude * side
+            secondary_offset_multiplier = start_multiplier * magnitude * side
 
         secondary_coord = secondary_offset_multiplier * secondary_spacing
 
@@ -629,10 +629,10 @@ def kececi_layout_v4_networkit(graph: nk.graph.Graph,
         if i == 0:
             secondary_offset_multiplier = 0.0
         else:
-            start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
+            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
             magnitude = math.ceil(i / 2.0)
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_mult * magnitude * side
+            secondary_offset_multiplier = start_multiplier * magnitude * side
 
         secondary_coord = secondary_offset_multiplier * secondary_spacing
 
@@ -701,10 +701,10 @@ def kececi_layout_v4_gg(graph_set: gg.GraphSet,
         if i == 0: 
             secondary_offset_multiplier = 0.0
         else:
-            start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
+            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
             magnitude = math.ceil(i / 2.0)
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_mult * magnitude * side
+            secondary_offset_multiplier = start_multiplier * magnitude * side
         secondary_coord = secondary_offset_multiplier * secondary_spacing
 
         if secondary_axis == 'x': 
@@ -769,10 +769,10 @@ def kececi_layout_v4_graphillion(graph_set: gg.GraphSet,
         if i == 0: 
             secondary_offset_multiplier = 0.0
         else:
-            start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
+            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
             magnitude = math.ceil(i / 2.0)
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_mult * magnitude * side
+            secondary_offset_multiplier = start_multiplier * magnitude * side
         secondary_coord = secondary_offset_multiplier * secondary_spacing
 
         if secondary_axis == 'x': 
@@ -814,10 +814,10 @@ def kececi_layout_v4_rx(graph:
         if i == 0: 
             secondary_offset_multiplier = 0.0
         else:
-            start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
+            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
             magnitude = math.ceil(i / 2.0)
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_mult * magnitude * side
+            secondary_offset_multiplier = start_multiplier * magnitude * side
         secondary_coord = secondary_offset_multiplier * secondary_spacing
 
         x, y = (secondary_coord, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_coord)
@@ -855,10 +855,10 @@ def kececi_layout_v4_rustworkx(graph:
         if i == 0: 
             secondary_offset_multiplier = 0.0
         else:
-            start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
+            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
             magnitude = math.ceil(i / 2.0)
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_mult * magnitude * side
+            secondary_offset_multiplier = start_multiplier * magnitude * side
         secondary_coord = secondary_offset_multiplier * secondary_spacing
 
         x, y = (secondary_coord, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_coord)
@@ -952,10 +952,10 @@ def kececi_layout_v4_pure(nodes, primary_spacing=1.0, secondary_spacing=1.0,
 
         secondary_offset_multiplier = 0.0
         if i > 0:
-            start_mult = 1.0 if secondary_start in ['right', 'up'] else -1.0
+            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
             magnitude = math.ceil(i / 2.0)
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_mult * magnitude * side
+            secondary_offset_multiplier = start_multiplier * magnitude * side
         secondary_coord = secondary_offset_multiplier * secondary_spacing
 
         x, y = (secondary_coord, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_coord)
@@ -1236,4 +1236,5 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
 
