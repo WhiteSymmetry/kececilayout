@@ -19,11 +19,23 @@ def tests(session):
     """
     # 1. Gerekli bağımlılıkları kur
     #    'pytest', 'pytest-mock' ve projenin kendisini kur ('-e .' ile).
-    session.install("-e", ".[test]") # pyproject.toml'daki [project.optional-dependencies] test grubunu kurar
+    # pyproject.toml yerine bağımlılıkları burada manuel olarak belirt
+    session.install(
+        "pytest",
+        "pytest-cov", # <-- BURAYA EKLE
+        "pytest-mock",
+        # ... diğer tüm test bağımlılıkları
+    )
+    session.install("-e", ".")
+
+    # Pytest'i çalıştır
+    session.run("pytest", "--cov=kececilayout", "--cov-report=xml")
+    
+    #session.install("-e", ".[test]") # pyproject.toml'daki [project.optional-dependencies] test grubunu kurar
 
     # 2. Pytest'i çalıştır
     #    --cov ile kod kapsamı (code coverage) raporu oluştur.
-    session.run("pytest", "--cov=kececilayout", "--cov-report=xml")
+    #session.run("pytest", "--cov=kececilayout", "--cov-report=xml")
 
 
 @nox.session(python="3.11") # Linting genellikle tek bir versiyonda yapılır
