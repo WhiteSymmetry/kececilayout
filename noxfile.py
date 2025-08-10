@@ -15,7 +15,6 @@ nox.options.sessions = ["lint", "tests"]
 def tests(session):
     """
     Run the test suite for all specified Python versions.
-    
     Bu oturum 'nox -s tests-3.11' gibi komutlarla tetiklenir.
     """
     # 1. Gerekli bağımlılıkları kur
