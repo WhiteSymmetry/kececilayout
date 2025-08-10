@@ -28,9 +28,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install GCC for libgomp (macOS only)
-        if: runner.os == 'macOS'
-        run: brew install gcc
+      # - name: Install GCC for libgomp (macOS only)
+        # if: runner.os == 'macOS'
+        # run: brew install gcc
         
       - name: Install dependencies
         run: |
