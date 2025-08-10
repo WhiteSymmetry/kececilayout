@@ -910,60 +910,82 @@ def generate_random_rx_graph(min_nodes=5, max_nodes=15, edge_prob_min=0.15, edge
     return G
 
 
-def kececi_layout_v4_pure(nodes, primary_spacing=1.0, secondary_spacing=1.0,
-                              primary_direction='top-down', secondary_start='right'):
+def kececi_layout_pure(nodes, primary_spacing=1.0, secondary_spacing=1.0,
+                         primary_direction='top_down', secondary_start='right',
+                         expanding=True):
     """
-    Keçeci layout mantığını kullanarak düğüm pozisyonlarını hesaplar.
-    Sadece standart Python ve math modülünü kullanır.
+    Calculates 2D sequential-zigzag coordinates for a given list of nodes.
+    This function does not require any external graph library.
+
+    Args:
+        nodes (iterable): A list or other iterable containing the node IDs to be positioned.
+        primary_spacing (float): The distance between nodes along the primary axis.
+        secondary_spacing (float): The base unit for the zigzag offset.
+        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', or 'right-to-left'.
+        secondary_start (str): The initial direction for the zigzag ('up', 'down', 'left', 'right').
+        expanding (bool): If True (default), the zigzag offset grows.
+                          If False, the offset is constant (resulting in parallel lines).
+
+    Returns:
+        dict: A dictionary of positions formatted as {node_id: (x, y)}.
     """
-    pos = {}
-    # Tutarlı sıra garantisi için düğümleri sırala
-    # Girdi zaten liste/tuple olsa bile kopyasını oluşturup sırala
-    # ... (Bir önceki cevaptaki fonksiyonun TAMAMI buraya yapıştırılacak) ...
     try:
+        # Try to sort the nodes for a consistent output.
         sorted_nodes = sorted(list(nodes))
     except TypeError:
-        print("Uyarı: Düğümler sıralanamadı...")
+        # For unsortable nodes (e.g., mixed types), keep the original order.
         sorted_nodes = list(nodes)
 
-    num_nodes = len(sorted_nodes)
-    if num_nodes == 0: 
-        return {}
+    pos = {}
+    
+    # --- Direction Validation Block ---
     is_vertical = primary_direction in ['top-down', 'bottom-up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-    if not (is_vertical or is_horizontal): 
-        raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']: 
-        raise ValueError(f"Dikey yön için geçersiz secondary_start: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']: 
-        raise ValueError(f"Yatay yön için geçersiz secondary_start: {secondary_start}")
+
+    if not (is_vertical or is_horizontal):
+        raise ValueError(f"Invalid primary_direction: '{primary_direction}'")
+    if is_vertical and secondary_start not in ['right', 'left']:
+        raise ValueError(f"Invalid secondary_start for vertical direction: '{secondary_start}'")
+    if is_horizontal and secondary_start not in ['up', 'down']:
+        raise ValueError(f"Invalid secondary_start for horizontal direction: '{secondary_start}'")
+    # --- End of Block ---
 
     for i, node_id in enumerate(sorted_nodes):
+        # 1. Calculate the Primary Axis Coordinate
         primary_coord = 0.0
         secondary_axis = ''
-        if primary_direction == 'top-down': 
+        if primary_direction == 'top-down':
             primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom-up': 
+        elif primary_direction == 'bottom-up':
             primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right': 
+        elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else: 
+        else:  # 'right-to-left'
             primary_coord, secondary_axis = i * -primary_spacing, 'y'
 
-        secondary_offset_multiplier = 0.0
+        # 2. Calculate the Secondary Axis Offset
+        secondary_offset = 0.0
         if i > 0:
             start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0)
+            
+            # Determine the offset magnitude based on the 'expanding' flag.
+            magnitude = math.ceil(i / 2.0) if expanding else 1.0
+            
+            # Determine the zigzag side (e.g., left vs. right).
             side = 1 if i % 2 != 0 else -1
-            secondary_offset_multiplier = start_multiplier * magnitude * side
-        secondary_coord = secondary_offset_multiplier * secondary_spacing
 
-        x, y = (secondary_coord, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_coord)
+            # Calculate the final offset.
+            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
+
+        # 3. Assign the (x, y) Coordinates
+        x, y = ((secondary_offset, primary_coord) if secondary_axis == 'x' else
+                (primary_coord, secondary_offset))
         pos[node_id] = (x, y)
+        
     return pos
 
 # =============================================================================
-# Rastgele Graf Oluşturma Fonksiyonu (NetworkX) - Değişiklik yok
+# Rastgele Graf Oluşturma Fonksiyonu (NetworkX)
 # =============================================================================
 def generate_random_graph(min_nodes=0, max_nodes=200, edge_prob_min=0.15, edge_prob_max=0.4):
 
@@ -1236,5 +1258,6 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
 
 
