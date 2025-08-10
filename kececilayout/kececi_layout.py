@@ -51,16 +51,37 @@ except ImportError:
 
 
 def find_max_node_id(edges):
-    """Verilen kenar listesindeki en büyük düğüm ID'sini bulur."""
+    """
+    Finds the highest node ID from a list of edges.
+
+    This function is robust and handles empty lists or malformed edge data
+    gracefully by returning 0.
+
+    Args:
+        edges (iterable): An iterable of edge tuples, e.g., [(1, 2), (3, 2)].
+
+    Returns:
+        int: The highest node ID found, or 0 if the list is empty.
+    """
+    # 1. Handle the most common case first: an empty list of edges.
     if not edges:
         return 0
+
     try:
-      # Tüm düğüm ID'lerini tek bir kümede topla ve en büyüğünü bul
-      all_nodes = set(itertools.chain.from_iterable(edges))
-      return max(all_nodes) if all_nodes else 0
-    except TypeError: # Eğer kenarlar (node, node) formatında değilse
-      print("Uyarı: Kenar formatı beklenenden farklı, max node ID 0 varsayıldı.")
-      return 0
+        # 2. Efficiently flatten the list of tuples into a single sequence
+        #    and use a set to get unique node IDs.
+        #    e.g., [(1, 2), (3, 2)] -> {1, 2, 3}
+        all_nodes = set(itertools.chain.from_iterable(edges))
+
+        # 3. Return the maximum ID from the set. If the set is somehow empty
+        #    after processing, return 0 as a fallback.
+        return max(all_nodes) if all_nodes else 0
+        
+    except TypeError:
+        # 4. If the edge data is not in the expected format (e.g., not a list
+        #    of tuples), catch the error and return 0 safely.
+        print("Warning: Edge format was unexpected. Assuming max node ID is 0.")
+        return 0
 
 
 def kececi_layout(graph, primary_spacing=1.0, secondary_spacing=1.0,
@@ -609,12 +630,6 @@ def kececi_layout_networkit(graph: "nk.graph.Graph", primary_spacing=1.0, second
         pos[node_id] = (x, y)
 
     return pos
-
-# Helper function assumed to be available for Graphillion
-def find_max_node_id(edges):
-    if not edges:
-        return 0
-    return max(max(u, v) for u, v in edges)
 
 
 def kececi_layout_gg(graph_set: "gg.GraphSet", primary_spacing=1.0, secondary_spacing=1.0,
@@ -1254,4 +1269,5 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
 
