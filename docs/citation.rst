@@ -33,7 +33,7 @@ Eğer bu kütüphaneyi araştırmanızda kullandıysanız, lütfen aşağıdaki 
 
    .. tab:: APA
 
-      Keçeci, M. (2025). *kececilayout* (Version 0.2.6) [Computer software]. https://doi.org/10.5281/zenodo.15313946
+      Keçeci, M. (2025). *kececilayout* [Computer software]. https://doi.org/10.5281/zenodo.15313946
 
       Keçeci, M. (2025). *The Keçeci Layout: A Deterministic Visualization Framework*. Zenodo. https://doi.org/10.5281/zenodo.15314328
 
