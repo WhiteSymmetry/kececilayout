@@ -30,7 +30,7 @@ Let's create a simple path graph:
 
 .. code-block:: python
 
-   pos = kl.kececi_layout_v4(
+   pos = kl.kececi_layout(
        G,
        primary_spacing=1.5,
        secondary_spacing=0.8,
@@ -85,7 +85,7 @@ KeçeciLayout supports multiple graph backends:
 
          import igraph as ig
          G_ig = ig.Graph.Ring(8, circular=False)
-         pos_ig = kl.kececi_layout_v4(G_ig, primary_direction='left-to-right')
+         pos_ig = kl.kececi_layout(G_ig, primary_direction='left-to-right')
          layout = ig.Layout(pos_ig)
          ig.plot(G_ig, layout=layout, vertex_label=range(8))
 
@@ -95,7 +95,7 @@ KeçeciLayout supports multiple graph backends:
 
          import rustworkx as rx
          G_rx = rx.generators.path_graph(8)
-         pos_rx = kl.kececi_layout_v4(G_rx, primary_direction='bottom-up')
+         pos_rx = kl.kececi_layout(G_rx, primary_direction='bottom-up')
 
    .. tab:: Graphillion
 
@@ -105,7 +105,7 @@ KeçeciLayout supports multiple graph backends:
          universe = [(i, i+1) for i in range(1, 8)]
          gg.GraphSet.set_universe(universe)
          gs = gg.GraphSet()
-         pos_gg = kl.kececi_layout_v4(gs, secondary_start='left')
+         pos_gg = kl.kececi_layout(gs, secondary_start='left')
 
 .. tip::
    For more examples, check the `examples/` folder or try live with `Binder <https://terrarium.evidencepub.io/v2/gh/WhiteSymmetry/kececilayout/HEAD>`_.
