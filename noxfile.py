@@ -22,7 +22,7 @@ def tests(session):
     # pyproject.toml yerine bağımlılıkları burada manuel olarak belirt
     session.install(
         "pytest",
-        "pytest-cov", # <-- BURAYA EKLE
+        "pytest-cov",
         "pytest-mock",
         # ... diğer tüm test bağımlılıkları
     )
