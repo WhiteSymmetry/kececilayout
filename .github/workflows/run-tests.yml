@@ -35,17 +35,19 @@ jobs:
             export PYTHONUTF8=1
             export SETUPTOOLS_ENABLE_FEATURES="legacy-editable"
             pip install -e .[test] --config-settings editable_mode=strict
+            python -m pip install nox
           else
             pip install -e .[test]
           fi
           pip list
           
-      - name: Run tests with pytest
+      - name: Run tests with pytest & nox
         if: ${{ !(matrix.os == 'macos-latest' && (matrix.python-version == '3.10' || matrix.python-version == '3.11' || matrix.python-version == '3.12')) }}
         env:
           PYTHONUTF8: 1
         run: |
           pytest --cov=kececilayout --cov-report=xml
+          nox -s tests-${{ matrix.python-version }}
           
       - name: Upload coverage to Codecov
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11' }}
