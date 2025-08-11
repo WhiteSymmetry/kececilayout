@@ -20,7 +20,7 @@ from kececilayout import (
     kececi_layout, # Assuming this is the main, multi-library compatible function
     to_networkx,
     draw_kececi,
-    #_draw_internal # Also test the internal router
+    _draw_internal # Also test the internal router
 )
 
 # Pytest markers to skip tests if optional libraries are not installed
