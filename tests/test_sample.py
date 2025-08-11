@@ -8,6 +8,8 @@ graph type compatibility, error handling, and drawing function routing.
 
 import numpy as np
 import pytest
+from kececilayout import _draw_internal
+from kececilayout import *
 
 # Import the module to be tested
 # Assume the code is in a file named `kececilayout_lib.py` in the same directory
@@ -20,7 +22,7 @@ from kececilayout import (
     kececi_layout, # Assuming this is the main, multi-library compatible function
     to_networkx,
     draw_kececi,
-    _draw_internal # Also test the internal router
+    #_draw_internal # Also test the internal router
 )
 
 # Pytest markers to skip tests if optional libraries are not installed
