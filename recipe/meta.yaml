@@ -5,31 +5,45 @@ package:
   version: {{ version }}
 
 source:
-  path: kececilayout/
-  url: 
-  sha256: 
+  path: .
 
 build:
-  noarch: python  # Platformdan bağımsız bir paket oluşturur
-  script: python -m pip install --ignore-installed .
+  noarch: python
+  script: {{ PYTHON }} -m pip install . --no-deps --ignore-installed
   number: 0
 
 requirements:
   host:
-    - python {{ python }}
+    - python >=3.10
+    - pip
     - numpy
-    # Other build tools
+    - setuptools
   run:
-    - python {{ python }}
+    - python >=3.10
     - numpy
-    # Other runtime dependencies
+    - networkx >=2.0
+    - matplotlib >=3.0
+    - rustworkx >=0.13.0
+    - igraph >=0.10.0
+    - python-louvain >=0.16
+    # Graphillion'ı opsiyonel yap
+    # - graphillion >=1.0  # Bu satırı kaldırın veya yorum yapın
+    - pip
+    - pip:
+      - graphillion >=1.0
+
+test:
+  imports:
+    - kececilayout
 
 about:
   home: https://github.com/WhiteSymmetry/kececilayout
   license: MIT
-  summary: 'A deterministic node placement algorithm used in graph visualization. In this layout, nodes are arranged sequentially along a defined primary axis. Each subsequent node is then alternately offset along a secondary, perpendicular axis, typically moving to one side of the primary axis and then the other. Often, the magnitude of this secondary offset increases as nodes progress along the primary axis, creating a characteristic zig-zag or serpentine pattern.'
+  license_file: LICENSE
+  summary: Advanced sequential-zigzag graph layout algorithm
   description: |
-    A deterministic node placement algorithm used in graph visualization. In this layout, nodes are arranged sequentially along a defined primary axis. Each subsequent node is then alternately offset along a secondary, perpendicular axis, typically moving to one side of the primary axis and then the other. Often, the magnitude of this secondary offset increases as nodes progress along the primary axis, creating a characteristic zig-zag or serpentine pattern.
-  dev_url: https://github.com/WhiteSymmetry/kececilayout
+    A deterministic node placement algorithm for graph visualization that arranges
+    nodes sequentially along a primary axis with alternating offsets on a secondary
+    axis, creating characteristic zig-zag patterns.
   doc_url: https://github.com/WhiteSymmetry/kececilayout
-  doc_source_url: https://github.com/WhiteSymmetry/kececilayout/blob/main/README.md
+  dev_url: https://github.com/WhiteSymmetry/kececilayout
