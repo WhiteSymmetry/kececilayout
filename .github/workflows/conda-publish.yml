@@ -19,26 +19,35 @@ jobs:
           miniconda-version: "latest"
           python-version: "3.11"
           auto-activate-base: true
-          activate-environment: ""
           channels: conda-forge,defaults
+          channel-priority: strict
       
-      - name: Build environment
+      - name: Prepare build environment
         run: |
-          conda config --set always_yes yes --set changeps1 no
-          conda update -q conda -n base
+          conda config --set always_yes true --set changeps1 false
+          conda update -q conda --all
           conda install -c conda-forge conda-build conda-verify anaconda-client -y
           conda info
           conda list
       
-      - name: Build Conda Package
+      - name: Build Conda package
         run: |
-          conda build . --output-folder ./conda_pkgs --format "$CONDA_PKG_FORMAT" --debug
+          conda build . \
+            --output-folder ./conda_pkgs \
+            --format "$CONDA_PKG_FORMAT" \
+            --python 3.11 \
+            --numpy 1.23 \
+            --debug
       
-      - name: List built packages
+      - name: Verify package
         run: |
-          ls -l ./conda_pkgs/
-          find ./conda_pkgs/ -type f -name "*$CONDA_PKG_FORMAT"
+          find ./conda_pkgs -name "*.conda" -exec conda verify {} \;
+          ls -lh ./conda_pkgs/
       
-      - name: Upload Package to Anaconda Cloud
+      - name: Upload to Anaconda Cloud
         run: |
-          anaconda -t ${{ secrets.ANACONDA_TOKEN }} upload ./conda_pkgs/**/*$CONDA_PKG_FORMAT --skip-existing
+          anaconda -t ${{ secrets.ANACONDA_TOKEN }} upload \
+            ./conda_pkgs/**/*$CONDA_PKG_FORMAT \
+            --label main \
+            --skip-existing \
+            --force
