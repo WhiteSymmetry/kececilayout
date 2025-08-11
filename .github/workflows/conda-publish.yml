@@ -18,7 +18,7 @@ jobs:
           miniconda-version: "latest"
           python-version: "3.11"
           auto-activate-base: true
-          channels: conda-forge,defaults,bilgi  # Graphillion için ek kanal
+          channels: conda-forge,defaults,bilgi
           channel-priority: strict
       
       - name: Prepare build environment
@@ -26,17 +26,18 @@ jobs:
           conda config --set always_yes true
           conda config --set changeps1 false
           conda update -q conda --all
-          conda install -c conda-forge "python=3.11" conda-build conda-verify anaconda-client -y
-          conda list
+          conda install -c conda-forge conda-build conda-verify anaconda-client -y
+          conda clean --all
       
-      - name: Build Conda package (without tests)
+      - name: Build Conda package
         run: |
           mkdir -p ./conda_pkgs
           conda build . \
             --output-folder ./conda_pkgs \
             --python 3.11 \
             --numpy 1.23 \
-            --no-test  # Testleri atla
+            --no-test \
+            --no-anaconda-upload
       
       - name: Convert to .conda format
         run: |
