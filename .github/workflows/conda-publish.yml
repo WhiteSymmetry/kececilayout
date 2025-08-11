@@ -1,4 +1,4 @@
-name: Publish to Anaconda Cloud-conda-publish
+name: Publish to Anaconda Cloud-conda-publish.yml
 
 on:
   release:
