@@ -1,4 +1,4 @@
-name: Pytest unit/integration
+name: Pytest unit/integration-run-tests.yml
 
 on:
   pull_request:
