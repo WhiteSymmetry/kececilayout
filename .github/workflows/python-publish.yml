@@ -33,5 +33,5 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
-          # Hiçbir ek parametre gerekmiyor
-          # PyPI API token artık gerekli değil
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}  # PyPI'den alınan API token
