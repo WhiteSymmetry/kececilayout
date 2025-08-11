@@ -1,5 +1,9 @@
 import re
 from setuptools import setup, find_packages
+import sys
+import io
+
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 # __version__'ı __init__.py'den oku
 def get_version():
@@ -41,6 +45,7 @@ setup(
     python_requires='>=3.10',
     license="MIT",
 )
+
 
 
 
