@@ -7,7 +7,7 @@ graph type compatibility, error handling, and drawing function routing.
 """
 
 import pytest
-import numpy as np
+#import numpy as np
 
 # Import the module to be tested
 # Assume the code is in a file named `kececilayout_lib.py` in the same directory
