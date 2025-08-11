@@ -8,6 +8,7 @@ graph type compatibility, error handling, and drawing function routing.
 
 import numpy as np
 import pytest
+from unittest.mock import patch
 
 # Import the module to be tested
 # Assume the code is in a file named `kececilayout_lib.py` in the same directory
