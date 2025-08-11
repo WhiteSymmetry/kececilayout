@@ -42,7 +42,7 @@ jobs:
         PYTHONUTF8: 1
       run: |
         python -m pip install --upgrade pip setuptools wheel
-        python -m pip install flake8 pytest pytest-cov nox kececilayout
+        python -m pip install flake8 pytest pytest-cov nox kececilayout graphillion
         # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
     - name: Lint with flake8
