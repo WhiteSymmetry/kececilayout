@@ -1,4 +1,4 @@
-name: Run tests and upload coverage
+name: Run tests and upload coverage-python_ci.yml
 
 on: 
   push
