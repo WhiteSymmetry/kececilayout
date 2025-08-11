@@ -1,4 +1,4 @@
-name: Publish to Zenodo on Release
+name: Publish to Zenodo on Release-zenodo.yml
 
 on:
   release:
