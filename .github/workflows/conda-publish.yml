@@ -1,4 +1,4 @@
-name: Publish to Anaconda Cloud
+name: Publish to Anaconda Cloud-conda-publish
 
 on:
   release:
