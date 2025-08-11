@@ -41,7 +41,7 @@ jobs:
           pip list
           
       - name: Run tests with pytest
-        if: !(matrix.os == 'macos-latest' && contains('3.10,3.11, 3.12', matrix.python-version))
+        if: ${{ !(matrix.os == 'macos-latest' && (matrix.python-version == '3.10' || matrix.python-version == '3.11' || matrix.python-version == '3.12')) }}
         env:
           PYTHONUTF8: 1
         run: |
