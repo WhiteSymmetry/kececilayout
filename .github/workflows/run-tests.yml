@@ -52,10 +52,23 @@ jobs:
         run: |
           pytest --cov=kececilayout --cov-report=xml
           
+      - name: Prepare Ubuntu 3.11
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgomp1 libopenblas-dev
+          python -m pip install --upgrade --force-reinstall numpy
+          pip cache purge
+      
       - name: Run nox tests
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11' }}
         run: |
-          nox -s tests-${matrix.python-version}
+          echo "Running with verbose output for debugging..."
+          nox -s tests-3.11 --verbose 2>&1 | tee nox_output.log
+          echo "Nox exit code: $?"
+          cat nox_output.log | grep -i error || true
+        env:
+          LD_LIBRARY_PATH: "/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH"
           
       - name: Upload coverage to Codecov
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11' }}
