@@ -1,4 +1,4 @@
-name: Publish Python Package to PyPI-resmi
+name: Publish Python Package to PyPI-resmi-workflow.yml
 
 on:
   push:
