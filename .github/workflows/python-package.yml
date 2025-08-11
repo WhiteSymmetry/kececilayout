@@ -1,4 +1,4 @@
-name: Python package CI
+name: Python package CI-python-package.yml
 
 on:
   push:
