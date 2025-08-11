@@ -26,7 +26,11 @@ requirements:
     - rustworkx >=0.13.0
     - igraph >=0.10.0
     - python-louvain >=0.16
-    - graphillion >=1.0
+    # Graphillion'ı opsiyonel yap
+    # - graphillion >=1.0  # Bu satırı kaldırın veya yorum yapın
+    - pip
+    - pip:
+      - graphillion >=1.0
 
 test:
   imports:
