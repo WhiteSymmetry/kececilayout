@@ -53,7 +53,6 @@ jobs:
           pytest --cov=kececilayout --cov-report=xml
           
       - name: Run nox tests
-        if: ${{ matrix.os == 'macos-latest' && matrix.python-version == '3.13' }}
         run: |
           nox -s tests-${matrix.python-version}
           
