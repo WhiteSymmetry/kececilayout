@@ -1,8 +1,8 @@
 name: Publish Python Package to PyPI
 
 on:
-  push:
-    branches: ["main"]
+  release:
+    types: [published]  # Yalnızca yeni release oluşturulduğunda tetikle
   workflow_dispatch:
 
 jobs:
@@ -10,7 +10,7 @@ jobs:
     name: Publish to PyPI
     runs-on: ubuntu-latest
     permissions:
-      id-token: write  # Gerekli: OIDC token istemek için
+      id-token: write  # OIDC için gerekli
       contents: read   # Kod deposunu okumak için
 
     steps:
@@ -32,3 +32,6 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.12.4
+        with:
+          # Hiçbir ek parametre gerekmiyor
+          # PyPI API token artık gerekli değil
