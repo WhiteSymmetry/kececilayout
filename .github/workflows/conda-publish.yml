@@ -18,7 +18,7 @@ jobs:
           miniconda-version: "latest"
           python-version: "3.11"
           auto-activate-base: true
-          channels: conda-forge,defaults,shimizukawa, bilgi  # Graphillion için ek kanal
+          channels: conda-forge,defaults,bilgi  # Graphillion için ek kanal
           channel-priority: strict
       
       - name: Prepare build environment
