@@ -1,8 +1,9 @@
-name: Publish to Anaconda Cloud-conda-publish.yml
+name: Publish to Anaconda Cloud
 
 on:
   release:
     types: [published]
+  workflow_dispatch:  # Manuel tetikleme için
 
 jobs:
   build-and-publish:
@@ -24,7 +25,8 @@ jobs:
       
       - name: Prepare build environment
         run: |
-          conda config --set always_yes true --set changeps1 false
+          conda config --set always_yes true
+          conda config --set changeps1 false
           conda update -q conda --all
           conda install -c conda-forge conda-build conda-verify anaconda-client -y
           conda info
@@ -32,6 +34,7 @@ jobs:
       
       - name: Build Conda package
         run: |
+          mkdir -p ./conda_pkgs
           conda build . \
             --output-folder ./conda_pkgs \
             --format "$CONDA_PKG_FORMAT" \
@@ -39,14 +42,17 @@ jobs:
             --numpy 1.23 \
             --debug
       
-      - name: Verify package
+      - name: List built packages
         run: |
+          find ./conda_pkgs -name "*.conda" -exec ls -lh {} \;
           find ./conda_pkgs -name "*.conda" -exec conda verify {} \;
-          ls -lh ./conda_pkgs/
       
       - name: Upload to Anaconda Cloud
+        env:
+          ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
         run: |
-          anaconda -t ${{ secrets.ANACONDA_TOKEN }} upload \
+          anaconda --version
+          anaconda -t $ANACONDA_TOKEN upload \
             ./conda_pkgs/**/*$CONDA_PKG_FORMAT \
             --label main \
             --skip-existing \
