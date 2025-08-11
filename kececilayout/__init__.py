@@ -20,7 +20,7 @@ __version__ = "0.3.2"
 
 # Ana modülümüzü içe aktarıyoruz
 from . import kececi_layout
-from kececilayout import _draw_internal
+from .kececilayout import _draw_internal
 
 # __all__ listesini dinamik olarak dolduracağız
 __all__ = []
@@ -58,6 +58,7 @@ def old_function_placeholder():
 
 # Eğer bu eski fonksiyonu da dışa aktarmak istiyorsanız, __all__ listesine ekleyin
 # __all__.append('old_function_placeholder')
+
 
 
 
