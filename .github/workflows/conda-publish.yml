@@ -1,51 +1,62 @@
-name: Build and Analyze Package
+name: Build and Test Package
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Sadece manuel tetikleme için
 
 jobs:
-  build-and-analyze:
+  build-and-test:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
       
       - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v3
         with:
           auto-activate-base: false
-          python-version: "3.11"
-          channels: conda-forge,defaults,bilgi
+          python-version: "3.10"
+          channels: conda-forge,defaults
           channel-priority: strict
       
-      - name: Prepare build environment
-        run: |
-          conda install -n base conda-build -y
-      
-      - name: Build Conda package (WITHOUT TESTING)
-        id: build_step
-        run: |
-          conda build . --output-folder ./conda_pkgs --no-test
-          # Çıktı paketinin tam yolunu bir sonraki adım için kaydedelim
-          echo "package_path=$(ls ./conda_pkgs/noarch/*.conda)" >> $GITHUB_OUTPUT
+      - name: Install Conda-Build
+        run: conda install -n base conda-build -y
 
-      - name: Install and Test the Built Package
+      - name: Build the package (without testing)
+        run: conda build . --output-folder ./conda_pkgs --no-test
+
+      - name: Create a clean environment and install dependencies
         run: |
-          # ADIM 1: Önce sadece Python içeren temiz bir test ortamı oluştur.
-          conda create -n test-env -y python=3.11
+          # Temiz bir test ortamı oluştur
+          conda create -n test-env -y python=3.10
+          
+          # meta.yaml'da listelenen TÜM CONDA bağımlılıklarını bu ortama kur
+          conda install -n test-env -y \
+            numpy \
+            networkx \
+            matplotlib-base \
+            pycairo \
+            cairocffi \
+            cairo
 
-          # ADIM 2: Oluşturduğumuz paketi, tam yolunu kullanarak bu ortama kur.
-          # `${{...}}` söz dizimi, GitHub Actions'ın değişkeni doğru şekilde okumasını sağlar.
-          conda install -n test-env -y "${{ steps.build_step.outputs.package_path }}"
-
-          # ADIM 3: Şimdi bu yeni ve temiz ortamda hatayı ayıklayalım.
-          echo "--- Installing graphillion in test-env ---"
+      - name: Install the built package into the test environment
+        run: |
+          # Oluşturduğumuz paketin dosya yolunu bul
+          PACKAGE_FILE=$(ls ./conda_pkgs/noarch/*.conda)
+          echo "Installing $PACKAGE_FILE"
+          
+          # Paketi doğrudan test ortamına kur
+          conda install -n test-env -y "$PACKAGE_FILE"
+          
+      - name: Run final import test and get traceback
+        run: |
+          echo "--- Installing graphillion in test-env via pip ---"
           conda run -n test-env pip install "graphillion>=1.0"
           
-          echo "--- Attempting to import kececilayout in test-env ---"
-          # '|| true' ekleyerek hata olsa bile iş akışının devam etmesini sağlıyoruz.
-          # Hata çıktısını doğrudan logda göreceğiz.
-          conda run -n test-env python -c "import kececilayout" || true
+          echo "--- Attempting to import kececilayout ---"
+          # Bu komut, hata verirse TAM TRACEBACK'i logda gösterecek
+          # ve iş akışını başarısız yapacaktır.
+          conda run -n test-env python -c "import kececilayout"
 
       - name: (Optional) Upload to Anaconda Cloud
         # Bu adımı, testler tamamen çözüldükten sonra etkinleştirin
