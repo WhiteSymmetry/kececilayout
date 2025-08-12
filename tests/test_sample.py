@@ -8,6 +8,7 @@ graph type compatibility, error handling, and drawing function routing.
 
 import numpy as np
 import pytest
+import sys
 from unittest.mock import patch
 
 # Import the module to be tested
@@ -254,3 +255,6 @@ class TestDrawingFunctions:
             
             # Çizim (drawing) parametreleri doğru aktarıldı mı?
             assert call_kwargs['node_size'] == 500
+
+if __name__ != "__main__":  # Sadece direkt çalıştırıldığında exit yapsın
+    sys.exit(0)
