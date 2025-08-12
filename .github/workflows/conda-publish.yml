@@ -25,30 +25,26 @@ jobs:
       - name: Build Conda package (WITHOUT TESTING)
         id: build_step
         run: |
-          # Paketi oluşturuyoruz ama henüz test etmiyoruz
           conda build . --output-folder ./conda_pkgs --no-test
-          
-          # Çıktı paketinin tam yolunu bir sonraki adım için kaydediyoruz
-          # not: ls'in tek bir dosya bulacağını varsayıyoruz
+          # Çıktı paketinin tam yolunu bir sonraki adım için kaydedelim
           echo "package_path=$(ls ./conda_pkgs/noarch/*.conda)" >> $GITHUB_OUTPUT
-          
-          # Oluşturulan paketin bulunduğu klasörü bir kanal olarak indeksliyoruz
-          # BU SATIR KRİTİK ÖNEME SAHİPTİR
-          conda index ./conda_pkgs
 
       - name: Install and Test the Built Package
         run: |
-          # Önceki adımda oluşturulan ve indekslenen paketi YENİ bir ortama kuralım
-          # --channel parametresi ile lokal kanalı AÇIKÇA belirtiyoruz
-          conda create -n test-env -y --channel "file://$(pwd)/conda_pkgs" "{{ steps.build_step.outputs.package_path | xargs basename }}"
+          # ADIM 1: Önce sadece Python içeren temiz bir test ortamı oluştur.
+          conda create -n test-env -y python=3.10
 
-          # Şimdi bu yeni ve temiz ortamda hatayı ayıklayalım
+          # ADIM 2: Oluşturduğumuz paketi, tam yolunu kullanarak bu ortama kur.
+          # `${{...}}` söz dizimi, GitHub Actions'ın değişkeni doğru şekilde okumasını sağlar.
+          conda install -n test-env -y "${{ steps.build_step.outputs.package_path }}"
+
+          # ADIM 3: Şimdi bu yeni ve temiz ortamda hatayı ayıklayalım.
           echo "--- Installing graphillion in test-env ---"
           conda run -n test-env pip install "graphillion>=1.0"
           
           echo "--- Attempting to import kececilayout in test-env ---"
-          # '|| true' ekleyerek hata olsa bile iş akışının devam etmesini sağlıyoruz
-          # Hata çıktısını doğrudan logda göreceğiz
+          # '|| true' ekleyerek hata olsa bile iş akışının devam etmesini sağlıyoruz.
+          # Hata çıktısını doğrudan logda göreceğiz.
           conda run -n test-env python -c "import kececilayout" || true
 
       - name: (Optional) Upload to Anaconda Cloud
