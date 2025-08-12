@@ -5,6 +5,7 @@ package:
   version: {{ version }}
 
 source:
+  # Proje kök dizinindeki tüm dosyaları dahil et (run_test.py dahil)
   path: .
 
 build:
@@ -14,36 +15,27 @@ build:
 
 requirements:
   host:
-    - python >=3.10,<3.12
+    - python >=3.8,<3.12
     - pip
     - setuptools
     - numpy >=1.23,<2.0
   run:
-    - python >=3.10,<3.12
+    - python >=3.8,<3.12
     - numpy >=1.23,<2.0
     - networkx >=2.0
     - matplotlib-base >=3.0
     - rustworkx >=0.13.0
-    # graphillion burada OLMAMALI, çünkü Conda kanallarında yok.
+    # graphillion burada OLMAMALI
 
 test:
+  # Test için gerekli Python'u ve kaynak kodunu ortama koy
+  requires:
+    - python >=3.8,<3.12
+    - pip
+  
+  # Artık sadece oluşturduğumuz test betiğini çalıştırıyoruz
   commands:
-    # 1. Bağımlılığı kur (Bu adımın zaten çalıştığını biliyoruz)
-    - pip install --no-cache-dir "graphillion>=1.0"
-
-    # 2. Daha detaylı bir test komutu çalıştır.
-    # 'python -c "..."' yerine tam bir python betiği çalıştırarak
-    # hatanın tüm detaylarını (traceback) yakalayalım.
-    - python -c "
-try:
-    import kececilayout
-    print('kececilayout successfully imported')
-except Exception as e:
-    print('<<<<<<<<<< IMPORT FAILED, TRACEBACK: >>>>>>>>>>')
-    import traceback
-    traceback.print_exc()
-    import sys
-    sys.exit(1) # Hata koduyla çık ki build başarısız olsun
+    - python run_test.py
 
 about:
   home: https://github.com/WhiteSymmetry/kececilayout
