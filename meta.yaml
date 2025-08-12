@@ -1,11 +1,11 @@
-{% set version = "0.3.2" %}  {# Sürümü buradan veya setup.py'dan alabilirsiniz #}
+{% set version = "0.3.2" %}
 
 package:
   name: kececilayout
   version: {{ version }}
 
 source:
-  path: .  # Mevcut klasördeki tüm dosyaları (setup.py dahil) kullan
+  path: .
 
 build:
   noarch: python
@@ -24,14 +24,13 @@ requirements:
     - matplotlib-base
     - pycairo
     - cairocffi
-    - cairo  # <-- EN ÖNEMLİ EKLEME: Cairo C kütüphanesi
+    - cairo
+    - graphillion  # <-- PİP YERİNE BURAYA EKLİYORUZ! conda-forge'dan gelecek.
 
 test:
-  # Test için ayrı bir betik kullanmak en temiz yoldur.
-  source_files:
-    - run_test.py
-  commands:
-    - python run_test.py
+  # Artık özel bir test betiğine gerek yok. Sadece import etmesi yeterli.
+  imports:
+    - kececilayout
 
 about:
   home: https://github.com/WhiteSymmetry/kececilayout
