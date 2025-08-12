@@ -15,27 +15,29 @@ build:
 requirements:
   host:
     - python >=3.10,<3.12
-    - pip          # pip'in derleme ve test ortamlarında bulunması kritik
+    - pip
     - setuptools
-    - numpy >=1.23,<2.0  # numpy versiyonunu sabitlemek iyi bir pratiktir
+    - numpy >=1.23,<2.0
   run:
     - python >=3.10,<3.12
     - numpy >=1.23,<2.0
     - networkx >=2.0
     - matplotlib-base >=3.0
     - rustworkx >=0.13.0
-    # 'graphillion' buradan kaldırıldı çünkü Conda kanallarında yok ve çözücüyü bozuyor.
-    # Bu bağımlılığı aşağıda test aşamasında ve son kullanıcı için farklı yöneteceğiz.
+    # graphillion burada OLMAMALI, çünkü Conda kanallarında yok.
 
 test:
-  # Testler çalışmadan ÖNCE çalıştırılacak komutlar
+  # 'imports' anahtarını tamamen kaldırıyoruz.
+  # Tüm test mantığını 'commands' altına taşıyoruz.
   commands:
-    # Test ortamına graphillion'ı manuel olarak pip ile kur.
-    - pip install graphillion >=1.0
-  
-  # Komutlar çalıştıktan sonra yapılacak import testleri
-  imports:
-    - kececilayout
+    # 1. ADIM: Test ortamının içine pip ile bağımlılığı AÇIKÇA kur.
+    # --no-cache-dir, olası önbellek sorunlarını önler.
+    - pip install --no-cache-dir "graphillion>=1.0"
+
+    # 2. ADIM: Bağımlılık kurulduktan HEMEN SONRA, paketi import etmeyi dene.
+    # Bu, asıl testimizdir. Eğer `kececilayout` veya onun bir bağımlılığı
+    # bulunamazsa, bu komut hata verir ve build süreci durur.
+    - python -c "import kececilayout"
 
 about:
   home: https://github.com/WhiteSymmetry/kececilayout
