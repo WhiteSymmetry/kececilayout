@@ -18,13 +18,13 @@ requirements:
     - pip
     - setuptools
   run:
-    # setup.py'daki install_requires listesinin Conda versiyonu:
     - python >=3.10
     - numpy
     - networkx
-    - matplotlib-base  # Genellikle 'matplotlib' yerine bu yeterlidir
-    - pycairo          # conda-forge kanalında mevcut
-    - cairocffi        # conda-forge kanalında mevcut
+    - matplotlib-base
+    - pycairo
+    - cairocffi
+    - cairo  # <-- EN ÖNEMLİ EKLEME: Cairo C kütüphanesi
 
 test:
   # Test için ayrı bir betik kullanmak en temiz yoldur.
