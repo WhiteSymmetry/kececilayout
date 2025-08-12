@@ -16,16 +16,18 @@ requirements:
   host:
     - python >=3.8,<3.12
     - pip
-    - numpy
     - setuptools
+    - numpy
   run:
     - python >=3.8,<3.12
     - numpy
     - networkx >=2.0
-    - matplotlib >=3.0
+    - matplotlib-base >=3.0  # Veya matplotlib
     - rustworkx >=0.13.0
-    # Graphillion'ı kaldırın veya opsiyonel yapın
-    # - graphillion >=1.0  # Problemli bağımlılık
+  # DOĞRU YÖNTEM: pip bağımlılıkları, 'run' altına değil, 'requirements' altına
+  # 'host' ve 'run' ile aynı seviyede ayrı bir blok olarak eklenir.
+  pip:
+    - graphillion >=1.0
 
 test:
   imports:
