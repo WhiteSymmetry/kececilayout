@@ -32,7 +32,7 @@ jobs:
       - name: Install and Test the Built Package
         run: |
           # ADIM 1: Önce sadece Python içeren temiz bir test ortamı oluştur.
-          conda create -n test-env -y python=3.10
+          conda create -n test-env -y python=3.11
 
           # ADIM 2: Oluşturduğumuz paketi, tam yolunu kullanarak bu ortama kur.
           # `${{...}}` söz dizimi, GitHub Actions'ın değişkeni doğru şekilde okumasını sağlar.
