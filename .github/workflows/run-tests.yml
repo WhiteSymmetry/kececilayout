@@ -59,6 +59,7 @@ jobs:
           
       - name: Prepare Ubuntu 3.11
         #if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11' }}
+        if: ${{ !(contains(fromJson('["ubuntu-latest","macos-latest","windows-latest"]'), matrix.os) && contains(fromJson('["3.10","3.11","3.12","3.13"]'), matrix.python-version)) }}
         run: |
           sudo apt-get update
           sudo apt-get install -y libgomp1 libopenblas-dev
@@ -66,7 +67,8 @@ jobs:
           pip cache purge
       
       - name: Run nox tests
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11' }}
+        #if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11' }}
+        if: ${{ !(contains(fromJson('["ubuntu-latest","macos-latest","windows-latest"]'), matrix.os) && contains(fromJson('["3.10","3.11","3.12","3.13"]'), matrix.python-version)) }}
         run: |
           echo "Running with verbose output for debugging..."
           nox -s tests-3.11 --verbose 2>&1 | tee nox_output.log
@@ -76,5 +78,6 @@ jobs:
           LD_LIBRARY_PATH: "/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH"
           
       - name: Upload coverage to Codecov
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11' }}
+        #if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11' }}
+        if: ${{ !(contains(fromJson('["ubuntu-latest","macos-latest","windows-latest"]'), matrix.os) && contains(fromJson('["3.10","3.11","3.12","3.13"]'), matrix.python-version)) }}
         uses: codecov/codecov-action@v3
