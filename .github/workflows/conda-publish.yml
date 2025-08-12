@@ -66,7 +66,7 @@ jobs:
         env:
           ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
         run: |
-          echo "Uploading package(s) to Anaconda Cloud..."
+          conda install -n base anaconda-client -y
           conda run -n base anaconda -t $ANACONDA_TOKEN upload \
             dist/*.conda \
             --label main \
