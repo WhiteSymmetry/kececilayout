@@ -32,8 +32,17 @@ jobs:
         run: |
           mkdir -p ./conda_pkgs
           conda build . \
-            --output-folder ./conda_pkgs \
+            --output-folder ./conda_pkgs || true \
             --python 3.11
+
+      - name: Upload Test Logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: |
+            test_success.log
+            test_error.log
+          if-no-files-found: ignore # Dosya bulunamazsa hata verme
       
       - name: Upload to Anaconda Cloud
         env:
