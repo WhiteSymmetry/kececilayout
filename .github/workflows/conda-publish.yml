@@ -15,9 +15,9 @@ jobs:
       - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v3
         with:
-          miniconda-version: "py311_23.5.2-0"  # Pinned to a known working version
+          miniconda-version: "latest"
           python-version: "3.11"
-          auto-activate-base: false  # Better to not auto-activate base
+          auto-activate-base: false
           channels: conda-forge,defaults
           channel-priority: strict
       
@@ -25,7 +25,7 @@ jobs:
         run: |
           conda config --set always_yes true
           conda config --set changeps1 false
-          conda install -n base -c conda-forge "python=3.11" "conda=23.5.2" "conda-build=3.27.0" "conda-verify=3.4.2" anaconda-client -y
+          conda install -n base -c conda-forge "python=3.11" "conda-build" "conda-verify" "anaconda-client"
           conda clean --all -y
       
       - name: Build Conda package
@@ -33,20 +33,13 @@ jobs:
           mkdir -p ./conda_pkgs
           conda build . \
             --output-folder ./conda_pkgs \
-            --python 3.11 \
-            --numpy 1.23 \
-            --no-test
-      
-      - name: Convert to .conda format
-        run: |
-          conda install -c conda-forge conda-package-handling -y
-          find ./conda_pkgs -name "*.tar.bz2" -exec bash -c 'cph convert "{}" "$(dirname "{}")/$(basename "{}" .tar.bz2).conda"' \;
+            --python 3.11
       
       - name: Upload to Anaconda Cloud
         env:
           ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
         run: |
           anaconda -t $ANACONDA_TOKEN upload \
-            ./conda_pkgs/**/*.conda \
+            ./conda_pkgs/noarch/*.tar.bz2 \
             --label main \
             --skip-existing
