@@ -1,7 +1,7 @@
 name: Build and Analyze Package
 
 on:
-  workflow_dispatch: # Şimdilik sadece manuel olarak tetikleyelim
+  workflow_dispatch:
 
 jobs:
   build-and-analyze:
@@ -14,7 +14,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3
         with:
           auto-activate-base: false
-          python-version: "3.11"
+          python-version: "3.10"
           channels: conda-forge,defaults
           channel-priority: strict
       
@@ -25,17 +25,24 @@ jobs:
       - name: Build Conda package (WITHOUT TESTING)
         id: build_step
         run: |
+          # Paketi oluşturuyoruz ama henüz test etmiyoruz
           conda build . --output-folder ./conda_pkgs --no-test
-          # Çıktı paketinin tam yolunu bir sonraki adım için kaydedelim
+          
+          # Çıktı paketinin tam yolunu bir sonraki adım için kaydediyoruz
+          # not: ls'in tek bir dosya bulacağını varsayıyoruz
           echo "package_path=$(ls ./conda_pkgs/noarch/*.conda)" >> $GITHUB_OUTPUT
+          
+          # Oluşturulan paketin bulunduğu klasörü bir kanal olarak indeksliyoruz
+          # BU SATIR KRİTİK ÖNEME SAHİPTİR
+          conda index ./conda_pkgs
 
       - name: Install and Test the Built Package
         run: |
-          # Önceki adımda oluşturulan paketi yeni bir ortama kuralım
-          conda create -n test-env --use-local -y "{{ steps.build_step.outputs.package_path }}"
+          # Önceki adımda oluşturulan ve indekslenen paketi YENİ bir ortama kuralım
+          # --channel parametresi ile lokal kanalı AÇIKÇA belirtiyoruz
+          conda create -n test-env -y --channel "file://$(pwd)/conda_pkgs" "{{ steps.build_step.outputs.package_path | xargs basename }}"
 
           # Şimdi bu yeni ve temiz ortamda hatayı ayıklayalım
-          # 'conda run' komutu, komutları o ortamın içinde çalıştırır
           echo "--- Installing graphillion in test-env ---"
           conda run -n test-env pip install "graphillion>=1.0"
           
