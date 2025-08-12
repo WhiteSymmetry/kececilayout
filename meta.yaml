@@ -17,16 +17,17 @@ requirements:
     - python >=3.10,<3.12
     - pip
     - setuptools
-    # numpy build için burada da gerekli olabilir.
     - numpy
   run:
     - python >=3.10,<3.12
     - numpy
     - networkx >=2.0
-    - matplotlib-base >=3.0  # Sadece çizim altyapısı için matplotlib-base yeterli olabilir
+    - matplotlib-base >=3.0  # Veya matplotlib
     - rustworkx >=0.13.0
-    - pip:
-      - graphillion >=1.0
+  # DOĞRU YÖNTEM: pip bağımlılıkları, 'run' altına değil, 'requirements' altına
+  # 'host' ve 'run' ile aynı seviyede ayrı bir blok olarak eklenir.
+  pip:
+    - graphillion >=1.0
 
 test:
   imports:
