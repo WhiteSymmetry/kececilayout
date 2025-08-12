@@ -256,5 +256,6 @@ class TestDrawingFunctions:
             # Çizim (drawing) parametreleri doğru aktarıldı mı?
             assert call_kwargs['node_size'] == 500
 
-if __name__ != "__main__":  # Sadece direkt çalıştırıldığında exit yapsın
+if __name__ == "__main__":
+    pytest.main([__file__])  # Testleri direkt çalıştırırsa
     sys.exit(0)
