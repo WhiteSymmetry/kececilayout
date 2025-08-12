@@ -1,12 +1,10 @@
-name: Publish to Anaconda Cloud
+name: Build and Analyze Package
 
 on:
-  release:
-    types: [published]
-  workflow_dispatch:
+  workflow_dispatch: # Şimdilik sadece manuel olarak tetikleyelim
 
 jobs:
-  build-and-publish:
+  build-and-analyze:
     runs-on: ubuntu-latest
     
     steps:
@@ -22,15 +20,33 @@ jobs:
       
       - name: Prepare build environment
         run: |
-          conda install -n base conda-build anaconda-client -y
+          conda install -n base conda-build -y
       
-      - name: Build Conda package
+      - name: Build Conda package (WITHOUT TESTING)
+        id: build_step
         run: |
-          conda build . --output-folder ./conda_pkgs
+          conda build . --output-folder ./conda_pkgs --no-test
+          # Çıktı paketinin tam yolunu bir sonraki adım için kaydedelim
+          echo "package_path=$(ls ./conda_pkgs/noarch/*.conda)" >> $GITHUB_OUTPUT
 
-      - name: Upload to Anaconda Cloud
-        # Bu adımı sadece bir release yayınlandığında çalıştır
-        if: github.event_name == 'release' && success()
+      - name: Install and Test the Built Package
+        run: |
+          # Önceki adımda oluşturulan paketi yeni bir ortama kuralım
+          conda create -n test-env --use-local -y "{{ steps.build_step.outputs.package_path }}"
+
+          # Şimdi bu yeni ve temiz ortamda hatayı ayıklayalım
+          # 'conda run' komutu, komutları o ortamın içinde çalıştırır
+          echo "--- Installing graphillion in test-env ---"
+          conda run -n test-env pip install "graphillion>=1.0"
+          
+          echo "--- Attempting to import kececilayout in test-env ---"
+          # '|| true' ekleyerek hata olsa bile iş akışının devam etmesini sağlıyoruz
+          # Hata çıktısını doğrudan logda göreceğiz
+          conda run -n test-env python -c "import kececilayout" || true
+
+      - name: (Optional) Upload to Anaconda Cloud
+        # Bu adımı, testler tamamen çözüldükten sonra etkinleştirin
+        if: false # Şimdilik devre dışı
         env:
           ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
         run: |
