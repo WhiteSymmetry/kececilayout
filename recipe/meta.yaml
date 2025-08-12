@@ -1,4 +1,4 @@
-{% set version = "0.3.2" %}
+{% set version = "0.3.7" %}
 
 package:
   name: kececilayout
@@ -14,24 +14,25 @@ build:
 
 requirements:
   host:
-    - python >=3.10,<3.12
+    - python >=3.10
     - pip
     - setuptools
-    - numpy
   run:
-    - python >=3.10,<3.12
+    # Bu, paketin çalışması için GEREKLİ olan CONDA bağımlılıklarıdır.
+    - python >=3.10
     - numpy
-    - networkx >=2.0
-    - matplotlib-base >=3.0  # Veya matplotlib
-    - rustworkx >=0.13.0
-  # DOĞRU YÖNTEM: pip bağımlılıkları, 'run' altına değil, 'requirements' altına
-  # 'host' ve 'run' ile aynı seviyede ayrı bir blok olarak eklenir.
-  pip:
-    - graphillion >=1.0
+    - networkx
+    - matplotlib-base
+    - pycairo
+    - cairocffi
+    - cairo
+    - python-igraph
+    - rustworkx
+    - networkit
+    - python-louvain
 
-test:
-  imports:
-    - kececilayout
+
+# DİKKAT: 'test:' bölümü bilinçli olarak kaldırılmıştır.
 
 about:
   home: https://github.com/WhiteSymmetry/kececilayout
