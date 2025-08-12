@@ -1,17 +1,20 @@
+import io
 import re
 from setuptools import setup, find_packages
 import sys
-import io
 
-# README.md dosyasını UTF-8 olarak oku
+
+# BU SATIRLAR SORUNUN KALICI ÇÖZÜMÜDÜR.
+# Python'a, README.md dosyasını hangi işletim sisteminde olursa olsun
+# her zaman UTF-8 kodlamasıyla okumasını söylüyoruz.
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-# __version__'ı __init__.py'den oku
+
 def get_version():
-    with open('kececilayout/__init__.py', 'r') as f:
+    with open('kececilayout/__init__.py', 'r', encoding='utf-8') as f:
         content = f.read()
     match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", content, re.M)
     if match:
@@ -49,10 +52,3 @@ setup(
     python_requires='>=3.10',
     license="MIT",
 )
-
-
-
-
-
-
-
