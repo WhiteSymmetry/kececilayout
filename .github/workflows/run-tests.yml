@@ -47,8 +47,6 @@ jobs:
           
       - name: Run tests with pytest
         if: ${{ !(matrix.os == 'ubuntu-latest' && contains(fromJson('["3.10","3.11","3.12","3.13"]'), matrix.python-version)) }}
-        if: ${{ !(matrix.os == 'windows-latest' && contains(fromJson('["3.10","3.11","3.12","3.13"]'), matrix.python-version)) }}
-        if: ${{ !(matrix.os == 'macos-latest' && contains(fromJson('["3.10","3.11","3.12","3.13"]'), matrix.python-version)) }}
         env:
           PYTHONUTF8: 1
         run: |
