@@ -15,18 +15,25 @@ build:
 requirements:
   host:
     - python >=3.8,<3.12
-    - pip          # pip'in build ortamında bulunmasını sağla
+    - pip          # pip'in derleme ve test ortamlarında bulunması kritik
     - setuptools
-    - numpy
+    - numpy >=1.23,<2.0  # numpy versiyonunu sabitlemek iyi bir pratiktir
   run:
     - python >=3.8,<3.12
-    - numpy
+    - numpy >=1.23,<2.0
     - networkx >=2.0
     - matplotlib-base >=3.0
     - rustworkx >=0.13.0
-    - graphillion >=1.0  # graphillion'ı normal bir bağımlılık olarak ekle
+    # 'graphillion' buradan kaldırıldı çünkü Conda kanallarında yok ve çözücüyü bozuyor.
+    # Bu bağımlılığı aşağıda test aşamasında ve son kullanıcı için farklı yöneteceğiz.
 
 test:
+  # Testler çalışmadan ÖNCE çalıştırılacak komutlar
+  commands:
+    # Test ortamına graphillion'ı manuel olarak pip ile kur.
+    - pip install graphillion >=1.0
+  
+  # Komutlar çalıştıktan sonra yapılacak import testleri
   imports:
     - kececilayout
 
