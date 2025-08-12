@@ -1,7 +1,9 @@
 name: Build and Test Package
 
 on:
-  workflow_dispatch: # Sadece manuel tetikleme için
+  workflow_dispatch: # Manuel tetikleme
+  release:
+    types: [published] # Yeni release yayınlandığında tetikler
 
 jobs:
   build-and-test:
@@ -23,16 +25,14 @@ jobs:
         run: conda install -n base conda-build anaconda-client -y
 
       - name: Build the package
-        run: conda build . --output-folder ./conda_pkgs
-        # Artık --no-test'e gerek yok, çünkü meta.yaml'da test bölümü yok.
-        # İsterseniz test bölümünü meta.yaml'a geri ekleyebilirsiniz.
+        run: |
+          conda build . --output-folder ./conda_pkgs
+          mkdir -p dist
+          cp ./conda_pkgs/noarch/*.conda dist/
 
       - name: Create a clean environment and install dependencies
         run: |
-          # Temiz bir test ortamı oluştur
           conda create -n test-env -y python=3.11
-          
-          # meta.yaml'da listelenen TÜM CONDA bağımlılıklarını bu ortama kur
           conda install -n test-env -y \
             numpy \
             networkx \
@@ -47,11 +47,8 @@ jobs:
 
       - name: Install the built package into the test environment
         run: |
-          # Oluşturduğumuz paketin dosya yolunu bul
           PACKAGE_FILE=$(ls ./conda_pkgs/noarch/*.conda)
           echo "Installing $PACKAGE_FILE"
-          
-          # Paketi doğrudan test ortamına kur
           conda install -n test-env -y "$PACKAGE_FILE"
           
       - name: Run final import test and get traceback
@@ -60,18 +57,15 @@ jobs:
           conda run -n test-env pip install "graphillion>=1.0"
           
           echo "--- Attempting to import kececilayout ---"
-          # Bu komut, hata verirse TAM TRACEBACK'i logda gösterecek
-          # ve iş akışını başarısız yapacaktır.
           conda run -n test-env python -c "import kececilayout"
 
       - name: Upload to Anaconda Cloud
-        # Bu adım sadece bir release yayınlandığında çalışır
         if: github.event_name == 'release' && success()
         env:
           ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
         run: |
           echo "Uploading package to Anaconda Cloud..."
           anaconda -t $ANACONDA_TOKEN upload \
-            ./conda_pkgs/noarch/*.conda \
+            ./dist/*.conda \
             --label main \
             --skip-existing
