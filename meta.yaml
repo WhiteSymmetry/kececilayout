@@ -19,7 +19,6 @@ requirements:
     - setuptools
   run:
     # Bu, paketin çalışması için GEREKLİ olan CONDA bağımlılıklarıdır.
-    # graphillion burada OLMAMALI.
     - python >=3.10
     - numpy
     - networkx
@@ -27,6 +26,10 @@ requirements:
     - pycairo
     - cairocffi
     - cairo
+    - python-igraph
+    - rustworkx
+    - networkit
+
 
 # DİKKAT: 'test:' bölümü bilinçli olarak kaldırılmıştır.
 
