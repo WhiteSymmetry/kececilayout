@@ -29,6 +29,7 @@ requirements:
     - python-igraph
     - rustworkx
     - networkit
+    - python-louvain
 
 
 # DİKKAT: 'test:' bölümü bilinçli olarak kaldırılmıştır.
