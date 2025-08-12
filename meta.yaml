@@ -18,6 +18,7 @@ requirements:
     - pip
     - setuptools
   run:
+    # 'graphillion' buradan KALDIRILDI. Bu, conda çözücüsünün başarısız olmasını önler.
     - python >=3.10
     - numpy
     - networkx
@@ -25,12 +26,28 @@ requirements:
     - pycairo
     - cairocffi
     - cairo
-    - graphillion  # <-- PİP YERİNE BURAYA EKLİYORUZ! conda-forge'dan gelecek.
 
 test:
-  # Artık özel bir test betiğine gerek yok. Sadece import etmesi yeterli.
-  imports:
-    - kececilayout
+  # Test ortamını kurmak için gerekenler. 'pip' burada kritik.
+  requires:
+    - python >=3.10
+    - pip
+    # Test ortamına, ana paketin conda bağımlılıklarını da ekleyelim.
+    - numpy
+    - networkx
+    - matplotlib-base
+    - pycairo
+    - cairocffi
+    - cairo
+
+  # 'imports' yerine 'commands' kullanarak tam kontrol sağlıyoruz.
+  commands:
+    # ADIM 1: Test ortamına graphillion'ı manuel olarak pip ile kur.
+    # Bu, conda çözücüsünü tamamen atlar.
+    - pip install "graphillion>=1.0"
+
+    # ADIM 2: Bağımlılık kurulduktan HEMEN SONRA, paketi import etmeyi dene.
+    - python -c "import kececilayout"
 
 about:
   home: https://github.com/WhiteSymmetry/kececilayout
