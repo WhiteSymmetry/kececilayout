@@ -14,20 +14,17 @@ build:
 
 requirements:
   host:
-    - python >=3.10,<3.12
-    - pip
+    - python >=3.8,<3.12
+    - pip          # pip'in build ortamında bulunmasını sağla
     - setuptools
     - numpy
   run:
-    - python >=3.10,<3.12
+    - python >=3.8,<3.12
     - numpy
     - networkx >=2.0
-    - matplotlib-base >=3.0  # Veya matplotlib
+    - matplotlib-base >=3.0
     - rustworkx >=0.13.0
-  # DOĞRU YÖNTEM: pip bağımlılıkları, 'run' altına değil, 'requirements' altına
-  # 'host' ve 'run' ile aynı seviyede ayrı bir blok olarak eklenir.
-  pip:
-    - graphillion >=1.0
+    - graphillion >=1.0  # graphillion'ı normal bir bağımlılık olarak ekle
 
 test:
   imports:
