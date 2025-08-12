@@ -62,13 +62,12 @@ jobs:
           conda run -n test-env python -c "import kececilayout"
 
       - name: Upload to Anaconda Cloud
-        # Manuel çalıştırmada da, release sırasında da yükleme yap
         if: success()
         env:
           ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
         run: |
           echo "Uploading package(s) to Anaconda Cloud..."
-          anaconda -t $ANACONDA_TOKEN upload \
+          conda run -n base anaconda -t $ANACONDA_TOKEN upload \
             dist/*.conda \
             --label main \
             --skip-existing
