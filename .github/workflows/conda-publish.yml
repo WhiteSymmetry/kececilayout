@@ -15,20 +15,22 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3
         with:
           auto-activate-base: false
-          python-version: "3.10"
+          python-version: "3.11"
           channels: conda-forge,defaults
           channel-priority: strict
-      
-      - name: Install Conda-Build
-        run: conda install -n base conda-build -y
 
-      - name: Build the package (without testing)
-        run: conda build . --output-folder ./conda_pkgs --no-test
+      - name: Install Conda-Build and Anaconda-Client
+        run: conda install -n base conda-build anaconda-client -y
+
+      - name: Build the package
+        run: conda build . --output-folder ./conda_pkgs
+        # Artık --no-test'e gerek yok, çünkü meta.yaml'da test bölümü yok.
+        # İsterseniz test bölümünü meta.yaml'a geri ekleyebilirsiniz.
 
       - name: Create a clean environment and install dependencies
         run: |
           # Temiz bir test ortamı oluştur
-          conda create -n test-env -y python=3.10
+          conda create -n test-env -y python=3.11
           
           # meta.yaml'da listelenen TÜM CONDA bağımlılıklarını bu ortama kur
           conda install -n test-env -y \
@@ -62,13 +64,14 @@ jobs:
           # ve iş akışını başarısız yapacaktır.
           conda run -n test-env python -c "import kececilayout"
 
-      - name: (Optional) Upload to Anaconda Cloud
-        # Bu adımı, testler tamamen çözüldükten sonra etkinleştirin
-        if: false # Şimdilik devre dışı
+      - name: Upload to Anaconda Cloud
+        # Bu adım sadece bir release yayınlandığında çalışır
+        if: github.event_name == 'release' && success()
         env:
           ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
         run: |
+          echo "Uploading package to Anaconda Cloud..."
           anaconda -t $ANACONDA_TOKEN upload \
-            ./conda_pkgs/**/*.conda \
+            ./conda_pkgs/noarch/*.conda \
             --label main \
             --skip-existing
