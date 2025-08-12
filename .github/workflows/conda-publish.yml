@@ -16,38 +16,20 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3
         with:
           auto-activate-base: false
-          python-version: "3.10" # Python versiyonunu meta.yaml ile eşleştirin
+          python-version: "3.10"
           channels: conda-forge,defaults
           channel-priority: strict
       
       - name: Prepare build environment
         run: |
-          conda install -n base conda-build anaconda-client -y # anaconda-client'ı buraya ekleyin
-          conda clean --all -y
+          conda install -n base conda-build anaconda-client -y
       
-      - name: Build Conda package and Rescue Logs
+      - name: Build Conda package
         run: |
-          # conda build komutunu çalıştır. Eğer başarısız olursa (||),
-          # log dosyasını kurtarmak için özel komutları çalıştır.
-          conda build . --output-folder ./conda_pkgs || {
-            echo "Conda build failed. Searching for test_error.log and copying to workspace...";
-            # Geçici conda-bld klasörlerinde test_error.log'u bul ve ana dizine kopyala
-            find /home/runner/miniconda3/conda-bld -name "test_error.log" -exec cp {} . \;;
-            echo "Log file rescued. Now exiting with error to fail the step.";
-            exit 1;
-          }
-
-      - name: Upload Test Logs
-        uses: actions/upload-artifact@v4
-        # Bu adım artık if: always() sayesinde her zaman çalışacak
-        if: always()
-        with:
-          name: test-logs
-          path: test_error.log
-          if-no-files-found: ignore
+          conda build . --output-folder ./conda_pkgs
 
       - name: Upload to Anaconda Cloud
-        # Bu adımı sadece main branch'e bir release yapıldığında çalıştır
+        # Bu adımı sadece bir release yayınlandığında çalıştır
         if: github.event_name == 'release' && success()
         env:
           ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
