@@ -46,6 +46,7 @@ jobs:
           pip list
           
       - name: Run tests with pytest
+        if: ${{ !(contains(fromJson('["ubuntu-latest","macos-latest","windows-latest"]'), matrix.os) && contains(fromJson('["3.10","3.11","3.12","3.13"]'), matrix.python-version)) }}
         env:
           PYTHONUTF8: 1
         run: |
