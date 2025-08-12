@@ -26,7 +26,7 @@ jobs:
 
       - name: Build the package
         run: |
-          conda build . --output-folder ./conda_pkgs
+          conda build . --output-folder ./conda_pkgs --variant-config-files ./conda_build_config.yaml
           mkdir -p dist
           find ./conda_pkgs -name "*.conda" -exec cp {} dist/ \;
           echo "Paketler dist klasörüne kopyalandı:"
