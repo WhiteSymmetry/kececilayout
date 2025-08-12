@@ -6,7 +6,8 @@ __description__ = "A deterministic node placement algorithm used in graph visual
 __author__ = "Mehmet Keçeci"
 __url__ = "https://github.com/WhiteSymmetry/kececilayout"
 __docs__ = "https://github.com/WhiteSymmetry/kececilayout"  # Opsiyonel: Dokümantasyon linki
-__dependencies__ = ["python>=3.9"]  # Diğer bağımlılıkları da ekleyebilirsiniz
+__dependencies__ = ["python>=3.10"]  # Diğer bağımlılıkları da ekleyebilirsiniz
+
 
 
 
