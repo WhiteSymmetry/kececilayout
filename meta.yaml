@@ -1,12 +1,11 @@
-{% set version = "0.3.2" %}
+{% set version = "0.3.2" %}  {# Sürümü buradan veya setup.py'dan alabilirsiniz #}
 
 package:
   name: kececilayout
   version: {{ version }}
 
 source:
-  # Proje kök dizinindeki tüm dosyaları dahil et (run_test.py dahil)
-  path: .
+  path: .  # Mevcut klasördeki tüm dosyaları (setup.py dahil) kullan
 
 build:
   noarch: python
@@ -15,25 +14,22 @@ build:
 
 requirements:
   host:
-    - python >=3.8,<3.12
+    - python >=3.10
     - pip
     - setuptools
-    - numpy >=1.23,<2.0
   run:
-    - python >=3.8,<3.12
-    - numpy >=1.23,<2.0
-    - networkx >=2.0
-    - matplotlib-base >=3.0
-    - rustworkx >=0.13.0
-    # graphillion burada OLMAMALI
+    # setup.py'daki install_requires listesinin Conda versiyonu:
+    - python >=3.10
+    - numpy
+    - networkx
+    - matplotlib-base  # Genellikle 'matplotlib' yerine bu yeterlidir
+    - pycairo          # conda-forge kanalında mevcut
+    - cairocffi        # conda-forge kanalında mevcut
 
 test:
-  # Test için gerekli Python'u ve kaynak kodunu ortama koy
-  requires:
-    - python >=3.8,<3.12
-    - pip
-  
-  # Artık sadece oluşturduğumuz test betiğini çalıştırıyoruz
+  # Test için ayrı bir betik kullanmak en temiz yoldur.
+  source_files:
+    - run_test.py
   commands:
     - python run_test.py
 
@@ -41,7 +37,7 @@ about:
   home: https://github.com/WhiteSymmetry/kececilayout
   license: MIT
   license_file: LICENSE
-  summary: Advanced sequential-zigzag graph layout algorithm
+  summary: A deterministic node placement algorithm
   description: |
     A deterministic node placement algorithm for graph visualization that arranges
     nodes sequentially along a primary axis with alternating offsets.
