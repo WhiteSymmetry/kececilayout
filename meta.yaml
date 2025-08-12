@@ -14,18 +14,19 @@ build:
 
 requirements:
   host:
-    - python >=3.8,<3.12
+    - python >=3.10,<3.12
     - pip
-    - numpy
     - setuptools
+    # numpy build için burada da gerekli olabilir.
+    - numpy
   run:
-    - python >=3.8,<3.12
+    - python >=3.10,<3.12
     - numpy
     - networkx >=2.0
-    - matplotlib >=3.0
+    - matplotlib-base >=3.0  # Sadece çizim altyapısı için matplotlib-base yeterli olabilir
     - rustworkx >=0.13.0
-    # Graphillion'ı kaldırın veya opsiyonel yapın
-    # - graphillion >=1.0  # Problemli bağımlılık
+    - pip:
+      - graphillion >=1.0
 
 test:
   imports:
