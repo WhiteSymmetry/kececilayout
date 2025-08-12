@@ -15,8 +15,8 @@ jobs:
       - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v3
         with:
-          miniconda-version: "23.11.0-2"  # Daha eski bir versiyon
-          python-version: "3.10"  # Python 3.10 kullanıyoruz
+          miniconda-version: "latest"  # or use a specific version like "py311_23.5.2-0"
+          python-version: "3.11"
           auto-activate-base: true
           channels: conda-forge,defaults
           channel-priority: strict
@@ -25,8 +25,8 @@ jobs:
         run: |
           conda config --set always_yes true
           conda config --set changeps1 false
-          conda update -n base -c conda-forge conda conda-build --all
-          conda install -c conda-forge "python=3.10" "conda-build=24.1.2" "conda-verify=3.4.2" anaconda-client -y
+          conda update -q conda conda-build --all
+          conda install -c conda-forge "python=3.11" "conda-build=3.27.0" "conda-verify=3.4.2" anaconda-client -y
           conda clean --all -y
       
       - name: Build Conda package
@@ -34,8 +34,8 @@ jobs:
           mkdir -p ./conda_pkgs
           conda build . \
             --output-folder ./conda_pkgs \
-            --python 3.10 \
-            --numpy 1.21 \
+            --python 3.11 \
+            --numpy 1.23 \
             --no-test
       
       - name: Convert to .conda format
