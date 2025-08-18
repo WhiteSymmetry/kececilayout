@@ -24,7 +24,7 @@
 [![Binder](https://terrarium.evidencepub.io/badge_logo.svg)](https://terrarium.evidencepub.io/v2/gh/WhiteSymmetry/kececilayout/HEAD)
 [![PyPI Downloads](https://static.pepy.tech/badge/kececilayout)](https://pepy.tech/projects/kececilayout)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
-[![CI/CD](https://github.com/WhiteSymmetry/kececilayout/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/WhiteSymmetry/kececilayout/actions/workflows/ci-cd.yml)
+[![CI/CD](https://github.com/WhiteSymmetry/kececilayout/actions/workflows/workflow.yml/badge.svg)](https://github.com/WhiteSymmetry/kececilayout/actions/workflows/workflow.yml)
 [![Linted with Ruff](https://img.shields.io/badge/Linted%20with-Ruff-green?logo=python&logoColor=white)](https://github.com/astral-sh/ruff)
 
 | **Documentation** | **Paper** |
@@ -1177,6 +1177,7 @@ Keçeci, Mehmet. "Kececilayout". Open Science Articles (OSAs), Zenodo, 2025. htt
 
 Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.15314328.
 ```
+
 
 
 
