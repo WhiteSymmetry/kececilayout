@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import io
 import re
 from setuptools import setup, find_packages
@@ -52,4 +53,5 @@ setup(
     python_requires='>=3.10',
     license="MIT",
 )
+
 
