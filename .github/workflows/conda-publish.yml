@@ -1,4 +1,4 @@
-name: Build and Test Package
+name: Conda-Build and Test Package
 
 on:
   workflow_dispatch: # Manuel tetikleme
