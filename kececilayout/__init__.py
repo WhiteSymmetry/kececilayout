@@ -10,7 +10,7 @@ import inspect
 import warnings
 
 # Paket sürüm numarası
-__version__ = "0.3.7"
+__version__ = "0.3.8"
 
 # =============================================================================
 # OTOMATİK İÇE AKTARMA VE __all__ OLUŞTURMA
