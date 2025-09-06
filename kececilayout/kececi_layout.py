@@ -1143,6 +1143,31 @@ def _kececi_layout_3d_helix(nx_graph):
         pos_3d[node_id] = (np.cos(angle) * radius, np.sin(angle) * radius, z_step)
     return pos_3d
 
+def kececi_layout_3d_helix_parametric(nx_graph, z_spacing=2.0, radius=5.0, turns=2.0):
+    """
+    Parametric 3D helix layout for nodes. User can control spacing, radius, and number of turns.
+    Args:
+        nx_graph: NetworkX graph.
+        z_spacing (float): Vertical distance between consecutive nodes.
+        radius (float): Radius of the helix.
+        turns (float): Number of full turns the helix makes.
+    Returns:
+        dict: {node_id: (x, y, z)}
+    """
+    nodes = sorted(list(nx_graph.nodes()))
+    pos_3d = {}
+    total_nodes = len(nodes)
+    if total_nodes == 0:
+        return pos_3d
+    
+    total_angle = 2 * np.pi * turns
+    for i, node_id in enumerate(nodes):
+        z = i * z_spacing
+        angle = (i / (total_nodes - 1)) * total_angle if total_nodes > 1 else 0
+        x = np.cos(angle) * radius
+        y = np.sin(angle) * radius
+        pos_3d[node_id] = (x, y, z)
+    return pos_3d
 
 # =============================================================================
 # 3. INTERNAL DRAWING STYLE IMPLEMENTATIONS
@@ -1269,6 +1294,7 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
 
 
 
