@@ -1,11 +1,13 @@
-{% set version = "0.3.9" %}
+{% set version = "0.4.0" %}
 
 package:
   name: kececilayout
   version: {{ version }}
 
 source:
-  path: .
+  path: .  # Derlemeyi bu meta.yaml dosyasının bulunduğu dizinden yap
+  url: https://files.pythonhosted.org/packages/0a/ee/74c084d0b38f6e3b4bc1ab432d23f9df7979257a7d0792bda27bd74b2de5/kececilayout-0.3.9.tar.gz
+  sha256: 56862d5f624ed4531f5de2f69b3064dbb293d61bc90c8ebab88bbf2c53ffdde8
 
 build:
   noarch: python
