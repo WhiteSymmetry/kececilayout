@@ -25,6 +25,7 @@ from .kececi_layout import (  # Veya fonksiyonların bulunduğu asıl modül
     kececi_layout,
     draw_kececi,
     _draw_internal,  # Private fonksiyonu açıkça import edin
+    _kececi_layout_3d_helix,
     kececi_layout,
     kececi_layout_v4,
     
@@ -77,6 +78,7 @@ __all__ = [
     # Drawing functions
     'draw_kececi',
     '_draw_internal',  # <- TESTLER İÇİN GEREKLİ
+    '_kececi_layout_3d_helix',
     
     # Utility functions
     'find_max_node_id',
@@ -121,19 +123,3 @@ def old_function_placeholder():
 
 # Eğer bu eski fonksiyonu da dışa aktarmak istiyorsanız, __all__ listesine ekleyin
 # __all__.append('old_function_placeholder')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
