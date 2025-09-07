@@ -1169,6 +1169,103 @@ def kececi_layout_3d_helix_parametric(nx_graph, z_spacing=2.0, radius=5.0, turns
         pos_3d[node_id] = (x, y, z)
     return pos_3d
 
+def load_element_data_and_spectral_lines(filename):
+    """Loads element data and spectral lines from a text file."""
+    element_data = {}
+    spectral_lines = {}
+    current_section = None
+    
+    with open(filename, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                if "Element Data" in line:
+                    current_section = "element"
+                elif "Spectral Lines" in line:
+                    current_section = "spectral"
+                continue
+            
+            parts = line.split(',')
+            if current_section == "element" and len(parts) >= 2:
+                symbol = parts[0]
+                atomic_number = int(parts[1])
+                element_data[atomic_number] = (symbol, atomic_number)
+            elif current_section == "spectral" and len(parts) >= 2:
+                symbol = parts[0]
+                wavelengths = [float(wl) for wl in parts[1:] if wl]
+                spectral_lines[symbol] = wavelengths
+    
+    return element_data, spectral_lines
+
+def wavelength_to_rgb(wavelength, gamma=0.8):
+    wavelength = float(wavelength)
+    if 380 <= wavelength <= 750:
+        if wavelength < 440:
+            attenuation = 0.3 + 0.7 * (wavelength - 380) / (440 - 380)
+            R = ((-(wavelength - 440) / (440 - 380)) * attenuation) ** gamma
+            G = 0.0
+            B = (1.0 * attenuation) ** gamma
+        elif wavelength < 490:
+            R = 0.0
+            G = ((wavelength - 440) / (490 - 440)) ** gamma
+            B = 1.0
+        elif wavelength < 510:
+            R = 0.0
+            G = 1.0
+            B = (-(wavelength - 510) / (510 - 490)) ** gamma
+        elif wavelength < 580:
+            R = ((wavelength - 510) / (580 - 510)) ** gamma
+            G = 1.0
+            B = 0.0
+        elif wavelength < 645:
+            R = 1.0
+            G = (-(wavelength - 645) / (645 - 580)) ** gamma
+            B = 0.0
+        else:
+            attenuation = 0.3 + 0.7 * (750 - wavelength) / (750 - 645)
+            R = (1.0 * attenuation) ** gamma
+            G = 0.0
+            B = 0.0
+    else:
+        R = G = B = 0.0 # UV veya IR için siyah
+    return (R, G, B)
+
+def get_text_color_for_bg(bg_color):
+    """Determines optimal text color (white or black) based on background luminance."""
+    luminance = 0.299 * bg_color[0] + 0.587 * bg_color[1] + 0.114 * bg_color[2]
+    return 'white' if luminance < 0.5 else 'black'
+
+def generate_soft_random_colors(n):
+    """
+    Generates n soft, pastel, and completely random colors.
+    Uses high Value and Saturation in HSV space for a soft look.
+    """
+    colors = []
+    for _ in range(n):
+        # Tamamen rastgele ton (hue)
+        hue = random.random() # 0.0 - 1.0 arası
+        # Soft görünüm için doygunluk (saturation) orta seviyede
+        saturation = 0.4 + (random.random() * 0.4) # 0.4 - 0.8 arası
+        # Soft görünüm için parlaklık (value) yüksek
+        value = 0.7 + (random.random() * 0.3)     # 0.7 - 1.0 arası
+        from matplotlib.colors import hsv_to_rgb
+        rgb = hsv_to_rgb([hue, saturation, value])
+        colors.append(rgb)
+    return colors
+
+def generate_distinct_colors(n):
+    colors = []
+    for i in range(n):
+        hue = i / n
+        saturation = 0.7 + (random.random() * 0.3) # 0.7 - 1.0 arası
+        value = 0.8 + (random.random() * 0.2)     # 0.8 - 1.0 arası
+        rgb = plt.cm.hsv(hue)[:3] # HSV'den RGB'ye dönüştür
+        # Parlaklığı ayarla
+        from matplotlib.colors import hsv_to_rgb
+        adjusted_rgb = hsv_to_rgb([hue, saturation, value])
+        colors.append(adjusted_rgb)
+    return colors
+
 # =============================================================================
 # 3. INTERNAL DRAWING STYLE IMPLEMENTATIONS
 # =============================================================================
@@ -1294,6 +1391,7 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
 
 
 
