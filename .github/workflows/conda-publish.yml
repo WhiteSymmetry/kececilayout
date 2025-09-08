@@ -68,6 +68,12 @@ jobs:
         run: |
           # 'find' komutu ile dist klasörünün içindeki tüm .conda dosyalarını bul
           PACKAGE_FILES=$(find dist -name "*.conda")
+
+          # Token'ın varlığını kontrol et
+          if [ -z "$ANACONDA_TOKEN" ]; then
+            echo "HATA: ANACONDA_TOKEN bulunamadı! Lütfen GitHub repository settings'te ANACONDA_TOKEN secret'ını ekleyin."
+            exit 1
+          fi
           
           # Bulunan dosya(lar)ın varlığını kontrol et
           if [ -z "$PACKAGE_FILES" ]; then
@@ -78,12 +84,12 @@ jobs:
           echo "Yüklenecek paketler bulundu:"
           echo "$PACKAGE_FILES"
           
-          conda install -n base -y anaconda-client
-          # $PACKAGE_FILES değişkenini kullanarak bulunan dosyaları yükle
-          conda run -n base anaconda -t $ANACONDA_TOKEN upload \
+          # ANACONDA_TOKEN environment değişkenini kullanarak upload işlemi
+          anaconda -t $ANACONDA_TOKEN upload \
             $PACKAGE_FILES \
             --label main \
             --skip-existing
+            
       - name: Cleanup test environment
         if: always()
         run: conda env remove -n test-env || true
