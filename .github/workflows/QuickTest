@@ -1,0 +1,29 @@
+name: Quick Test
+
+on: workflow_dispatch
+
+jobs:
+  quick-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          
+      - name: Install and Test
+        run: |
+          pip install -e .
+          python -c "
+          import kececilayout as kl
+          import networkx as nx
+          
+          # Basit test
+          G = nx.complete_bipartite_graph(3, 3)
+          pos = kl.kececi_layout(G)
+          print('Keçeci layout çalışıyor!')
+          print('Node positions:', pos)
