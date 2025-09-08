@@ -1292,6 +1292,56 @@ def _draw_internal(nx_graph, ax, style, **kwargs):
 
     elif style == 'transparent':
         pos = kececi_layout(nx_graph, **layout_params)
+        # node_color'u draw_params'dan al, yoksa default değeri kullan
+        node_color = draw_params.pop('node_color', '#2ca02c')  # DÜZELTME BURADA
+        nx.draw_networkx_nodes(nx_graph, pos, ax=ax, node_color=node_color, 
+                              node_size=700, **draw_params)  # DÜZELTME BURADA
+        nx.draw_networkx_labels(nx_graph, pos, ax=ax, font_color='white')
+        edge_lengths = {e: np.linalg.norm(np.array(pos[e[0]]) - np.array(pos[e[1]])) for e in nx_graph.edges()}
+        max_len = max(edge_lengths.values()) if edge_lengths else 1.0
+        for edge, length in edge_lengths.items():
+            alpha = 0.15 + 0.85 * (1 - length / max_len)
+            nx.draw_networkx_edges(nx_graph, pos, edgelist=[edge], ax=ax, 
+                                  width=1.5, edge_color='black', alpha=alpha)
+        ax.set_title("Keçeci Layout: Transparent Edges")
+
+    elif style == '3d':
+        pos_3d = _kececi_layout_3d_helix(nx_graph)
+        node_color = draw_params.get('node_color', '#d62728')  # DÜZELTME BURADA
+        edge_color = draw_params.get('edge_color', 'gray')     # DÜZELTME BURADA
+        for node, (x, y, z) in pos_3d.items():
+            ax.scatter([x], [y], [z], s=200, c=[node_color], depthshade=True)
+            ax.text(x, y, z, f'  {node}', size=10, zorder=1, color='k')
+        for u, v in nx_graph.edges():
+            coords = np.array([pos_3d[u], pos_3d[v]])
+            ax.plot(coords[:, 0], coords[:, 1], coords[:, 2], 
+                   color=edge_color, alpha=0.8)  # DÜZELTME BURADA
+        ax.set_title("Keçeci Layout: 3D Helix")
+        ax.set_axis_off()
+        ax.view_init(elev=20, azim=-60)
+"""        
+def _draw_internal(nx_graph, ax, style, **kwargs):
+    #Internal router that handles the different drawing styles.
+    layout_params = {
+        k: v for k, v in kwargs.items()
+        if k in ['primary_spacing', 'secondary_spacing', 'primary_direction',
+                 'secondary_start', 'expanding']
+    }
+    draw_params = {k: v for k, v in kwargs.items() if k not in layout_params}
+
+    if style == 'curved':
+        pos = kececi_layout(nx_graph, **layout_params)
+        final_params = {'ax': ax, 'with_labels': True, 'node_color': '#1f78b4',
+                        'node_size': 700, 'font_color': 'white',
+                        'connectionstyle': 'arc3,rad=0.2', 'arrows': True}
+        final_params.update(draw_params)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            nx.draw(nx_graph, pos, **final_params)
+        ax.set_title("Keçeci Layout: Curved Edges")
+
+    elif style == 'transparent':
+        pos = kececi_layout(nx_graph, **layout_params)
         nx.draw_networkx_nodes(nx_graph, pos, ax=ax, node_color='#2ca02c', node_size=700, **draw_params)
         nx.draw_networkx_labels(nx_graph, pos, ax=ax, font_color='white')
         edge_lengths = {e: np.linalg.norm(np.array(pos[e[0]]) - np.array(pos[e[1]])) for e in nx_graph.edges()}
@@ -1314,7 +1364,7 @@ def _draw_internal(nx_graph, ax, style, **kwargs):
         ax.set_title("Keçeci Layout: 3D Helix")
         ax.set_axis_off()
         ax.view_init(elev=20, azim=-60)
-
+"""
 
 # =============================================================================
 # 4. MAIN USER-FACING DRAWING FUNCTION
@@ -1391,6 +1441,7 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
 
 
 
