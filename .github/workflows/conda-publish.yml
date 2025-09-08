@@ -20,9 +20,14 @@ jobs:
           python-version: "3.11"
           channels: conda-forge,defaults
           channel-priority: strict
+          activate-environment: base
 
       - name: Install Conda-Build and Anaconda-Client
-        run: conda install -n base conda-build anaconda-client -y
+        run: |
+          conda install -n base conda-build anaconda-client -y
+          # Anaconda client'ın PATH'te olduğundan emin ol
+          echo "Anaconda client path:"
+          which anaconda || echo "Anaconda not found in PATH"
 
       - name: Build the package
         run: |
@@ -84,8 +89,11 @@ jobs:
           echo "Yüklenecek paketler bulundu:"
           echo "$PACKAGE_FILES"
           
-          # ANACONDA_TOKEN environment değişkenini kullanarak upload işlemi
-          anaconda -t $ANACONDA_TOKEN upload \
+          # Anaconda client'ın kurulu olduğundan emin ol
+          which anaconda || conda install -n base -y anaconda-client
+          
+          # Base environment'ı activate et ve anaconda komutunu çalıştır
+          conda run -n base anaconda -t $ANACONDA_TOKEN upload \
             $PACKAGE_FILES \
             --label main \
             --skip-existing
