@@ -27,3 +27,4 @@ jobs:
           pos = kl.kececi_layout(G)
           print('Keçeci layout çalışıyor!')
           print('Node positions:', pos)
+          "
