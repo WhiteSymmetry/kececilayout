@@ -85,7 +85,15 @@ jobs:
             cairocffi \
             cairo
 
-        - name: Upload to Anaconda Cloud
+      - name: Run final import test and get traceback
+        run: |
+          echo "--- Installing graphillion in test-env via pip ---"
+          conda run -n test-env pip install "graphillion>=1.0"
+          
+          echo "--- Attempting to import kececilayout ---"
+          conda run -n test-env python -c "import kececilayout"
+
+      - name: Upload to Anaconda Cloud
         if: success()
         env:
           ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
