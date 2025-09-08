@@ -38,7 +38,7 @@ test = [
     "pytest-cov",
     "pytest-mock",
     "ruff",
-    "igraph",
+    "python-igraph",
     "python-louvain", 
     "rustworkx",
     "networkit",
@@ -48,10 +48,3 @@ test = [
 [project.urls]
 "Homepage" = "https://github.com/WhiteSymmetry/kececilayout"
 "Bug Tracker" = "https://github.com/WhiteSymmetry/kececilayout/issues"
-
-
-
-
-
-
-
