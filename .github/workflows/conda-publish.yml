@@ -40,6 +40,21 @@ jobs:
           echo "Oluşturulan paket:"
           ls -l dist
 
+      - name: Create a clean environment and install dependencies
+        run: |
+          conda create -n test-env -y python=3.11
+          conda install -n test-env -y \
+            numpy \
+            networkx \
+            rustworkx \
+            networkit \
+            python-igraph \
+            python-louvain \
+            matplotlib-base \
+            pycairo \
+            cairocffi \
+            cairo
+
       - name: Create a test environment
         run: |
           conda create -n test-env -y python=${{ matrix.python-version }}
@@ -77,21 +92,6 @@ jobs:
           ls -R
           echo "--- End of file listing ---"
       # ===================================================================
-
-      - name: Create a clean environment and install dependencies
-        run: |
-          conda create -n test-env -y python=3.11
-          conda install -n test-env -y \
-            numpy \
-            networkx \
-            rustworkx \
-            networkit \
-            python-igraph \
-            python-louvain \
-            matplotlib-base \
-            pycairo \
-            cairocffi \
-            cairo
 
       - name: Upload to Anaconda Cloud
         if: success()
