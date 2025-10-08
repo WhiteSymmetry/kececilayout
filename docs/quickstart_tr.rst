@@ -60,6 +60,7 @@ Basit bir yol (path) grafiği oluşturalım:
        node_size=600,
        font_size=12,
        edge_color='gray',
+       arrows=True,  # for FancyArrowPatch
        connectionstyle='arc3,rad=0.1'
    )
    plt.title("KeçeciLayout ile 8 Düğümlü Yol Grafiği")
