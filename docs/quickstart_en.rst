@@ -34,14 +34,14 @@ Let's create a simple path graph:
        G,
        primary_spacing=1.5,
        secondary_spacing=0.8,
-       primary_direction='top-down',
+       primary_direction='top_down',
        secondary_start='right',
        expanding=True
    )
 
 - ``primary_spacing``: Distance between nodes along the primary axis.
 - ``secondary_spacing``: Base offset for the zigzag.
-- ``primary_direction``: Main direction (`top-down`, `bottom-up`, etc.).
+- ``primary_direction``: Main direction (`top_down`, `bottom_up`, etc.).
 - ``secondary_start``: Zigzag starts to `right` or `left`.
 - ``expanding=True``: Zigzag amplitude increases with distance.
 
