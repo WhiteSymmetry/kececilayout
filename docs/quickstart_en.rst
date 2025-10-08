@@ -60,6 +60,7 @@ Let's create a simple path graph:
        node_size=600,
        font_size=12,
        edge_color='gray',
+       arrows=True,  # for FancyArrowPatch
        connectionstyle='arc3,rad=0.1'
    )
    plt.title("8-Node Path Graph with KeçeciLayout")
