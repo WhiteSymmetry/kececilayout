@@ -95,7 +95,7 @@ KeçeciLayout supports multiple graph backends:
 
          import rustworkx as rx
          G_rx = rx.generators.path_graph(8)
-         pos_rx = kl.kececi_layout(G_rx, primary_direction='bottom-up')
+         pos_rx = kl.kececi_layout(G_rx, primary_direction='bottom_up')
 
    .. tab:: Graphillion
 
