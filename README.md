@@ -82,7 +82,7 @@ pos = kl.kececi_layout_v4(
     G,
     primary_spacing=1.0,
     secondary_spacing=0.5,
-    primary_direction='top-down',
+    primary_direction='top_down',
     secondary_start='right'
 )
 
@@ -260,7 +260,7 @@ pos = kl.kececi_layout_v4(
     G,
     primary_spacing=1.0,
     secondary_spacing=0.5,
-    primary_direction='top-down',
+    primary_direction='top_down',
     secondary_start='right'
 )
 
@@ -497,7 +497,7 @@ A deterministic node placement algorithm used in graph visualization. In this la
 *   **Linear Focus:** Particularly useful for visualizing linear or sequential structures, such as paths, chains, or ordered processes.
 *   **Deterministic:** Produces the exact same layout for the same graph and parameters every time.
 *   **Overlap Reduction:** Helps prevent node collisions by spreading nodes out away from the primary axis.
-*   **Parametric:** Can be customized using parameters such as the primary direction (e.g., `top-down`), the starting side for the secondary offset (e.g., `start_right`), and the spacing along both axes (`primary_spacing`, `secondary_spacing`).
+*   **Parametric:** Can be customized using parameters such as the primary direction (e.g., `top_down`), the starting side for the secondary offset (e.g., `start_right`), and the spacing along both axes (`primary_spacing`, `secondary_spacing`).
 
 ---
 
@@ -511,7 +511,7 @@ Graf görselleştirmede kullanılan deterministik bir düğüm yerleştirme algo
 *   **Doğrusal Odak:** Özellikle yollar (paths), zincirler veya sıralı süreçler gibi doğrusal veya ardışık yapıları görselleştirmek için kullanışlıdır.
 *   **Deterministik:** Aynı graf ve parametrelerle her zaman aynı sonucu üretir.
 *   **Çakışmayı Azaltma:** Düğümleri ana eksenden uzağa yayarak çakışmaları önlemeye yardımcı olur.
-*   **Parametrik:** Ana eksenin yönü (örn. `top-down`), ikincil kaydırmanın başlangıç yönü (örn. `start_right`) ve eksenler arası boşluklar (`primary_spacing`, `secondary_spacing`) gibi parametrelerle özelleştirilebilir.
+*   **Parametrik:** Ana eksenin yönü (örn. `top_down`), ikincil kaydırmanın başlangıç yönü (örn. `start_right`) ve eksenler arası boşluklar (`primary_spacing`, `secondary_spacing`) gibi parametrelerle özelleştirilebilir.
 
 ---
 
@@ -554,7 +554,7 @@ G = nx.path_graph(10)
 pos = kl.kececi_layout_v4(G,
                            primary_spacing=1.0,
                            secondary_spacing=0.5,
-                           primary_direction='top-down',
+                           primary_direction='top_down',
                            secondary_start='right')
 
 # Draw the graph
@@ -583,7 +583,7 @@ except ImportError:
 LAYOUT_PARAMS = {
     'primary_spacing': 1.0,
     'secondary_spacing': 0.6, # Make the zigzag noticeable
-    'primary_direction': 'top-down',
+    'primary_direction': 'top_down',
     'secondary_start': 'right'
 }
 N_NODES = 10 # Number of nodes in the example graph
@@ -688,7 +688,7 @@ except ImportError:
 LAYOUT_PARAMS = {
     'primary_spacing': 1.0,
     'secondary_spacing': 0.6, # Make the zigzag noticeable
-    'primary_direction': 'top-down',
+    'primary_direction': 'top_down',
     'secondary_start': 'right'
 }
 N_NODES = 10 # Number of nodes in the example graph
@@ -781,7 +781,7 @@ except ImportError:
 LAYOUT_PARAMS = {
     'primary_spacing': 1.0,
     'secondary_spacing': 0.6, # Make the zigzag noticeable
-    'primary_direction': 'top-down',
+    'primary_direction': 'top_down',
     'secondary_start': 'right'
 }
 N_NODES = 10 # Number of nodes in the example graph
@@ -877,7 +877,7 @@ except ImportError:
 LAYOUT_PARAMS = {
     'primary_spacing': 1.0,
     'secondary_spacing': 0.6, # Make the zigzag noticeable
-    'primary_direction': 'top-down',
+    'primary_direction': 'top_down',
     'secondary_start': 'right'
 }
 N_NODES = 10 # Number of nodes in the example graph
@@ -982,7 +982,7 @@ except ImportError:
 LAYOUT_PARAMS = {
     'primary_spacing': 1.0,
     'secondary_spacing': 0.6, # Make the zigzag noticeable
-    'primary_direction': 'top-down',
+    'primary_direction': 'top_down',
     'secondary_start': 'right'
 }
 N_NODES = 10 # Number of nodes in the example graph (will be 1 to N_NODES)
@@ -1179,6 +1179,7 @@ Keçeci, Mehmet. "Kececilayout". Open Science Articles (OSAs), Zenodo, 2025. htt
 
 Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.15314328.
 ```
+
 
 
 
