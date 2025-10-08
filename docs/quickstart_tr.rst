@@ -34,14 +34,14 @@ Basit bir yol (path) grafiği oluşturalım:
        G,
        primary_spacing=1.5,
        secondary_spacing=0.8,
-       primary_direction='top-down',
+       primary_direction='top_down',
        secondary_start='right',
        expanding=True
    )
 
 - ``primary_spacing``: Ana eksen boyunca düğümler arası mesafe.
 - ``secondary_spacing``: Zıgzag ofsetinin temel birimi.
-- ``primary_direction``: Ana yön (`top-down`, `bottom-up`, vs.).
+- ``primary_direction``: Ana yön (`top_down`, `bottom_up`, vs.).
 - ``secondary_start``: Zıgzagın başlangıç yönü (`right`, `left`, vs.).
 - ``expanding=True``: Zıgzag genliği ilerledikçe artar.
 
@@ -95,7 +95,7 @@ KeçeciLayout, farklı graf kütüphaneleriyle uyumludur:
 
          import rustworkx as rx
          G_rx = rx.generators.path_graph(8)
-         pos_rx = kl.kececi_layout(G_rx, primary_direction='bottom-up')
+         pos_rx = kl.kececi_layout(G_rx, primary_direction='bottom_up')
 
    .. tab:: Graphillion
 
