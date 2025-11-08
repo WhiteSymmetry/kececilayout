@@ -1319,7 +1319,7 @@ def _draw_internal(nx_graph, ax, style, **kwargs):
         ax.set_title("Keçeci Layout: 3D Helix")
         ax.set_axis_off()
         ax.view_init(elev=20, azim=-60)
-"""        
+"""
 def _draw_internal(nx_graph, ax, style, **kwargs):
     #Internal router that handles the different drawing styles.
     layout_params = {
@@ -1441,6 +1441,7 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
 
 
 
