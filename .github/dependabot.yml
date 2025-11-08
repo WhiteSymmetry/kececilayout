@@ -5,10 +5,16 @@
 # Dependabot configuration for automatic dependency updates
 version: 2
 updates:
+# Maintain dependencies for GitHub Actions
+#  - package-ecosystem: "github-actions"
   - package-ecosystem: "pip" # Specify package ecosystem (e.g., pip, npm, maven)
     directory: "/"           # Location of package manifests
     schedule:
       interval: "weekly"     # Check for updates weekly
+    groups:
+      actions:
+        patterns:
+          - "*"
     open-pull-requests-limit: 10 # Limit the number of open pull requests
     ignore:
       - dependency-name: "example-package" # Specify dependencies to ignore, if any
