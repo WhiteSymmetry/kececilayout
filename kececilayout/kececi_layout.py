@@ -1132,7 +1132,7 @@ def to_networkx(graph):
     if rx and isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):
         nx_graph.add_nodes_from(graph.node_indices())
         nx_graph.add_edges_from(graph.edge_list())
-    elif ig and isinstance(graph, ig.Graph):
+    elif ig and hasattr(ig, 'Graph') and isinstance(graph, ig.Graph):
         nx_graph.add_nodes_from(v.index for v in graph.vs)
         nx_graph.add_edges_from(graph.get_edgelist())
     elif nk and isinstance(graph, nk.graph.Graph):
@@ -1140,7 +1140,7 @@ def to_networkx(graph):
         nx_graph.add_edges_from(graph.iterEdges())
     elif gg and isinstance(graph, gg.GraphSet):
         edges = graph.universe()
-        max_node_id = max(set(itertools.chain.from_iterable(edges))) if edges else 0
+        max_node_id = find_max_node_id(edges)
         if max_node_id > 0:
             nx_graph.add_nodes_from(range(1, max_node_id + 1))
             nx_graph.add_edges_from(edges)
@@ -1458,4 +1458,5 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
 
