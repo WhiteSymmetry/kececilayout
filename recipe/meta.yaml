@@ -6,8 +6,8 @@ package:
 
 source:
   path: .  # Derlemeyi bu meta.yaml dosyasının bulunduğu dizinden yap
-  url: https://files.pythonhosted.org/packages/9c/de/c08d33a587c8178c18416d866782eadd71829d8e66152d874e183ce1b455/kececilayout-0.4.5.tar.gz
-  sha256: d93268b6b9b5797b2a17472fa5c9ee4da13e40c144b746b3fbe90d2321c32c8e
+  url: https://files.pythonhosted.org/packages/bf/f4/bff0d0aeb8e4fd12fe8beafa23fc3cd519f44326ab8a614a7d7fb7497d37/kececilayout-0.4.6.tar.gz
+  sha256: 65b757c4b3ab40f4f297bf0c2b981a9f3d93205890a2c8d08a2a4f284d54479a
 
 build:
   noarch: python
