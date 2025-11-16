@@ -12,10 +12,10 @@ repos:
         exclude: "^(kececilayout/_version.py)$"
 
 -   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.4
+    rev: v0.14.5
     hooks:
       - id: ruff
-        args: [--fix]
+        args: [--fix, --show-fixes]
         exclude: ".*\\.ipynb$"
       - id: ruff-format
         exclude: ".*\\.ipynb$"
@@ -50,3 +50,21 @@ repos:
     rev: v1.18.2
     hooks:
     -   id: mypy
+repos:
+  # Blacken-docs
+  - repo: https://github.com/adamchainz/blacken-docs
+    rev: "" # versiyon belirtin
+    hooks:
+      - id: blacken-docs
+  
+  # Spell checker (codespell veya typos)
+  - repo: https://github.com/codespell-project/codespell
+    rev: "" # versiyon belirtin
+    hooks:
+      - id: codespell
+  
+  # Markdown formatter
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: "" # versiyon belirtin
+    hooks:
+      - id: prettier
