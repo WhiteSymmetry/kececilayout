@@ -60,7 +60,12 @@ testpaths = [
     "integration",
 ]
 
+[tool.readthedocs]
+version = 2
+build.image = "stable"
+python.version = "3.11"
+configuration = "docs/conf.py"  # Build konfigürasyonu belirtin
+
 [project.urls]
 "Homepage" = "https://github.com/WhiteSymmetry/kececilayout"
 "Bug Tracker" = "https://github.com/WhiteSymmetry/kececilayout/issues"
-
