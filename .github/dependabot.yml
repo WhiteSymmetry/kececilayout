@@ -6,8 +6,8 @@
 version: 2
 updates:
 # Maintain dependencies for GitHub Actions
-#  - package-ecosystem: "github-actions"
-  - package-ecosystem: "pip" # Specify package ecosystem (e.g., pip, npm, maven)
+  - package-ecosystem: "github-actions"
+#  - package-ecosystem: "pip" # Specify package ecosystem (e.g., pip, npm, maven)
     directory: "/"           # Location of package manifests
     schedule:
       interval: "weekly"     # Check for updates weekly
