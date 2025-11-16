@@ -1111,7 +1111,24 @@ def to_networkx(graph):
     """Converts any supported graph type to a NetworkX graph."""
     if isinstance(graph, nx.Graph):
         return graph.copy()
+    
     nx_graph = nx.Graph()
+    
+    # PyZX graph support eklendi
+    try:
+        import pyzx as zx
+        if hasattr(graph, 'vertices') and hasattr(graph, 'edges'):
+            # PyZX graph olduğunu varsay
+            for v in graph.vertices():
+                nx_graph.add_node(v)
+            for edge in graph.edges():
+                if len(edge) == 2:
+                    nx_graph.add_edge(edge[0], edge[1])
+            return nx_graph
+    except ImportError:
+        pass
+    
+    # Diğer graph kütüphaneleri...
     if rx and isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):
         nx_graph.add_nodes_from(graph.node_indices())
         nx_graph.add_edges_from(graph.edge_list())
@@ -1129,10 +1146,10 @@ def to_networkx(graph):
             nx_graph.add_edges_from(edges)
     else:
         # This block is rarely reached as _get_nodes_from_graph would fail first
-        raise TypeError(f"Unsupported graph type {type(graph)} could not be converted to NetworkX.")
         #raise TypeError(f"Desteklenmeyen graf tipi {type(graph)} NetworkX'e dönüştürülemedi.")
-    return nx_graph
+        raise TypeError(f"Unsupported graph type {type(graph)} could not be converted to NetworkX.")
 
+    return nx_graph
 
 def _kececi_layout_3d_helix(nx_graph):
     """Internal function: Arranges nodes in a helix along the Z-axis."""
@@ -1441,6 +1458,7 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
 
 
 
