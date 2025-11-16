@@ -7,3 +7,11 @@ per-file-ignores = { "__init__.py" = ["F401"] }
 indent-style = "space"
 line-ending = "lf"
 quote-style = "double"
+
+[tool.ruff.lint]
+extend-select = [
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "I",   # isort
+]
+target-version = "py310"  # Python versiyonunuza uygun şekilde
