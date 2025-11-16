@@ -1,59 +1,69 @@
-# noxfile.py
+#!/usr/bin/env -S uv run --script
+# /// script
+dependencies = ["nox"]
+# ///
 
 import nox
-import os
 
-# Test edilecek Python versiyonlarını listele
-PYTHON_VERSIONS = ["3.10", "3.11", "3.12", "3.13", "3.14"]
+# Nox versiyon gereksinimi
+nox.needs_version = "2025.10.14"
 
-# Varsayılan olarak çalıştırılacak oturumları belirle
-# (Terminalde sadece 'nox' yazıldığında bu oturumlar çalışır)
+# Varsayılan sanal ortam backend'i
+nox.options.default_venv_backend = "uv"
+
+# Varsayılan olarak çalıştırılacak oturumlar
 nox.options.sessions = ["lint", "tests"]
+
+# Test edilecek Python versiyonları
+PYTHON_VERSIONS = ["3.10", "3.11", "3.12", "3.13"]
 
 
 @nox.session(python=PYTHON_VERSIONS)
 def tests(session):
     """
-    Run the test suite for all specified Python versions.
-    Bu oturum 'nox -s tests-3.11' gibi komutlarla tetiklenir.
+    Belirtilen tüm Python versiyonları için test paketini çalıştır.
+    'nox -s tests-3.11' gibi komutlarla spesifik versiyonlar tetiklenebilir.
     """
-    # 1. Gerekli bağımlılıkları kur
-    #    'pytest', 'pytest-mock' ve projenin kendisini kur ('-e .' ile).
-    # pyproject.toml yerine bağımlılıkları burada manuel olarak belirt
-    session.install(
-        "pytest",
-        "pytest-cov",
-        "pytest-mock",
-        # ... diğer tüm test bağımlılıkları
-    )
-    session.install("-e", ".[test]") # pyproject.toml'daki [project.optional-dependencies] test grubunu kurar
+    # Test bağımlılıklarını ve projeyi kur
+    session.install("pytest", "pytest-cov", "pytest-mock")
+    session.install("-e", ".[test]")
     
-    # Artık tüm kütüphaneler kurulu olduğu için pytest çalışabilir.
-    # 2. Pytest'i çalıştır
-    #    --cov ile kod kapsamı (code coverage) raporu oluştur.
+    # Testleri kod kapsamı raporu ile çalıştır
     session.run("pytest", "--cov=kececilayout", "--cov-report=xml")
 
-@nox.session(python="3.11") # Linting genellikle tek bir versiyonda yapılır
+
+@nox.session(python="3.11")
 def lint(session):
     """
-    Run linters to check code style and quality.
+    Kod stilini ve kalitesini kontrol etmek için linter'ları çalıştır.
     """
     # Linting araçlarını kur
     session.install("ruff")
     
-    # Kodu kontrol et
+    # Kod kontrolü ve format kontrolü yap
     session.run("ruff", "check", "kececilayout", "tests")
     session.run("ruff", "format", "--check", "kececilayout", "tests")
 
 
-# --- Proje Yapınıza Göre Eklemeler ---
-# Eğer 'pyproject.toml' dosyanızda test bağımlılıkları tanımlı değilse,
-# tests oturumundaki install satırını şu şekilde değiştirebilirsiniz:
-#
-# @nox.session(python=PYTHON_VERSIONS)
-# def tests(session):
-#     # Bağımlılıkları manuel olarak kur
-#     session.install("pytest", "pytest-mock", "numpy", "networkx", "igraph", "rustworkx", "networkit", "graphillion", "matplotlib")
-#     # Projeyi düzenlenebilir modda kur
-#     session.install("-e", ".")
-#     session.run("pytest", "--cov=kececilayout", "--cov-report=xml")
+@nox.session(python="3.11")
+def type_check(session):
+    """
+    Tip kontrolü çalıştır (opsiyonel).
+    """
+    session.install("mypy")
+    session.install("-e", ".")
+    session.run("mypy", "kececilayout")
+
+
+@nox.session(python="3.11")
+def security_check(session):
+    """
+    Güvenlik kontrolleri çalıştır (opsiyonel).
+    """
+    session.install("bandit", "safety")
+    session.run("bandit", "-r", "kececilayout")
+    session.run("safety", "check", "--file", "pyproject.toml")
+
+
+if __name__ == "__main__":
+    nox.main()
