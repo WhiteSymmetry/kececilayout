@@ -347,6 +347,8 @@ print("\n--- Networkit Example Finished ---")
 
 ![Networkit Example](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/nk-1.png?raw=true)
 
+---
+
 #### Example with Graphillion
 
 ```python
@@ -534,6 +536,8 @@ except Exception as e:
 
 print("\n--- graph-tool Example Finished ---")
 ```
+
+![graph-tool Example](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/gt-1.png?raw=true)
 
 ---
 
@@ -1885,6 +1889,7 @@ Keçeci, Mehmet. "Kececilayout". Open Science Articles (OSAs), Zenodo, 2025. htt
 
 Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.15314328.
 ```
+
 
 
 
