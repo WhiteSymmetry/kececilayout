@@ -166,7 +166,7 @@ try:
     import kececilayout as kl
 except ImportError:
     print("Error: 'kececi_layout.py' not found or could not be imported.")
-    print("Please ensure the file containing kececi_layout_v4 is accessible.")
+    print("Please ensure the file containing kececi_layout is accessible.")
     exit()
 
 # --- General Layout Parameters ---
@@ -190,7 +190,7 @@ try:
     # Calculate layout
     print("Calculating Keçeci Layout...")
     # Call the layout function from the imported module
-    pos_rx = kl.kececi_layout_v4(G_rx, **LAYOUT_PARAMS)
+    pos_rx = kl.kececi_layout(G_rx, **LAYOUT_PARAMS)
     # print("Rustworkx positions:", pos_rx) # Debug print if needed
 
     # Plot using Matplotlib directly (Rustworkx doesn't have a built-in draw)
@@ -260,7 +260,7 @@ try:
     import kececilayout as kl
 except ImportError:
     print("Error: 'kececi_layout.py' not found or could not be imported.")
-    print("Please ensure the file containing kececi_layout_v4 is accessible.")
+    print("Please ensure the file containing kececi_layout is accessible.")
     exit()
 
 # --- General Layout Parameters ---
@@ -293,7 +293,7 @@ try:
     # Calculate layout
     print("Calculating Keçeci Layout...")
     # Call the layout function from the imported module
-    pos_nk = kl.kececi_layout_v4(G_nk, **LAYOUT_PARAMS)
+    pos_nk = kl.kececi_layout(G_nk, **LAYOUT_PARAMS)
     # print("Networkit positions:", pos_nk) # Debug print if needed
 
     # Plot using Matplotlib directly (Networkit doesn't have a simple built-in draw)
@@ -363,7 +363,7 @@ try:
     import kececilayout as kl
 except ImportError:
     print("Error: 'kececi_layout.py' not found or could not be imported.")
-    print("Please ensure the file containing kececi_layout_v4 is accessible.")
+    print("Please ensure the file containing kececi_layout is accessible.")
     exit()
 
 # --- General Layout Parameters ---
@@ -397,7 +397,7 @@ try:
     print("Calculating Keçeci Layout...")
     # Call the layout function; it should handle the Graphillion GraphSet object
     # and likely use 1-based indexing based on the universe.
-    pos_gg = kl.kececi_layout_v4(gs, **LAYOUT_PARAMS)
+    pos_gg = kl.kececi_layout(gs, **LAYOUT_PARAMS)
     # print("Graphillion positions:", pos_gg) # Debug print if needed
 
     # Plot using Matplotlib directly (Graphillion has no plotting)
@@ -455,6 +455,88 @@ print("\n--- Graphillion Example Finished ---")
 
 ---
 
+#### Example with graph-tool
+
+```python
+import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
+import graph_tool.all as gt
+import kececilayout as kl
+
+# --- General Layout Parameters ---
+LAYOUT_PARAMS = {
+    'primary_spacing': 1.0,
+    'secondary_spacing': 0.6,
+    'primary_direction': 'top_down',
+    'secondary_start': 'right'
+}
+
+N_NODES = 10  # Number of nodes in the example graph
+
+try:
+    print("\n--- graph-tool Example ---")
+
+    # Create a graph-tool Graph
+    g = gt.Graph(directed=False)
+
+    # Add nodes
+    nodes = [g.add_vertex() for _ in range(N_NODES)]
+
+    # Add edges (1-2, 2-3, ..., (N_NODES-1)-N_NODES)
+    for i in range(N_NODES - 1):
+        g.add_edge(nodes[i], nodes[i + 1])
+
+    # Calculate layout using kececilayout_v4
+    print("Calculating Keçeci Layout...")
+    pos_gt = kl.kececi_layout(g, **LAYOUT_PARAMS)
+
+    # Plot using Matplotlib
+    print("Plotting graph using Matplotlib...")
+    plt.figure(figsize=(6, 8))
+    ax = plt.gca()
+
+    # Extract node positions
+    node_indices_gt = list(range(N_NODES))
+    x_coords_gt = [pos_gt[i][0] for i in node_indices_gt]
+    y_coords_gt = [pos_gt[i][1] for i in node_indices_gt]
+
+    # Draw nodes
+    ax.scatter(x_coords_gt, y_coords_gt, s=700, c='gold', zorder=2, label='Nodes')
+
+    # Draw labels
+    for i in node_indices_gt:
+        ax.text(pos_gt[i][0], pos_gt[i][1], str(i + 1), ha='center', va='center', fontsize=10, zorder=3)
+
+    # Draw edges
+    edge_lines_gt = []
+    for edge in g.edges():
+        source = int(edge.source())
+        target = int(edge.target())
+        edge_lines_gt.append([pos_gt[source], pos_gt[target]])
+
+    if edge_lines_gt:
+        lc_gt = LineCollection(edge_lines_gt, colors='gray', linewidths=1.0, zorder=1, label='Edges')
+        ax.add_collection(lc_gt)
+
+    plt.title(f"graph-tool ({N_NODES} Nodes) with Keçeci Layout (Matplotlib)")
+    plt.xlabel("X Coordinate")
+    plt.ylabel("Y Coordinate")
+    plt.axis('equal')
+    plt.grid(False)
+    plt.show()
+
+except ImportError:
+    print("graph-tool is not installed. Skipping this example.")
+except Exception as e:
+    print(f"An error occurred in the graph-tool example: {e}")
+    import traceback
+    traceback.print_exc()
+
+print("\n--- graph-tool Example Finished ---")
+```
+
+---
+
 ### Supported Backends
 
 - **NetworkX**
@@ -462,8 +544,9 @@ print("\n--- Graphillion Example Finished ---")
 - **Rustworkx**
 - **Networkit**
 - **Graphillion**
+- **grasph-tool**
 
-*Note: All backends are supported via unified `kececi_layout_v4` function.*
+*Note: All backends are supported via unified `kececi_layout` function.*
 
 ---
 
@@ -579,7 +662,7 @@ try:
     import kececilayout as kl
 except ImportError:
     print("Error: 'kececi_layout.py' not found or could not be imported.")
-    print("Please ensure the file containing kececi_layout_v4 is accessible.")
+    print("Please ensure the file containing kececi_layout is accessible.")
     exit()
 
 # --- General Layout Parameters ---
@@ -603,7 +686,7 @@ try:
     # Calculate layout
     print("Calculating Keçeci Layout...")
     # Call the layout function from the imported module
-    pos_ig = kl.kececi_layout_v4(G_ig, **LAYOUT_PARAMS)
+    pos_ig = kl.kececi_layout(G_ig, **LAYOUT_PARAMS)
     # print("igraph positions (dict):", pos_ig) # Debug print if needed
 
     # Convert positions dict to list ordered by vertex index for ig.plot
@@ -670,7 +753,7 @@ try:
     import kececilayout as kl
 except ImportError:
     print("Error: 'kececi_layout.py' not found or could not be imported.")
-    print("Please ensure the file containing kececi_layout_v4 is accessible.")
+    print("Please ensure the file containing kececi_layout is accessible.")
     exit()
 
 # --- General Layout Parameters ---
@@ -694,7 +777,7 @@ try:
     # Calculate layout
     print("Calculating Keçeci Layout...")
     # Call the layout function from the imported module
-    pos_rx = kl.kececi_layout_v4(G_rx, **LAYOUT_PARAMS)
+    pos_rx = kl.kececi_layout(G_rx, **LAYOUT_PARAMS)
     # print("Rustworkx positions:", pos_rx) # Debug print if needed
 
     # Plot using Matplotlib directly (Rustworkx doesn't have a built-in draw)
@@ -764,7 +847,7 @@ try:
     import kececilayout as kl
 except ImportError:
     print("Error: 'kececi_layout.py' not found or could not be imported.")
-    print("Please ensure the file containing kececi_layout_v4 is accessible.")
+    print("Please ensure the file containing kececi_layout is accessible.")
     exit()
 
 # --- General Layout Parameters ---
@@ -797,7 +880,7 @@ try:
     # Calculate layout
     print("Calculating Keçeci Layout...")
     # Call the layout function from the imported module
-    pos_nk = kl.kececi_layout_v4(G_nk, **LAYOUT_PARAMS)
+    pos_nk = kl.kececi_layout(G_nk, **LAYOUT_PARAMS)
     # print("Networkit positions:", pos_nk) # Debug print if needed
 
     # Plot using Matplotlib directly (Networkit doesn't have a simple built-in draw)
@@ -867,7 +950,7 @@ try:
     import kececilayout as kl
 except ImportError:
     print("Error: 'kececi_layout.py' not found or could not be imported.")
-    print("Please ensure the file containing kececi_layout_v4 is accessible.")
+    print("Please ensure the file containing kececi_layout is accessible.")
     exit()
 
 # --- General Layout Parameters ---
@@ -901,7 +984,7 @@ try:
     print("Calculating Keçeci Layout...")
     # Call the layout function; it should handle the Graphillion GraphSet object
     # and likely use 1-based indexing based on the universe.
-    pos_gg = kl.kececi_layout_v4(gs, **LAYOUT_PARAMS)
+    pos_gg = kl.kececi_layout(gs, **LAYOUT_PARAMS)
     # print("Graphillion positions:", pos_gg) # Debug print if needed
 
     # Plot using Matplotlib directly (Graphillion has no plotting)
@@ -966,8 +1049,9 @@ print("\n--- Graphillion Example Finished ---")
 - **Rustworkx**
 - **Networkit**
 - **Graphillion**
+- **graph-tool**
 
-*Not: Tüm kütüphaneler `kececi_layout_v4` fonksiyonu ile desteklenir.*
+*Not: Tüm kütüphaneler `kececi_layout` fonksiyonu ile desteklenir.*
 
 ---
 
@@ -1169,8 +1253,8 @@ import random
 G = nx.path_graph(10)
 
 # Calculate layout positions using the generic function
-# (Assuming kl.kececi_layout_v4 is the main/generic function)
-pos = kl.kececi_layout_v4(G,
+# (Assuming kl.kececi_layout is the main/generic function)
+pos = kl.kececi_layout(G,
                            primary_spacing=1.0,
                            secondary_spacing=0.5,
                            primary_direction='top_down',
@@ -1195,7 +1279,7 @@ try:
     import kececilayout as kl
 except ImportError:
     print("Error: 'kececi_layout.py' not found or could not be imported.")
-    print("Please ensure the file containing kececi_layout_v4 is accessible.")
+    print("Please ensure the file containing kececi_layout is accessible.")
     exit()
 
 # --- General Layout Parameters ---
@@ -1219,7 +1303,7 @@ try:
     # Calculate layout
     print("Calculating Keçeci Layout...")
     # Call the layout function from the imported module
-    pos_nx = kl.kececi_layout_v4(G_nx, **LAYOUT_PARAMS)
+    pos_nx = kl.kececi_layout(G_nx, **LAYOUT_PARAMS)
     # print("NetworkX positions:", pos_nx) # Debug print if needed
 
     # Plot
@@ -1258,7 +1342,7 @@ print("\n--- NetworkX Example Finished ---")
 import igraph as ig
 import matplotlib.pyplot as plt
 # Assuming a specific function for igraph exists or the generic one handles it
-from kececilayout import kececi_layout_v4_igraph # Adjust import if needed
+from kececilayout import kececi_layout_igraph # Adjust import if needed
 import random
 
 # Create a graph
@@ -1267,7 +1351,7 @@ for i in range(G.vcount()):
      G.vs[i]["name"] = f"N{i}"
 
 # Calculate layout positions (returns a list of coords)
-pos_list = kececi_layout_v4_igraph(G,
+pos_list = kececi_layout_igraph(G,
                                     primary_spacing=1.5,
                                     secondary_spacing=1.0,
                                     primary_direction='left-to-right',
@@ -1300,7 +1384,7 @@ try:
     import kececilayout as kl
 except ImportError:
     print("Error: 'kececi_layout.py' not found or could not be imported.")
-    print("Please ensure the file containing kececi_layout_v4 is accessible.")
+    print("Please ensure the file containing kececi_layout is accessible.")
     exit()
 
 # --- General Layout Parameters ---
@@ -1324,7 +1408,7 @@ try:
     # Calculate layout
     print("Calculating Keçeci Layout...")
     # Call the layout function from the imported module
-    pos_ig = kl.kececi_layout_v4(G_ig, **LAYOUT_PARAMS)
+    pos_ig = kl.kececi_layout(G_ig, **LAYOUT_PARAMS)
     # print("igraph positions (dict):", pos_ig) # Debug print if needed
 
     # Convert positions dict to list ordered by vertex index for ig.plot
@@ -1393,7 +1477,7 @@ try:
     import kececilayout as kl
 except ImportError:
     print("Error: 'kececi_layout.py' not found or could not be imported.")
-    print("Please ensure the file containing kececi_layout_v4 is accessible.")
+    print("Please ensure the file containing kececi_layout is accessible.")
     exit()
 
 # --- General Layout Parameters ---
@@ -1417,7 +1501,7 @@ try:
     # Calculate layout
     print("Calculating Keçeci Layout...")
     # Call the layout function from the imported module
-    pos_rx = kl.kececi_layout_v4(G_rx, **LAYOUT_PARAMS)
+    pos_rx = kl.kececi_layout(G_rx, **LAYOUT_PARAMS)
     # print("Rustworkx positions:", pos_rx) # Debug print if needed
 
     # Plot using Matplotlib directly (Rustworkx doesn't have a built-in draw)
@@ -1489,7 +1573,7 @@ try:
     import kececilayout as kl
 except ImportError:
     print("Error: 'kececi_layout.py' not found or could not be imported.")
-    print("Please ensure the file containing kececi_layout_v4 is accessible.")
+    print("Please ensure the file containing kececi_layout is accessible.")
     exit()
 
 # --- General Layout Parameters ---
@@ -1522,7 +1606,7 @@ try:
     # Calculate layout
     print("Calculating Keçeci Layout...")
     # Call the layout function from the imported module
-    pos_nk = kl.kececi_layout_v4(G_nk, **LAYOUT_PARAMS)
+    pos_nk = kl.kececi_layout(G_nk, **LAYOUT_PARAMS)
     # print("Networkit positions:", pos_nk) # Debug print if needed
 
     # Plot using Matplotlib directly (Networkit doesn't have a simple built-in draw)
@@ -1594,7 +1678,7 @@ try:
     import kececilayout as kl
 except ImportError:
     print("Error: 'kececi_layout.py' not found or could not be imported.")
-    print("Please ensure the file containing kececi_layout_v4 is accessible.")
+    print("Please ensure the file containing kececi_layout is accessible.")
     exit()
 
 # --- General Layout Parameters ---
@@ -1628,7 +1712,7 @@ try:
     print("Calculating Keçeci Layout...")
     # Call the layout function; it should handle the Graphillion GraphSet object
     # and likely use 1-based indexing based on the universe.
-    pos_gg = kl.kececi_layout_v4(gs, **LAYOUT_PARAMS)
+    pos_gg = kl.kececi_layout(gs, **LAYOUT_PARAMS)
     # print("Graphillion positions:", pos_gg) # Debug print if needed
 
     # Plot using Matplotlib directly (Graphillion has no plotting)
@@ -1710,8 +1794,8 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 
 *   **Rozetler (Badges):** Başlangıçta PyPI ve Lisans rozetleri ekledim (yorum satırı içinde). Eğer projeniz PyPI'da yayınlandıysa veya bir CI/CD süreci varsa, ilgili rozetleri eklemek iyi bir pratiktir.
 *   **LICENSE Dosyası:** `LICENSE` bölümünde bir `LICENSE` dosyasına referans verdim. Projenizin kök dizininde MIT lisans metnini içeren bir `LICENSE` dosyası oluşturduğunuzdan emin olun.
-*   **İçe Aktarma Yolları:** Örneklerde `import kececilayout as kl` veya `from kececilayout import kececi_layout_v4_igraph` gibi varsayımsal içe aktarma yolları kullandım. Kendi paket yapınıza göre bunları ayarlamanız gerekebilir.
-*   **Fonksiyon Adları:** Örneklerde `kececi_layout_v4` ve `kececi_layout_v4_igraph` gibi fonksiyon adlarını kullandım. Gerçek fonksiyon adlarınız farklıysa bunları güncelleyin.
+*   **İçe Aktarma Yolları:** Örneklerde `import kececilayout as kl` veya `from kececilayout import kececi_layout_igraph` gibi varsayımsal içe aktarma yolları kullandım. Kendi paket yapınıza göre bunları ayarlamanız gerekebilir.
+*   **Fonksiyon Adları:** Örneklerde `kececi_layout` ve `kececi_layout_igraph` gibi fonksiyon adlarını kullandım. Gerçek fonksiyon adlarınız farklıysa bunları güncelleyin.
 *   **Görselleştirme:** Örneklere `matplotlib.pyplot` kullanarak temel görselleştirme adımlarını ekledim, bu da kullanıcıların sonucu nasıl görebileceğini gösterir. Eksen oranlarını eşitlemek (`axis('equal')` veya `set_aspect('equal')`) layout'un doğru görünmesi için önemlidir.
 ```
 
@@ -1801,5 +1885,6 @@ Keçeci, Mehmet. "Kececilayout". Open Science Articles (OSAs), Zenodo, 2025. htt
 
 Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.15314328.
 ```
+
 
 
