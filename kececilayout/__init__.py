@@ -10,7 +10,7 @@ import inspect
 import warnings
 
 # Paket sürüm numarası
-__version__ = "0.4.7"
+__version__ = "0.4.8"
 
 # =============================================================================
 # OTOMATİK İÇE AKTARMA VE __all__ OLUŞTURMA
@@ -41,7 +41,7 @@ from .kececi_layout import (  # Veya fonksiyonların bulunduğu asıl modül
     kececi_layout_rx,
     kececi_layout_rustworkx,
     kececi_layout_gt,
-    kececi_layout_graph-tool,
+    kececi_layout_graph_tool,
     kececi_layout_pure,
     load_element_data_and_spectral_lines,
     wavelength_to_rgb,
@@ -81,7 +81,7 @@ __all__ = [
     'kececi_layout_rx',
     'kececi_layout_rustworkx',
     'kececi_layout_gt',
-    'kececi_layout_graph-tool',
+    'kececi_layout_graph_tool',
     'kececi_layout_pure',
     'load_element_data_and_spectral_lines',
     'wavelength_to_rgb',
@@ -138,3 +138,4 @@ def old_function_placeholder():
 
 # Eğer bu eski fonksiyonu da dışa aktarmak istiyorsanız, __all__ listesine ekleyin
 # __all__.append('old_function_placeholder')
+
