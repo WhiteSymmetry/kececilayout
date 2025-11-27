@@ -1,4 +1,4 @@
-{% set version = "0.4.6" %}
+{% set version = "0.4.7" %}
 
 package:
   name: kececilayout
@@ -32,7 +32,7 @@ requirements:
     - rustworkx
     - networkit
     - python-louvain
-
+    - graph-tool
 
 # DİKKAT: 'test:' bölümü bilinçli olarak kaldırılmıştır.
 
