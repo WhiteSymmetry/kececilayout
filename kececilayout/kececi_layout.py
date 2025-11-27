@@ -16,6 +16,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import networkit as nk
 import networkx as nx
 import numpy as np # rustworkx
+import platform # graph_tool için
 import random
 import rustworkx as rx
 import warnings
@@ -48,6 +49,14 @@ try:
     import graphillion as gg
 except ImportError:
     gg = None
+# graph-tool sadece Linux'ta import edilsin
+if platform.system() == "Linux":
+    try:
+        import graph_tool.all as gt
+    except ImportError:
+        gt = None
+else:
+    gt = None
 
 
 def find_max_node_id(edges):
@@ -89,9 +98,8 @@ def kececi_layout(graph, primary_spacing=1.0, secondary_spacing=1.0,
                   expanding=True):
     """
     Calculates 2D sequential-zigzag coordinates for the nodes of a graph.
-
     This function is compatible with graphs from NetworkX, Rustworkx, igraph,
-    Networkit, and Graphillion.
+    Networkit, Graphillion, and graph-tool.
 
     Args:
         graph: A graph object from a supported library.
@@ -105,84 +113,12 @@ def kececi_layout(graph, primary_spacing=1.0, secondary_spacing=1.0,
     Returns:
         dict: A dictionary of positions formatted as {node_id: (x, y)}.
     """
-    # Bu blok, farklı kütüphanelerden düğüm listelerini doğru şekilde alır.
-    nx_graph = to_networkx(graph) # Emin olmak için en başta dönüştür
-    try:
-        nodes = sorted(list(nx_graph.nodes()))
-    except TypeError:
-        nodes = list(nx_graph.nodes())
-
-    pos = {}
-    
-    # --- DOĞRULANMIŞ KONTROL BLOĞU ---
-    is_vertical = primary_direction in ['top_down', 'bottom_up']
-    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-
-    if not (is_vertical or is_horizontal):
-        raise ValueError(f"Invalid primary_direction: '{primary_direction}'")
-    if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start for vertical direction: '{secondary_start}'")
-    if is_horizontal and secondary_start not in ['up', 'down']:
-        raise ValueError(f"Invalid secondary_start for horizontal direction: '{secondary_start}'")
-    # --- BİTİŞ ---
-
-    for i, node_id in enumerate(nodes):
-        primary_coord, secondary_axis = 0.0, ''
-        if primary_direction == 'top_down':
-            primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom_up':
-            primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right':
-            primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else:
-            primary_coord, secondary_axis = i * -primary_spacing, 'y'
-
-        secondary_offset = 0.0
-        if i > 0:
-            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            side = 1 if i % 2 != 0 else -1
-            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
-
-        x, y = ((secondary_offset, primary_coord) if secondary_axis == 'x' else
-                (primary_coord, secondary_offset))
-        pos[node_id] = (x, y)
-    return pos
-
-# =============================================================================
-# 1. TEMEL LAYOUT HESAPLAMA FONKSİYONU (2D)
-# Bu fonksiyon sadece koordinatları hesaplar, çizim yapmaz.
-# 1. LAYOUT CALCULATION FUNCTION (UNIFIED AND IMPROVED)
-# =============================================================================
-
-def kececi_layout_v4(graph, primary_spacing=1.0, secondary_spacing=1.0,
-                  primary_direction='top_down', secondary_start='right',
-                  expanding=True): # v4 davranışını kontrol etmek için parametre eklendi
-    """
-    Calculates 2D sequential-zigzag coordinates for the nodes of a graph.
-
-    This function is compatible with graphs from NetworkX, Rustworkx, igraph,
-    Networkit, and Graphillion.
-
-    Args:
-        graph: A graph object from a supported library.
-        primary_spacing (float): The distance between nodes along the primary axis.
-        secondary_spacing (float): The base unit for the zigzag offset.
-        primary_direction (str): 'top_down', 'bottom_up', 'left_to_right', 'right_to_left'.
-        secondary_start (str): Initial direction for the zigzag ('up', 'down', 'left', 'right').
-        expanding (bool): If True (default), the zigzag offset grows, creating the
-                          triangle-like 'v4' style. If False, the offset is constant,
-                          creating parallel lines.
-
-    Returns:
-        dict: A dictionary of positions formatted as {node_id: (x, y)}.
-    """
-    # ==========================================================
-    # Sizin orijinal, çoklu kütüphane uyumluluk bloğunuz burada korunuyor.
-    # Bu, kodun sağlamlığını garanti eder.
-    # ==========================================================
     nodes = None
-    if gg and isinstance(graph, gg.GraphSet):
+
+    # graph-tool desteği
+    if gt and isinstance(graph, gt.Graph):
+        nodes = sorted([int(v) for v in graph.get_vertices()])
+    elif gg and isinstance(graph, gg.GraphSet):
         edges = graph.universe()
         max_node_id = max(set(itertools.chain.from_iterable(edges))) if edges else 0
         nodes = list(range(1, max_node_id + 1)) if max_node_id > 0 else []
@@ -199,13 +135,97 @@ def kececi_layout_v4(graph, primary_spacing=1.0, secondary_spacing=1.0,
             nodes = list(graph.nodes())
     else:
         supported = ["NetworkX", "Rustworkx", "igraph", "Networkit", "Graphillion"]
+        if gt:
+            supported.append("graph-tool")
         raise TypeError(f"Unsupported graph type: {type(graph)}. Supported: {', '.join(supported)}")
-    # ==========================================================
 
     pos = {}
     is_vertical = primary_direction in ['top_down', 'bottom_up']
     is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
+    if not (is_vertical or is_horizontal):
+        raise ValueError(f"Invalid primary_direction: '{primary_direction}'")
+    if is_vertical and secondary_start not in ['right', 'left']:
+        raise ValueError(f"Invalid secondary_start for vertical direction: '{secondary_start}'")
+    if is_horizontal and secondary_start not in ['up', 'down']:
+        raise ValueError(f"Invalid secondary_start for horizontal direction: '{secondary_start}'")
 
+    for i, node_id in enumerate(nodes):
+        primary_coord, secondary_axis = 0.0, ''
+        if primary_direction == 'top_down':
+            primary_coord, secondary_axis = i * -primary_spacing, 'x'
+        elif primary_direction == 'bottom_up':
+            primary_coord, secondary_axis = i * primary_spacing, 'x'
+        elif primary_direction == 'left-to-right':
+            primary_coord, secondary_axis = i * primary_spacing, 'y'
+        else:  # 'right-to-left'
+            primary_coord, secondary_axis = i * -primary_spacing, 'y'
+        secondary_offset = 0.0
+        if i > 0:
+            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
+            magnitude = math.ceil(i / 2.0) if expanding else 1.0
+            side = 1 if i % 2 != 0 else -1
+            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
+        x, y = ((secondary_offset, primary_coord) if secondary_axis == 'x' else
+                (primary_coord, secondary_offset))
+        pos[node_id] = (x, y)
+    return pos
+
+# =============================================================================
+# 1. TEMEL LAYOUT HESAPLAMA FONKSİYONU (2D)
+# Bu fonksiyon sadece koordinatları hesaplar, çizim yapmaz.
+# 1. LAYOUT CALCULATION FUNCTION (UNIFIED AND IMPROVED)
+# =============================================================================
+
+def kececi_layout_v4(graph, primary_spacing=1.0, secondary_spacing=1.0,
+                  primary_direction='top_down', secondary_start='right',
+                  expanding=True):
+    """
+    Calculates 2D sequential-zigzag coordinates for the nodes of a graph.
+    This function is compatible with graphs from NetworkX, Rustworkx, igraph,
+    Networkit, Graphillion, and graph-tool.
+
+    Args:
+        graph: A graph object from a supported library.
+        primary_spacing (float): The distance between nodes along the primary axis.
+        secondary_spacing (float): The base unit for the zigzag offset.
+        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
+        secondary_start (str): Initial direction for the zigzag ('up', 'down', 'left', 'right').
+        expanding (bool): If True (default), the zigzag offset grows, creating the
+                          triangle-like 'v4' style. If False, the offset is constant,
+                          creating parallel lines.
+
+    Returns:
+        dict: A dictionary of positions formatted as {node_id: (x, y)}.
+    """
+    nodes = None
+
+    # graph-tool desteği
+    if gt and isinstance(graph, gt.Graph):
+        nodes = sorted([int(v) for v in graph.get_vertices()])
+    elif gg and isinstance(graph, gg.GraphSet):
+        edges = graph.universe()
+        max_node_id = max(set(itertools.chain.from_iterable(edges))) if edges else 0
+        nodes = list(range(1, max_node_id + 1)) if max_node_id > 0 else []
+    elif ig and isinstance(graph, ig.Graph):
+        nodes = sorted([v.index for v in graph.vs])
+    elif nk and isinstance(graph, nk.graph.Graph):
+        nodes = sorted(list(graph.iterNodes()))
+    elif rx and isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):
+        nodes = sorted(graph.node_indices())
+    elif isinstance(graph, nx.Graph):
+        try:
+            nodes = sorted(list(graph.nodes()))
+        except TypeError:
+            nodes = list(graph.nodes())
+    else:
+        supported = ["NetworkX", "Rustworkx", "igraph", "Networkit", "Graphillion"]
+        if gt:
+            supported.append("graph-tool")
+        raise TypeError(f"Unsupported graph type: {type(graph)}. Supported: {', '.join(supported)}")
+
+    pos = {}
+    is_vertical = primary_direction in ['top_down', 'bottom_up']
+    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
     if not (is_vertical or is_horizontal):
         raise ValueError(f"Invalid primary_direction: {primary_direction}")
     if is_vertical and secondary_start not in ['right', 'left']:
@@ -221,24 +241,17 @@ def kececi_layout_v4(graph, primary_spacing=1.0, secondary_spacing=1.0,
             primary_coord, secondary_axis = i * primary_spacing, 'x'
         elif primary_direction == 'left-to-right':
             primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else:  # 'right_to_left'
+        else:  # 'right-to-left'
             primary_coord, secondary_axis = i * -primary_spacing, 'y'
-
         secondary_offset = 0.0
         if i > 0:
             start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            
-            # --- YENİ ESNEK MANTIK BURADA ---
-            # `expanding` True ise 'v4' stili gibi genişler, değilse sabit kalır.
             magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            
             side = 1 if i % 2 != 0 else -1
             secondary_offset = start_multiplier * magnitude * side * secondary_spacing
-
         x, y = ((secondary_offset, primary_coord) if secondary_axis == 'x' else
                 (primary_coord, secondary_offset))
         pos[node_id] = (x, y)
-
     return pos
 
 def kececi_layout_nx(graph, primary_spacing=1.0, secondary_spacing=1.0,
@@ -877,6 +890,98 @@ def kececi_layout_rustworkx(graph: "rx.PyGraph", primary_spacing=1.0, secondary_
         
     return pos
 
+def kececi_layout_gt(graph: "gt.Graph", primary_spacing=1.0, secondary_spacing=1.0,
+                             primary_direction='top_down', secondary_start='right',
+                             expanding=True):
+    """
+    Expanding Kececi Layout: Progresses along the primary axis, with an offset
+    on the secondary axis.
+    Kececi layout for a graph-tool graph object.
+    Args:
+        graph (graph_tool.Graph): A graph-tool graph object.
+        primary_spacing (float): The spacing between nodes on the primary axis.
+        secondary_spacing (float): The offset spacing on the secondary axis.
+        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
+        secondary_start (str): Initial direction for the offset ('right', 'left', 'up', 'down').
+    Returns:
+        dict: A dictionary of positions keyed by node index.
+    """
+    nodes = sorted([int(v) for v in graph.vertices()])
+    pos = {}
+    is_vertical = primary_direction in ['top_down', 'bottom_up']
+    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
+    if not (is_vertical or is_horizontal):
+        raise ValueError(f"Invalid primary_direction: {primary_direction}")
+    if is_vertical and secondary_start not in ['right', 'left']:
+        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
+    if is_horizontal and secondary_start not in ['up', 'down']:
+        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
+
+    for i, node_id in enumerate(nodes):
+        if primary_direction == 'top_down':
+            primary_coord, secondary_axis = i * -primary_spacing, 'x'
+        elif primary_direction == 'bottom_up':
+            primary_coord, secondary_axis = i * primary_spacing, 'x'
+        elif primary_direction == 'left-to-right':
+            primary_coord, secondary_axis = i * primary_spacing, 'y'
+        else:
+            primary_coord, secondary_axis = i * -primary_spacing, 'y'
+        secondary_offset = 0.0
+        if i > 0:
+            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
+            magnitude = math.ceil(i / 2.0) if expanding else 1.0
+            side = 1 if i % 2 != 0 else -1
+            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
+        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
+        pos[node_id] = (x, y)
+    return pos
+
+def kececi_layout_graph_tool(graph: "gt.Graph", primary_spacing=1.0, secondary_spacing=1.0,
+                             primary_direction='top_down', secondary_start='right',
+                             expanding=True):
+    """
+    Expanding Kececi Layout: Progresses along the primary axis, with an offset
+    on the secondary axis.
+    Kececi layout for a graph-tool graph object.
+    Args:
+        graph (graph_tool.Graph): A graph-tool graph object.
+        primary_spacing (float): The spacing between nodes on the primary axis.
+        secondary_spacing (float): The offset spacing on the secondary axis.
+        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
+        secondary_start (str): Initial direction for the offset ('right', 'left', 'up', 'down').
+    Returns:
+        dict: A dictionary of positions keyed by node index.
+    """
+    nodes = sorted([int(v) for v in graph.vertices()])
+    pos = {}
+    is_vertical = primary_direction in ['top_down', 'bottom_up']
+    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
+    if not (is_vertical or is_horizontal):
+        raise ValueError(f"Invalid primary_direction: {primary_direction}")
+    if is_vertical and secondary_start not in ['right', 'left']:
+        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
+    if is_horizontal and secondary_start not in ['up', 'down']:
+        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
+
+    for i, node_id in enumerate(nodes):
+        if primary_direction == 'top_down':
+            primary_coord, secondary_axis = i * -primary_spacing, 'x'
+        elif primary_direction == 'bottom_up':
+            primary_coord, secondary_axis = i * primary_spacing, 'x'
+        elif primary_direction == 'left-to-right':
+            primary_coord, secondary_axis = i * primary_spacing, 'y'
+        else:
+            primary_coord, secondary_axis = i * -primary_spacing, 'y'
+        secondary_offset = 0.0
+        if i > 0:
+            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
+            magnitude = math.ceil(i / 2.0) if expanding else 1.0
+            side = 1 if i % 2 != 0 else -1
+            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
+        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
+        pos[node_id] = (x, y)
+    return pos
+
 def kececi_layout_pure(nodes, primary_spacing=1.0, secondary_spacing=1.0,
                          primary_direction='top_down', secondary_start='right',
                          expanding=True):
@@ -1113,7 +1218,7 @@ def to_networkx(graph):
         return graph.copy()
     
     nx_graph = nx.Graph()
-    
+    """
     # PyZX graph support
     try:
         import pyzx as zx
@@ -1122,11 +1227,43 @@ def to_networkx(graph):
             for v in graph.vertices():
                 nx_graph.add_node(v)
             for edge in graph.edges():
-                if len(edge) == 2:
+                if len(edge) == 2: # TypeError: object of type 'Edge' has no len()
                     nx_graph.add_edge(edge[0], edge[1])
             return nx_graph
     except ImportError:
         pass
+    """
+
+    # PyZX graph support
+    try:
+        import pyzx as zx
+        if hasattr(graph, 'vertices') and hasattr(graph, 'edges'):
+            for v in graph.vertices():
+                nx_graph.add_node(v)
+            for edge in graph.edges():
+                # PyZX kenarları için doğru erişim
+                u, v = edge.u, edge.v  # PyZX kenarları için uygun erişim
+                nx_graph.add_edge(u, v)
+            return nx_graph
+    except ImportError:
+        pass
+    except AttributeError:
+        pass  # PyZX kenarları için uygun erişim yoksa, bu bloğu atla
+
+    # graph-tool desteği
+    if gt and isinstance(graph, gt.Graph):
+        # Düğümleri ekle
+        for v in graph.vertices():
+            node_id = int(v)
+            nx_graph.add_node(node_id)
+
+        # Kenarları ekle
+        for e in graph.edges():
+            source = int(e.source())
+            target = int(e.target())
+            nx_graph.add_edge(source, target)
+
+        return nx_graph
     
     # Diğer graph kütüphaneleri...
     if rx and isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):
@@ -1392,7 +1529,7 @@ def draw_kececi(graph, style='curved', ax=None, **kwargs):
     Draws a graph using the Keçeci Layout with a specified style.
 
     This function automatically handles graphs from different libraries
-    (NetworkX, Rustworkx, igraph, etc.).
+    (Networkx, Networkit, Rustworkx, igraph, Graphillion, graph-tool,etc.).
 
     Args:
         graph: The graph object to be drawn.
@@ -1432,18 +1569,29 @@ if __name__ == '__main__':
     print("Testing kececilayout.py module...")
     G_test = nx.gnp_random_graph(12, 0.3, seed=42)
 
+    # graph-tool grafi oluşturma ve test etme
+    if gt:
+        g = gt.Graph()
+        g.add_vertex(12)
+        for u, v in G_test.edges():
+            g.add_edge(g.vertex(u), g.vertex(v))
+        fig_gt = plt.figure(figsize=(10, 8))
+        draw_kececi(g, ax=fig_gt.add_subplot(111), style='curved')
+        plt.title("Keçeci Layout: graph-tool Graph")
+        plt.show()
+
     # Compare expanding=False (parallel) vs. expanding=True ('v4' style)
     fig_v4 = plt.figure(figsize=(16, 7))
     fig_v4.suptitle("Effect of the `expanding` Parameter", fontsize=20)
     ax_v4_1 = fig_v4.add_subplot(1, 2, 1)
     draw_kececi(G_test, ax=ax_v4_1, style='curved',
-                primary_direction='left_to_right', secondary_start='up',
+                primary_direction='left-to-right', secondary_start='up',
                 expanding=False)
     ax_v4_1.set_title("Parallel Style (expanding=False)", fontsize=16)
 
     ax_v4_2 = fig_v4.add_subplot(1, 2, 2)
     draw_kececi(G_test, ax=ax_v4_2, style='curved',
-                primary_direction='left_to_right', secondary_start='up',
+                primary_direction='left-to-right', secondary_start='up',
                 expanding=True)
     ax_v4_2.set_title("Expanding 'v4' Style (expanding=True)", fontsize=16)
     plt.show()
@@ -1452,11 +1600,9 @@ if __name__ == '__main__':
     fig_styles = plt.figure(figsize=(18, 12))
     fig_styles.suptitle("Advanced Drawing Styles Test", fontsize=20)
     draw_kececi(G_test, style='curved', ax=fig_styles.add_subplot(2, 2, 1),
-                primary_direction='left_to_right', secondary_start='up', expanding=True)
+                primary_direction='left-to-right', secondary_start='up', expanding=True)
     draw_kececi(G_test, style='transparent', ax=fig_styles.add_subplot(2, 2, 2),
                 primary_direction='top_down', secondary_start='left', expanding=True, node_color='purple')
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
-
-
