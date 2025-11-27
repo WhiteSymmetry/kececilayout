@@ -544,7 +544,7 @@ print("\n--- graph-tool Example Finished ---")
 - **Rustworkx**
 - **Networkit**
 - **Graphillion**
-- **grasph-tool**
+- **graph-tool**
 
 *Note: All backends are supported via unified `kececi_layout` function.*
 
@@ -1885,6 +1885,7 @@ Keçeci, Mehmet. "Kececilayout". Open Science Articles (OSAs), Zenodo, 2025. htt
 
 Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.15314328.
 ```
+
 
 
 
