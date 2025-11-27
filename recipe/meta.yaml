@@ -1,4 +1,4 @@
-{% set version = "0.4.6" %}
+{% set version = "0.4.7" %}
 
 package:
   name: kececilayout
@@ -8,7 +8,7 @@ source:
   path: .  # Derlemeyi bu meta.yaml dosyasının bulunduğu dizinden yap
   url: https://files.pythonhosted.org/packages/bf/f4/bff0d0aeb8e4fd12fe8beafa23fc3cd519f44326ab8a614a7d7fb7497d37/kececilayout-0.4.6.tar.gz
   sha256: 65b757c4b3ab40f4f297bf0c2b981a9f3d93205890a2c8d08a2a4f284d54479a
-
+  
 build:
   noarch: python
   script: {{ PYTHON }} -m pip install . --no-deps --ignore-installed
@@ -32,7 +32,7 @@ requirements:
     - rustworkx
     - networkit
     - python-louvain
-
+    - graph-tool
 
 # DİKKAT: 'test:' bölümü bilinçli olarak kaldırılmıştır.
 
