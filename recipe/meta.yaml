@@ -33,6 +33,7 @@ requirements:
     - networkit
     - python-louvain
     - graph-tool
+    - numba
 
 # DİKKAT: 'test:' bölümü bilinçli olarak kaldırılmıştır.
 
