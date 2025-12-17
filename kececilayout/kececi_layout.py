@@ -16,9 +16,11 @@ from mpl_toolkits.mplot3d import Axes3D
 import networkit as nk
 import networkx as nx
 import numpy as np # rustworkx
+from numba import jit
 import platform # graph_tool için
 import random
 import rustworkx as rx
+from typing import Any, Dict, List, Optional, Tuple, Union
 import warnings
 
 
@@ -58,6 +60,79 @@ if platform.system() == "Linux":
 else:
     gt = None
 
+"""
+@jit(nopython=True)
+def calculate_coordinates(nodes, primary_spacing, secondary_spacing, primary_direction, secondary_start, expanding):
+    #Numba ile hızlandırılmış koordinat hesaplama.
+    pos = {}
+    for i, node_id in enumerate(nodes):
+        # Koordinat hesaplama mantığı...
+        pos[node_id] = (x, y)
+    return pos
+"""
+
+@jit(nopython=True)
+def calculate_coordinates(
+    nodes: list,
+    primary_spacing: float,
+    secondary_spacing: float,
+    primary_direction: str,
+    secondary_start: str,
+    expanding: bool
+) -> dict:
+    """
+    Numba ile hızlandırılmış koordinat hesaplama fonksiyonu.
+
+    Args:
+        nodes: Düğümlerin listesi.
+        primary_spacing: Birincil eksendeki düğümler arası mesafe.
+        secondary_spacing: İkincil eksendeki zigzag ofseti.
+        primary_direction: Birincil yön ('left-to-right', 'right-to-left', 'top_down', 'bottom_up').
+        secondary_start: Zigzag'ın başlangıç yönü ('up', 'down', 'left', 'right').
+        expanding: Zigzag ofsetinin büyümesi gerekip gerekmediği (True/False).
+
+    Returns:
+        dict: Düğümlerin koordinatlarını içeren sözlük. Örneğin: {0: (x, y), 1: (x, y), ...}.
+    """
+    pos = {}
+    n = len(nodes)
+
+    for i in range(n):
+        node_id = nodes[i]
+        primary_coord = 0.0
+        secondary_axis = ''
+
+        # Birincil eksen koordinatını hesapla
+        if primary_direction == 'left-to-right':
+            primary_coord = i * primary_spacing
+            secondary_axis = 'y'
+        elif primary_direction == 'right-to-left':
+            primary_coord = -i * primary_spacing
+            secondary_axis = 'y'
+        elif primary_direction == 'top_down':
+            primary_coord = -i * primary_spacing
+            secondary_axis = 'x'
+        elif primary_direction == 'bottom_up':
+            primary_coord = i * primary_spacing
+            secondary_axis = 'x'
+
+        # İkincil eksen ofsetini hesapla
+        secondary_offset = 0.0
+        if i > 0:
+            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
+            magnitude = math.ceil(i / 2.0) if expanding else 1.0
+            side = 1 if i % 2 != 0 else -1
+            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
+
+        # Koordinatları ata
+        if secondary_axis == 'x':
+            x, y = (secondary_offset, primary_coord)
+        else:
+            x, y = (primary_coord, secondary_offset)
+
+        pos[node_id] = (x, y)
+
+    return pos
 
 def find_max_node_id(edges):
     """
@@ -1420,6 +1495,228 @@ def generate_distinct_colors(n):
         colors.append(adjusted_rgb)
     return colors
 
+# 2D Layout
+def kececi_layout_2d(
+    nx_graph: nx.Graph,
+    primary_spacing: float = 1.0,
+    secondary_spacing: float = 1.0,
+    primary_direction: str = 'left-to-right',
+    secondary_start: str = 'up',
+    expanding: bool = True
+) -> Dict[int, Tuple[float, float]]:
+    pos = {}
+    nodes = sorted(list(nx_graph.nodes()))
+
+    for i, node_id in enumerate(nodes):
+        if primary_direction == 'left-to-right':
+            primary_coord, secondary_axis = i * primary_spacing, 'y'
+        elif primary_direction == 'right-to-left':
+            primary_coord, secondary_axis = i * -primary_spacing, 'y'
+        elif primary_direction == 'top_down':
+            primary_coord, secondary_axis = i * -primary_spacing, 'x'
+        else:  # 'bottom_up'
+            primary_coord, secondary_axis = i * primary_spacing, 'x'
+
+        secondary_offset = 0.0
+        if i > 0:
+            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
+            magnitude = math.ceil(i / 2.0) if expanding else 1.0
+            side = 1 if i % 2 != 0 else -1
+            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
+
+        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
+        pos[node_id] = (x, y)
+
+    return pos
+
+# Silindirik Layout
+def kececi_layout_cylindrical(
+    nx_graph: nx.Graph,
+    radius: float = 5.0,
+    height: float = 10.0
+) -> Dict[int, Tuple[float, float, float]]:
+    pos_3d = {}
+    nodes = sorted(list(nx_graph.nodes()))
+    num_nodes = len(nodes)
+
+    for i, node_id in enumerate(nodes):
+        theta = 2 * np.pi * i / num_nodes
+        x = radius * np.cos(theta)
+        y = radius * np.sin(theta)
+        z = height * i / num_nodes
+        pos_3d[node_id] = (x, y, z)
+
+    return pos_3d
+
+# Kübik Layout
+def kececi_layout_cubic(
+    nx_graph: nx.Graph,
+    size: float = 5.0
+) -> Dict[int, Tuple[float, float, float]]:
+    pos_3d = {}
+    nodes = sorted(list(nx_graph.nodes()))
+    num_nodes = len(nodes)
+    cube_size = int(np.cbrt(num_nodes)) + 1
+
+    for i, node_id in enumerate(nodes):
+        x = size * (i % cube_size)
+        y = size * ((i // cube_size) % cube_size)
+        z = size * ((i // (cube_size ** 2)) % cube_size)
+        pos_3d[node_id] = (x, y, z)
+
+    return pos_3d
+
+# Küresel Layout
+def kececi_layout_spherical(
+    nx_graph: nx.Graph,
+    radius: float = 5.0
+) -> Dict[int, Tuple[float, float, float]]:
+    pos_3d = {}
+    nodes = sorted(list(nx_graph.nodes()))
+    num_nodes = len(nodes)
+
+    for i, node_id in enumerate(nodes):
+        theta = 2 * np.pi * i / num_nodes
+        phi = np.arccos(1 - 2 * (i + 0.5) / num_nodes)
+        x = radius * np.sin(phi) * np.cos(theta)
+        y = radius * np.sin(phi) * np.sin(theta)
+        z = radius * np.cos(phi)
+        pos_3d[node_id] = (x, y, z)
+
+    return pos_3d
+
+# Eliptik Layout
+def kececi_layout_elliptical(
+    nx_graph: nx.Graph,
+    a: float = 5.0,
+    b: float = 3.0
+) -> Dict[int, Tuple[float, float]]:
+    pos = {}
+    nodes = sorted(list(nx_graph.nodes()))
+    num_nodes = len(nodes)
+
+    for i, node_id in enumerate(nodes):
+        theta = 2 * np.pi * i / num_nodes
+        x = a * np.cos(theta)
+        y = b * np.sin(theta)
+        pos[node_id] = (x, y)
+
+    return pos
+
+# Torik (Halkasal) Layout
+def kececi_layout_toric(
+    nx_graph: nx.Graph,
+    major_radius: float = 5.0,
+    minor_radius: float = 2.0
+) -> Dict[int, Tuple[float, float, float]]:
+    pos_3d = {}
+    nodes = sorted(list(nx_graph.nodes()))
+    num_nodes = len(nodes)
+
+    for i, node_id in enumerate(nodes):
+        theta = 2 * np.pi * i / num_nodes
+        phi = 2 * np.pi * i / num_nodes
+        x = (major_radius + minor_radius * np.cos(phi)) * np.cos(theta)
+        y = (major_radius + minor_radius * np.cos(phi)) * np.sin(theta)
+        z = minor_radius * np.sin(phi)
+        pos_3d[node_id] = (x, y, z)
+
+    return pos_3d
+
+# Ağırlıklı Çizim (draw_kececi_weighted)
+def draw_kececi_weighted(
+    nx_graph: nx.Graph,
+    pos: Dict[int, Tuple[float, ...]],
+    ax: Optional[plt.Axes] = None,
+    node_size: int = 300,
+    edge_width_scale: float = 2.0,
+    **kwargs
+) -> plt.Axes:
+    if ax is None:
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(111)
+
+    weights = nx.get_edge_attributes(nx_graph, 'weight')
+    if not weights:
+        weights = {edge: 1.0 for edge in nx_graph.edges()}
+
+    nx.draw_networkx_nodes(nx_graph, pos, ax=ax, node_size=node_size, **kwargs)
+
+    is_3d = len(pos[next(iter(pos))]) == 3
+    if is_3d:
+        for node, coord in pos.items():
+            ax.text(coord[0], coord[1], coord[2], f'  {node}', size=10, zorder=1, color='black')
+    else:
+        nx.draw_networkx_labels(nx_graph, pos, ax=ax)
+
+    for (u, v), weight in weights.items():
+        width = weight * edge_width_scale
+        if is_3d:
+            ax.plot(
+                [pos[u][0], pos[v][0]],
+                [pos[u][1], pos[v][1]],
+                [pos[u][2], pos[v][2]],
+                linewidth=width,
+                color='gray',
+                alpha=0.7
+            )
+        else:
+            ax.plot(
+                [pos[u][0], pos[v][0]],
+                [pos[u][1], pos[v][1]],
+                linewidth=width,
+                color='gray',
+                alpha=0.7
+            )
+
+    ax.set_title("Keçeci Layout: Weighted Edges")
+    return ax
+    
+# Renkli Çizim (draw_kececi_colored)
+def draw_kececi_colored(
+    nx_graph: nx.Graph,
+    pos: Dict[int, Tuple[float, ...]],
+    ax: Optional[plt.Axes] = None,
+    node_size: int = 300,
+    **kwargs
+) -> plt.Axes:
+    if ax is None:
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(111)
+
+    degrees = dict(nx_graph.degree())
+    max_degree = max(degrees.values()) if degrees else 1
+    node_colors = [plt.cm.viridis(deg / max_degree) for deg in degrees.values()]
+
+    nx.draw_networkx_nodes(
+        nx_graph, pos, ax=ax,
+        node_color=node_colors,
+        node_size=node_size,
+        **kwargs
+    )
+
+    is_3d = len(pos[next(iter(pos))]) == 3
+    if is_3d:
+        for node, coord in pos.items():
+            ax.text(coord[0], coord[1], coord[2], f'  {node}', size=10, zorder=1, color='black')
+    else:
+        nx.draw_networkx_labels(nx_graph, pos, ax=ax)
+
+    if is_3d:
+        for u, v in nx_graph.edges():
+            ax.plot(
+                [pos[u][0], pos[v][0]],
+                [pos[u][1], pos[v][1]],
+                [pos[u][2], pos[v][2]],
+                color='gray',
+                alpha=0.5
+            )
+    else:
+        nx.draw_networkx_edges(nx_graph, pos, ax=ax, alpha=0.5)
+
+    ax.set_title("Keçeci Layout: Colored Nodes")
+    return ax
+
 # =============================================================================
 # 3. INTERNAL DRAWING STYLE IMPLEMENTATIONS
 # =============================================================================
@@ -1523,9 +1820,181 @@ def _draw_internal(nx_graph, ax, style, **kwargs):
 # =============================================================================
 # 4. MAIN USER-FACING DRAWING FUNCTION
 # =============================================================================
-
-def draw_kececi(graph, style='curved', ax=None, **kwargs):
+def draw_kececi(
+    graph,
+    pos: Optional[Dict[int, Tuple[float, ...]]] = None,
+    layout: Optional[str] = None,
+    style: str = 'default',
+    ax: Optional[plt.Axes] = None,
+    with_labels: bool = True,
+    node_color: str = 'lightblue',
+    node_size: int = 500,
+    font_weight: str = 'bold',
+    **kwargs
+) -> plt.Axes:
     """
+    Keçeci Layout ile graf çizimi.
+
+    Args:
+        graph: Graf objesi (NetworkX, igraph, vb.).
+        pos: Önceden hesaplanmış koordinatlar (opsiyonel).
+        layout: '2d', 'cylindrical', 'cubic', 'spherical', 'elliptical', 'toric' (opsiyonel).
+        style: 'default', 'weighted', 'colored'.
+        ax: Matplotlib ekseni.
+        with_labels: Düğüm etiketlerini göster.
+        node_color: Düğüm rengi.
+        node_size: Düğüm boyutu.
+        font_weight: Yazı kalınlığı.
+        **kwargs: Ek parametreler.
+
+    Returns:
+        Matplotlib ekseni.
+    """
+    nx_graph = to_networkx(graph)
+
+    # Eğer pos verilmemişse, layout'a göre hesapla
+    if pos is None:
+        if layout is None:
+            layout = '2d'  # Varsayılan layout
+
+        if layout == '2d':
+            pos = kececi_layout_2d(nx_graph, **kwargs)
+        elif layout == 'cylindrical':
+            pos = kececi_layout_cylindrical(nx_graph, **kwargs)
+        elif layout == 'cubic':
+            pos = kececi_layout_cubic(nx_graph, **kwargs)
+        elif layout == 'spherical':
+            pos = kececi_layout_spherical(nx_graph, **kwargs)
+        elif layout == 'elliptical':
+            pos = kececi_layout_elliptical(nx_graph, **kwargs)
+        elif layout == 'toric':
+            pos = kececi_layout_toric(nx_graph, **kwargs)
+        else:
+            raise ValueError(f"Geçersiz layout: {layout}")
+
+    # 3D için eksen ayarlaması
+    is_3d = len(pos[next(iter(pos))]) == 3
+    if ax is None:
+        fig = plt.figure(figsize=(10, 8))
+        if is_3d:
+            ax = fig.add_subplot(111, projection='3d')
+        else:
+            ax = fig.add_subplot(111)
+
+    # Stile göre çizim yap
+    if style == 'weighted':
+        draw_kececi_weighted(nx_graph, pos, ax, **kwargs)
+    elif style == 'colored':
+        draw_kececi_colored(nx_graph, pos, ax, **kwargs)
+    else:  # 'default'
+        nx.draw_networkx_nodes(nx_graph, pos, ax=ax, node_color=node_color, node_size=node_size)
+
+        # Düğüm etiketlerini çiz
+        if with_labels:
+            if is_3d:
+                for node, coord in pos.items():
+                    ax.text(coord[0], coord[1], coord[2], f'  {node}', size=10, zorder=1, color='black', fontweight=font_weight)
+            else:
+                nx.draw_networkx_labels(nx_graph, pos, ax=ax, font_weight=font_weight)
+
+        # Kenarları çiz
+        if is_3d:
+            for u, v in nx_graph.edges():
+                ax.plot(
+                    [pos[u][0], pos[v][0]],
+                    [pos[u][1], pos[v][1]],
+                    [pos[u][2], pos[v][2]],
+                    color='gray',
+                    alpha=0.5
+                )
+        else:
+            nx.draw_networkx_edges(nx_graph, pos, ax=ax, alpha=0.5)
+
+    ax.set_title(f"Keçeci Layout: {layout.capitalize() if layout else 'Custom'} ({style})")
+    return ax
+"""
+def draw_kececi(
+    graph,
+    layout: str = '2d',
+    style: str = 'default',
+    ax: Optional[plt.Axes] = None,
+    **kwargs
+) -> plt.Axes:
+
+    Keçeci Layout ile graf çizimi.
+
+    Args:
+        graph: Graf objesi (NetworkX, igraph, vb.).
+        layout: '2d', 'cylindrical', 'cubic', 'spherical', 'elliptical', 'toric'.
+        style: 'default', 'weighted', 'colored'.
+        ax: Matplotlib ekseni.
+        **kwargs: Ek parametreler.
+
+    Returns:
+        Matplotlib ekseni.
+
+    nx_graph = to_networkx(graph)
+
+    # Layout'a göre koordinatları hesapla
+    if layout == '2d':
+        pos = kececi_layout_2d(nx_graph, **kwargs)
+    elif layout == 'cylindrical':
+        pos = kececi_layout_cylindrical(nx_graph, **kwargs)
+    elif layout == 'cubic':
+        pos = kececi_layout_cubic(nx_graph, **kwargs)
+    elif layout == 'spherical':
+        pos = kececi_layout_spherical(nx_graph, **kwargs)
+    elif layout == 'elliptical':
+        pos = kececi_layout_elliptical(nx_graph, **kwargs)
+    elif layout == 'toric':
+        pos = kececi_layout_toric(nx_graph, **kwargs)
+    else:
+        raise ValueError(f"Invalid layout: {layout}")
+
+    # 3D için eksen ayarlaması
+    is_3d = len(pos[next(iter(pos))]) == 3
+    if ax is None:
+        fig = plt.figure(figsize=(10, 8))
+        if is_3d:
+            ax = fig.add_subplot(111, projection='3d')
+        else:
+            ax = fig.add_subplot(111)
+
+    # Stile göre çizim yap
+    if style == 'weighted':
+        draw_kececi_weighted(nx_graph, pos, ax, **kwargs)
+    elif style == 'colored':
+        draw_kececi_colored(nx_graph, pos, ax, **kwargs)
+    else:  # 'default'
+        nx.draw_networkx_nodes(nx_graph, pos, ax=ax, **kwargs)
+
+        # Düğüm etiketlerini çiz
+        if is_3d:
+            for node, coord in pos.items():
+                ax.text(coord[0], coord[1], coord[2], f'  {node}', size=10, zorder=1, color='black')
+        else:
+            nx.draw_networkx_labels(nx_graph, pos, ax=ax)
+
+        # Kenarları çiz
+        if is_3d:
+            for u, v in nx_graph.edges():
+                ax.plot(
+                    [pos[u][0], pos[v][0]],
+                    [pos[u][1], pos[v][1]],
+                    [pos[u][2], pos[v][2]],
+                    color='gray',
+                    alpha=0.5
+                )
+        else:
+            nx.draw_networkx_edges(nx_graph, pos, ax=ax, alpha=0.5)
+
+    ax.set_title(f"Keçeci Layout: {layout.capitalize()} ({style})")
+    return ax
+"""
+
+"""
+def draw_kececi(graph, style='curved', ax=None, **kwargs):
+
     Draws a graph using the Keçeci Layout with a specified style.
 
     This function automatically handles graphs from different libraries
@@ -1541,7 +2010,7 @@ def draw_kececi(graph, style='curved', ax=None, **kwargs):
 
     Returns:
         matplotlib.axis.Axis: The axis object where the graph was drawn.
-    """
+
     nx_graph = to_networkx(graph)
     is_3d = (style.lower() == '3d')
 
@@ -1559,7 +2028,7 @@ def draw_kececi(graph, style='curved', ax=None, **kwargs):
 
     _draw_internal(nx_graph, ax, style.lower(), **kwargs)
     return ax
-
+"""
 
 # =============================================================================
 # MODULE TEST CODE
