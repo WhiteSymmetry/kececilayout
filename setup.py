@@ -4,7 +4,6 @@ import re
 from setuptools import setup, find_packages
 import sys
 
-
 # BU SATIRLAR SORUNUN KALICI ÇÖZÜMÜDÜR.
 # Python'a, README.md dosyasını hangi işletim sisteminde olursa olsun
 # her zaman UTF-8 kodlamasıyla okumasını söylüyoruz.
@@ -12,7 +11,6 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-
 
 def get_version():
     with open('kececilayout/__init__.py', 'r', encoding='utf-8') as f:
@@ -42,7 +40,7 @@ setup(
         "cairocffi"
     ],
     extras_require={
-        "all": ["cairo", "python-louvain", "python-igraph", "networkit", "rustworkx", "graphillion", "graph-tool"],
+        "all": ["cairo", "python-louvain", "python-igraph", "networkit", "rustworkx", "graphillion", "graph-tool", "numba"],
     },
     classifiers=[
         "Programming Language :: Python :: 3",
