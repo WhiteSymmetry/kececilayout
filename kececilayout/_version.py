@@ -7,7 +7,3 @@ __author__ = "Mehmet Keçeci"
 __url__ = "https://github.com/WhiteSymmetry/kececilayout"
 __docs__ = "https://github.com/WhiteSymmetry/kececilayout"  # Opsiyonel: Dokümantasyon linki
 __dependencies__ = ["python>=3.10"]  # Diğer bağımlılıkları da ekleyebilirsiniz
-
-
-
-
