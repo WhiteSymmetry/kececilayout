@@ -1,4 +1,4 @@
-{% set version = "0.4.9" %}
+{% set version = "0.5.0" %}
 
 package:
   name: kececilayout
@@ -6,8 +6,8 @@ package:
 
 source:
   path: .  # Derlemeyi bu meta.yaml dosyasının bulunduğu dizinden yap
-  url: https://files.pythonhosted.org/packages/ea/68/06792748be4b5493b271227b24af38d603f313b0b18896e3c65e04461bc7/kececilayout-0.4.8.tar.gz
-  sha256: 5f763ed2a2644d41135556e485943591b5f4811169928168adf165ec7f10b759
+  url:
+  sha256:
   
 build:
   noarch: python
@@ -33,6 +33,7 @@ requirements:
     - networkit
     - python-louvain
     - graph-tool
+    - numba
 
 # DİKKAT: 'test:' bölümü bilinçli olarak kaldırılmıştır.
 
