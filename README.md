@@ -54,6 +54,9 @@ This algorithm arranges nodes sequentially along a primary axis and offsets them
 *   **Parametric:** Fully customizable with parameters like `primary_spacing`, `secondary_spacing`, `primary_direction`, and `secondary_start`.
 
 => **v0.2.7**: Curved, transparent, 3D, and `expanding=True` styles supported.
+**v0.5.0: 
+layouts = ['2d', 'cylindrical', 'cubic', 'spherical', 'elliptical', 'toric']
+styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 
 ---
 
@@ -1889,6 +1892,7 @@ Keçeci, Mehmet. "Kececilayout". Open Science Articles (OSAs), Zenodo, 2025. htt
 
 Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.15314328.
 ```
+
 
 
 
