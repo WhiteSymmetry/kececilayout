@@ -10,7 +10,7 @@ import inspect
 import warnings
 
 # Paket sürüm numarası
-__version__ = "0.4.9"
+__version__ = "0.5.0"
 
 # =============================================================================
 # OTOMATİK İÇE AKTARMA VE __all__ OLUŞTURMA
@@ -48,6 +48,16 @@ from .kececi_layout import (  # Veya fonksiyonların bulunduğu asıl modül
     get_text_color_for_bg,
     generate_soft_random_colors,
     generate_distinct_colors,
+    calculate_coordinates,
+    calculate_coordinates,
+    kececi_layout_2d,
+    kececi_layout_cylindrical,
+    kececi_layout_cubic,
+    kececi_layout_spherical,
+    kececi_layout_elliptical,
+    kececi_layout_toric,
+    draw_kececi_weighted,
+    draw_kececi_colored,
     
     # Drawing functions
     draw_kececi,
@@ -88,7 +98,16 @@ __all__ = [
     'get_text_color_for_bg',
     'generate_soft_random_colors',
     'generate_distinct_colors',
-    
+    'calculate_coordinates',
+    'kececi_layout_2d',
+    'kececi_layout_cylindrical',
+    'kececi_layout_cubic',
+    'kececi_layout_spherical',
+    'kececi_layout_elliptical',
+    'kececi_layout_toric',
+    'draw_kececi_weighted',
+    'draw_kececi_colored',
+
     # Drawing functions
     'draw_kececi',
     '_draw_internal',  # <- TESTLER İÇİN GEREKLİ
@@ -138,5 +157,3 @@ def old_function_placeholder():
 
 # Eğer bu eski fonksiyonu da dışa aktarmak istiyorsanız, __all__ listesine ekleyin
 # __all__.append('old_function_placeholder')
-
-
