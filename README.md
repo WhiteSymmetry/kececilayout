@@ -36,6 +36,8 @@ kececinumbers
 |:-----------------:|:---------:|
 | [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://kececilayout.readthedocs.io/) | [![Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.15314328.svg)](https://doi.org/10.5281/zenodo.15314328) |
 
+---
+
 Analogy of "From Chaos to Clarity: The Keçeci Layout for Order-Dependent Systems", Mehmet Keçeci
 
 Imagine Beethoven's Ninth Symphony being performed with perfect precision, each note following a meticulous script, rather than allowing individual musicians to interpret their parts freely. This mirrors the Keçeci Layout's deterministic approach to visualizing order-dependent systems. Just like musicians in an orchestra, nodes in conventional force-directed layouts often find their places based on dynamic interactions akin to musical improvisation. In contrast, the Keçeci Layout assigns each node a specific position along a primary axis, like notes precisely placed on a musical score. This ensures that the sequence is preserved, akin to maintaining the integrity of a composed symphony. As musicians in the orchestra avoid overlapping sounds by following a conductor's exact cues, the Keçeci Layout uses a predictable zigzag pattern on a secondary axis to prevent node overlap. This method generates a visual symphony where the original data structure's order is honored, enabling researchers to explore complex systems like metabolic pathways and quantum circuits with clarity. By using this analogy, one can predict how the Keçeci Layout would handle system dynamics by ensuring visual consistency and order preservation, much like how an orchestra maintains harmony and sequence in a concert.
@@ -1910,6 +1912,7 @@ Keçeci, Mehmet. "Kececilayout". Open Science Articles (OSAs), Zenodo, 2025. htt
 
 Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.15314328.
 ```
+
 
 
 
