@@ -36,6 +36,16 @@ kececinumbers
 |:-----------------:|:---------:|
 | [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://kececilayout.readthedocs.io/) | [![Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.15314328.svg)](https://doi.org/10.5281/zenodo.15314328) |
 
+Analogy of "From Chaos to Clarity: The Keçeci Layout for Order-Dependent Systems", Mehmet Keçeci
+
+Imagine Beethoven's Ninth Symphony being performed with perfect precision, each note following a meticulous script, rather than allowing individual musicians to interpret their parts freely. This mirrors the Keçeci Layout's deterministic approach to visualizing order-dependent systems. Just like musicians in an orchestra, nodes in conventional force-directed layouts often find their places based on dynamic interactions akin to musical improvisation. In contrast, the Keçeci Layout assigns each node a specific position along a primary axis, like notes precisely placed on a musical score. This ensures that the sequence is preserved, akin to maintaining the integrity of a composed symphony. As musicians in the orchestra avoid overlapping sounds by following a conductor's exact cues, the Keçeci Layout uses a predictable zigzag pattern on a secondary axis to prevent node overlap. This method generates a visual symphony where the original data structure's order is honored, enabling researchers to explore complex systems like metabolic pathways and quantum circuits with clarity. By using this analogy, one can predict how the Keçeci Layout would handle system dynamics by ensuring visual consistency and order preservation, much like how an orchestra maintains harmony and sequence in a concert.
+
+"Kaosdan Netliğe: Sıralı Bağımlı Sistemler için Keçeci Düzeni"ni Analojisi, Mehmet Keçeci
+
+Beethoven'ın Dokuzuncu Senfonisinin her notasının özgürce yorumlanmasına izin vermek yerine, titiz bir senaryoya göre mükemmel bir şekilde icrâ edildiğini hayâl edin. Bu, sıralı bağımlı sistemleri görselleştirmede Keçeci Düzeninin deterministik yaklaşımını yansıtır. Bir orkestradaki müzisyenler gibi, geleneksel kuvvet-yönlendirilmiş düzenlemelerdeki düğümler, müzikal improvizasyona benzeyen dinamik etkileşimlere dayanarak genellikle konumlarını bulur. Buna karşılık, Keçeci Düzeni, her düğümü bir müzik notasyonunda tam olarak yerleştirilmiş notalar gibi, birincil eksen boyunca belirli bir pozisyona atar. Bu, dizinin korunmasını sağlar; bu da bir bestelenmiş senfoninin bütünlüğünü korumaya benzer. Orkestradaki müzisyenler, şefin kesin işâretlerini takip ederek çakışan seslerden kaçındığı gibi, Keçeci Düzeni ikincil bir eksen üzerinde önceden tahmin edilebilir bir zikzak deseni kullanarak düğüm çakışmalarını önler. Bu yöntem, orijinal veri yapısının sırasına saygı gösteren ve araştırmacıların metabolik yollar ve kuantum devreleri gibi karmaşık sistemleri netlikle keşfetmesini sağlayan bir görsel senfoni üretir. Bu analojiyi kullanarak, Keçeci Düzeninin sistemin dinamiklerini nasıl işleyeceğini, bir orkestranın bir konserde uyum ve diziyi nasıl koruduğu gibi, görsel tutarlılığı ve sıra korumasını sağlayarak öngörebilirsiniz.
+
+![Keçeci Layout](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/kececilayout-1.jpeg?raw=true)
+
 ---
 
 ## 🌐 English
@@ -1900,6 +1910,7 @@ Keçeci, Mehmet. "Kececilayout". Open Science Articles (OSAs), Zenodo, 2025. htt
 
 Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.15314328.
 ```
+
 
 
 
