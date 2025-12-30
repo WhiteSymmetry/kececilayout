@@ -39,7 +39,7 @@ requirements:
 
 about:
   home: https://github.com/WhiteSymmetry/kececilayout
-  license: MIT
+  license: AGPL
   license_file: LICENSE
   summary: Advanced sequential-zigzag graph layout algorithm
   description: |
