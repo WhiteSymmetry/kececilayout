@@ -1,7 +1,7 @@
 # KececiLayout
 
 [![PyPI version](https://badge.fury.io/py/kececilayout.svg)](https://badge.fury.io/py/kececilayout)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-AGPL-yellow.svg)](https://opensource.org/licenses/AGPL)
 
 [![Zenodo DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15313946.svg)](https://doi.org/10.5281/zenodo.15313946)
 [![Zenodo DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15314328.svg)](https://doi.org/10.5281/zenodo.15314328)
@@ -1912,6 +1912,7 @@ Keçeci, Mehmet. "Kececilayout". Open Science Articles (OSAs), Zenodo, 2025. htt
 
 Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.15314328.
 ```
+
 
 
 
