@@ -1,7 +1,7 @@
 # KececiLayout
 
 [![PyPI version](https://badge.fury.io/py/kececilayout.svg)](https://badge.fury.io/py/kececilayout)
-[![License: MIT](https://img.shields.io/badge/License-AGPL-yellow.svg)](https://opensource.org/licenses/AGPL)
+[![License: AGPL-3.0 license](https://img.shields.io/badge/License-AGPL-yellow.svg)](https://opensource.org/licenses/AGPL)
 
 [![Zenodo DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15313946.svg)](https://doi.org/10.5281/zenodo.15313946)
 [![Zenodo DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15314328.svg)](https://doi.org/10.5281/zenodo.15314328)
@@ -591,7 +591,7 @@ kl.draw_kececi(G, style='3d')            # 3D helix layout
 
 ### License
 
-MIT License. See [LICENSE](LICENSE) for details.
+AGPL-3.0 license. See [LICENSE](LICENSE) for details.
 
 ---
 
@@ -1813,7 +1813,7 @@ The layout functions are designed to work with graph objects from the following 
 
 ## License / Lisans
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+This project is licensed under the AGPL-3.0 license. See the `LICENSE` file for details.
 
 ```
 
@@ -1824,6 +1824,7 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 *   **İçe Aktarma Yolları:** Örneklerde `import kececilayout as kl` veya `from kececilayout import kececi_layout_igraph` gibi varsayımsal içe aktarma yolları kullandım. Kendi paket yapınıza göre bunları ayarlamanız gerekebilir.
 *   **Fonksiyon Adları:** Örneklerde `kececi_layout` ve `kececi_layout_igraph` gibi fonksiyon adlarını kullandım. Gerçek fonksiyon adlarınız farklıysa bunları güncelleyin.
 *   **Görselleştirme:** Örneklere `matplotlib.pyplot` kullanarak temel görselleştirme adımlarını ekledim, bu da kullanıcıların sonucu nasıl görebileceğini gösterir. Eksen oranlarını eşitlemek (`axis('equal')` veya `set_aspect('equal')`) layout'un doğru görünmesi için önemlidir.
+
 ```
 
 ## Citation
@@ -1854,7 +1855,9 @@ If this library was useful to you in your research, please cite us. Following th
   doi          = {10.5281/zenodo.15314329},
   url          = {https://doi.org/10.5281/zenodo.15314329},
 }
+
 ```
+
 ### APA
 
 ```
@@ -1900,6 +1903,7 @@ Keçeci, M. (2025, May 1). Kececilayout. Open Science Articles (OSAs), Zenodo. h
 ### Chicago
 
 ```
+
 Keçeci, Mehmet. From Chaos to Clarity: The Keçeci Layout for Order-Dependent Systems, November 20, 2025. https://doi.org/10.5281/zenodo.17665770.
 
 Keçeci, Mehmet. The Keçeci Layout: A Deterministic Visualisation Framework for the Structural Analysis of Ordered Systems in Chemistry and Environmental Science. Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.16696713
@@ -1911,16 +1915,5 @@ Keçeci, Mehmet. kececilayout [Data set]. WorkflowHub, 2025. https://doi.org/10.
 Keçeci, Mehmet. "Kececilayout". Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.15313946.
 
 Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. https://doi.org/10.5281/zenodo.15314328.
+
 ```
-
-
-
-
-
-
-
-
-
-
-
-
