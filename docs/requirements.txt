@@ -1,10 +1,13 @@
+sphinx>=9.0.4
+sphinx_rtd_theme>=9.0.4
+urllib3>=2.6.3
+myst_parser
+sphinx_copybutton
+sphinx-autobuild
 networkx
 matplotlib
 numpy
-sphinx
-sphinx-rtd-theme
-sphinx-autobuild
-graphillion ; python_version >= "3.8"
-igraph ; python_version >= "3.8"
-networkit ; python_version >= "3.8"
-rustworkx ; python_version >= "3.8"
+graphillion; python_version>="3.11"
+igraph; python_version>="3.11"
+networkit; python_version>="3.11"
+rustworkx; python_version>="3.11"
