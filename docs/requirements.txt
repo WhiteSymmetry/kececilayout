@@ -1,4 +1,4 @@
-sphinx>=9.0.4
+sphinx
 urllib3>=2.6.3
 sphinx_rtd_theme
 sphinx_copybutton
