@@ -1,5 +1,6 @@
 sphinx>=9.0.4
 urllib3>=2.6.3
+sphinx_rtd_theme
 sphinx_copybutton
 sphinx-autobuild
 networkx
