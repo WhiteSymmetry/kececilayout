@@ -3,6 +3,7 @@ urllib3>=2.6.3
 sphinx_rtd_theme
 sphinx_copybutton
 sphinx-autobuild
+myst_parser
 networkx
 matplotlib
 numpy
