@@ -1936,8 +1936,7 @@ Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. h
 | Spacing2     | **3.5μs** |   10 | 100-500ms |
 | Top Down     | **3.6μs** |   10 | 100-500ms |
 
-
-![KececiLayout Performance]([kececi_benchmark.png](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/benchmark1.jpg?raw=true))
+![KececiLayout Performance](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/benchmark1.jpg?raw=true)
 
 ### 🎯 Dünya Rekoru Performans
 | Metrik | Değer |
@@ -1949,5 +1948,6 @@ Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. h
 | **Max Hız** | **33000-372000x** daha hızlı! |
 
 > PyGraphViz/NetworkX'ten **350K KAT** hızlı! 🚀
+
 
 
