@@ -46,6 +46,9 @@ test = [
     "numba",
 ]
 
+[tool.setuptools.packages.find]
+where = ["."]
+
 [dependency-groups]
 dev = [{include-group = "test"}]
 test = ["pytest"]
@@ -70,5 +73,6 @@ configuration = "docs/conf.py"  # Build konfigürasyonu belirtin
 [project.urls]
 "Homepage" = "https://github.com/WhiteSymmetry/kececilayout"
 "Bug Tracker" = "https://github.com/WhiteSymmetry/kececilayout/issues"
+
 
 
