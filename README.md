@@ -1943,11 +1943,12 @@ Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. h
 |--------|-------|
 | **En hızlı** | **2.6μs** |
 | **En yavaş** | **3.3ms** |
-| **8 Backend** | ✅ NetworkX/RustworkX/iGraph... |
+| **8 Backend** | ✅ NetworkX/RustworkX/iGraph/Networkit/Graphillion/graph-tool/NumPy/Numba|
 | **Memory** | **352B** |
 | **Max Hız** | **33000-372000x** daha hızlı! |
 
 > PyGraphViz/NetworkX'ten **350K KAT** hızlı! 🚀
+
 
 
 
