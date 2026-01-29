@@ -1936,7 +1936,6 @@ Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. h
 | Spacing2     | **3.5μs** |   10 | 100-500ms |
 | Top Down     | **3.6μs** |   10 | 100-500ms |
 
-![KececiLayout Performance](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/benchmark1.jpg?raw=true)
 
 ### 🎯 Dünya Rekoru Performans
 | Metrik | Değer |
@@ -1945,9 +1944,10 @@ Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. h
 | **En yavaş** | **3.3ms** |
 | **8 Backend** | ✅ NetworkX/RustworkX/iGraph/Networkit/Graphillion/graph-tool/NumPy/Numba|
 | **Memory** | **352B** |
-| **Max Hız** | **33000-372000x** daha hızlı! |
+| **Max Hız** | **x** daha hızlı! |
 
-> PyGraphViz/NetworkX'ten **350K KAT** hızlı! 🚀
+> PyGraphViz/NetworkX'ten ** KAT** hızlı! 🚀
+
 
 
 
