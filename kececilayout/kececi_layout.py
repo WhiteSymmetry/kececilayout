@@ -343,7 +343,7 @@ def kececi_layout_nx(graph, primary_spacing=1.0, secondary_spacing=1.0,
         primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
         secondary_start (str): Initial direction for the zigzag offset.
         expanding (bool): If True (default), the zigzag offset grows.
-                          If False, the offset is constant (parallel lines). # <-- 2. DOKÜMANTASYON GÜNCELLENDİ
+                          If False, the offset is constant (parallel lines).
 
     Returns:
         dict: A dictionary of positions keyed by node ID.
@@ -402,7 +402,7 @@ def kececi_layout_networkx(graph, primary_spacing=1.0, secondary_spacing=1.0,
         primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
         secondary_start (str): Initial direction for the zigzag offset.
         expanding (bool): If True (default), the zigzag offset grows.
-                          If False, the offset is constant (parallel lines). # <-- 2. DOKÜMANTASYON GÜNCELLENDİ
+                          If False, the offset is constant (parallel lines).
 
     Returns:
         dict: A dictionary of positions keyed by node ID.
@@ -2075,3 +2075,4 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
