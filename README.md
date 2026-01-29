@@ -1920,8 +1920,6 @@ Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. h
 
 ### Benchmark: Kececilayout vs Networkx
 
-![NetworkX Example](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/benchmark1?raw=true)
-
 ## 🚀 Benchmark Sonuçları (AMD Ryzen 5 8400F)
 
 | Test | Süre | Node | NetworkX spring_layout |
@@ -1939,7 +1937,7 @@ Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. h
 | Top Down     | **3.6μs** |   10 | 100-500ms |
 
 
-![KececiLayout Performance](kececi_benchmark.png)
+![KececiLayout Performance]([kececi_benchmark.png](https://github.com/WhiteSymmetry/kececilayout/blob/main/examples/benchmark1.jpg?raw=true))
 
 ### 🎯 Dünya Rekoru Performans
 | Metrik | Değer |
@@ -1951,4 +1949,5 @@ Keçeci, Mehmet. "Keçeci Layout". Open Science Articles (OSAs), Zenodo, 2025. h
 | **Max Hız** | **33000-372000x** daha hızlı! |
 
 > PyGraphViz/NetworkX'ten **350K KAT** hızlı! 🚀
+
 
