@@ -1,4 +1,4 @@
-{% set version = "0.5.0" %}
+{% set version = "0.5.1" %}
 
 package:
   name: kececilayout
@@ -21,7 +21,7 @@ requirements:
     - setuptools
   run:
     # Bu, paketin çalışması için GEREKLİ olan CONDA bağımlılıklarıdır.
-    - python >=3.10
+    - python >=3.11
     - numpy
     - networkx
     - matplotlib-base
@@ -39,7 +39,7 @@ requirements:
 
 about:
   home: https://github.com/WhiteSymmetry/kececilayout
-  license: AGPL
+  license: AGPL3.0-or-later
   license_file: LICENSE
   summary: Advanced sequential-zigzag graph layout algorithm
   description: |
