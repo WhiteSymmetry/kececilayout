@@ -10,7 +10,7 @@ import inspect
 import warnings
 
 # Paket sürüm numarası
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 
 # =============================================================================
 # OTOMATİK İÇE AKTARMA VE __all__ OLUŞTURMA
@@ -58,6 +58,10 @@ from .kececi_layout import (  # Veya fonksiyonların bulunduğu asıl modül
     kececi_layout_toric,
     draw_kececi_weighted,
     draw_kececi_colored,
+    kececi_layout_edge,
+    _compute_positions,
+    _extract_graph_data,
+    _validate_directions,
     
     # Drawing functions
     draw_kececi,
@@ -107,6 +111,10 @@ __all__ = [
     'kececi_layout_toric',
     'draw_kececi_weighted',
     'draw_kececi_colored',
+    'kececi_layout_edge',
+    '_compute_positions',
+    '_extract_graph_data',
+    '_validate_directions',
 
     # Drawing functions
     'draw_kececi',
@@ -157,3 +165,4 @@ def old_function_placeholder():
 
 # Eğer bu eski fonksiyonu da dışa aktarmak istiyorsanız, __all__ listesine ekleyin
 # __all__.append('old_function_placeholder')
+
