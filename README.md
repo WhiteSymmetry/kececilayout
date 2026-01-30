@@ -2011,7 +2011,7 @@ grid25x25            |    625 |      132.9 μs |        450 ms |      3385x |   
 > Hızlanma(n) ≈ k · n (k ≈ 8-10 sabiti).  
 > 10.000 node için ~~98.000x hızlanma beklenir.
 
-### 📊 KececiLayout Performans Özeti (README.md için)
+### 📊 KececiLayout Performans Özeti
 
 ---
 
@@ -2061,14 +2061,13 @@ KececiLayout v0.5.0 processes 10,000-node graphs in **2 milliseconds**, deliveri
 
 ### 🔑 Kritik İstatistikler
 
-```markdown
 [![Performance](https://img.shields.io/badge/10k_nodes-2.01_ms-brightgreen)](https://github.com/WhiteSymmetry/kececilayout)
 [![Speedup](https://img.shields.io/badge/9.463x_faster_than_NetworkX-orange)](https://github.com/WhiteSymmetry/kececilayout)
 [![Complexity](https://img.shields.io/badge/O(n)_complexity-blue)](https://github.com/WhiteSymmetry/kececilayout)
 [![Libraries](https://img.shields.io/badge/6_graph_libraries_supported-27ae60)](https://github.com/WhiteSymmetry/kececilayout)
-```
 
 > 💡 **Profesyonel ipucu:** README'de "süper-lineer" veya abartılı iddialardan kaçının. "Lineer zaman karmaşıklığı (O(n))" ve "NetworkX'e göre 9.463x hız avantajı" gibi **ölçülebilir, bilimsel olarak kanıtlanmış** ifadeler kullanın. Bu, projenizin güvenilirliğini artırır. 🚀
+
 
 
 
