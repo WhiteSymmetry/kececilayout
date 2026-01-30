@@ -70,13 +70,15 @@ This algorithm arranges nodes sequentially along a primary axis and offsets them
 *   **Overlap Reduction:** Prevents node collisions by spreading them across axes.
 *   **Parametric:** Fully customizable with parameters like `primary_spacing`, `secondary_spacing`, `primary_direction`, and `secondary_start`.
 
-=> **v0.2.7**: Curved, transparent, 3D, and `expanding=True` styles supported.
+**v0.2.7**: Curved, transparent, 3D, and `expanding=True` styles supported.
 
 **v0.5.0:** 
 
 layouts = ['2d', 'cylindrical', 'cubic', 'spherical', 'elliptical', 'toric']
 
 styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
+
+**v0.5.1:** edge (kececi_layout_edge)
 
 ---
 
@@ -1984,4 +1986,5 @@ doğrusal olarak artar:
 > 📌 **Bilimsel açıklama:**  
 > Hızlanma(n) ≈ k · n (k ≈ 8-10 sabiti).  
 > 10.000 node için ~~98.000x hızlanma beklenir.
+
 
