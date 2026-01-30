@@ -7,6 +7,7 @@ This module provides sequential-zigzag ("Keçeci Layout") and advanced visualiza
 Bu modül, çeşitli Python graf kütüphaneleri için sıralı-zigzag ("Keçeci Layout") ve gelişmiş görselleştirme stilleri sağlar.
 """
 
+from collections import defaultdict
 import graphillion as gg
 import igraph as ig
 import itertools # Graphillion için eklendi
@@ -245,12 +246,104 @@ def kececi_layout(graph, primary_spacing=1.0, secondary_spacing=1.0,
         pos[node_id] = (x, y)
     return pos
 
+def kececi_layout_edge(graph: Any,
+                  primary_spacing: float = 1.0,
+                  secondary_spacing: float = 1.0,
+                  primary_direction: str = 'top_down',
+                  secondary_start: str = 'right',
+                  expanding: bool = True,
+                  edge: bool = True) -> Dict[Any, Tuple[float, float]]:
+    """Deterministik O(n) layout — edge farkındalıklı mod ile."""
+    nodes, edges = _extract_graph_data(graph)
+    _validate_directions(primary_direction, secondary_start)
+    
+    if edge and edges:
+        degree = defaultdict(int)
+        for u, v in edges:
+            degree[u] += 1
+            degree[v] += 1
+        nodes = sorted(nodes, key=lambda n: (-degree.get(n, 0), str(n)))
+    
+    return _compute_positions(
+        nodes, primary_spacing, secondary_spacing,
+        primary_direction, secondary_start, expanding
+    )
+
+def _validate_directions(pd: str, ss: str) -> None:
+    VERTICAL = {'top_down', 'bottom_up'}
+    HORIZONTAL = {'left-to-right', 'right-to-left'}
+    
+    if pd in VERTICAL and ss not in {'left', 'right'}:
+        raise ValueError(
+            f"Invalid secondary_start '{ss}' for vertical direction '{pd}'\n"
+            f"✓ Use: 'left' or 'right' (e.g., secondary_start='right')"
+        )
+    if pd in HORIZONTAL and ss not in {'up', 'down'}:
+        raise ValueError(
+            f"Invalid secondary_start '{ss}' for horizontal direction '{pd}'\n"
+            f"✓ Use: 'up' or 'down' (e.g., secondary_start='up')"
+        )
+    if pd not in VERTICAL and pd not in HORIZONTAL:
+        raise ValueError(f"Invalid primary_direction: '{pd}'")
+
+def _extract_graph_data(graph: Any) -> Tuple[List[Any], List[Tuple[Any, Any]]]:
+    # Rustworkx
+    try:
+        import rustworkx as rx
+        if isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):
+            nodes = sorted(int(u) for u in graph.node_indices())
+            edges = [(int(u), int(v)) for u, v in graph.edge_list()]
+            return nodes, edges
+    except (ImportError, AttributeError, NameError):
+        pass
+    
+    # NetworkX (fallback)
+    try:
+        import networkx as nx
+        if isinstance(graph, (nx.Graph, nx.DiGraph, nx.MultiGraph, nx.MultiDiGraph)):
+            try:
+                nodes = sorted(graph.nodes())
+            except TypeError:
+                nodes = list(graph.nodes())
+            edges = [(u, v) for u, v in graph.edges()]
+            return nodes, edges
+    except (ImportError, AttributeError, NameError):
+        pass
+    
+    raise TypeError(
+        f"Unsupported graph type: {type(graph).__name__}\n"
+        "Supported: NetworkX, Rustworkx"
+    )
+
+def _compute_positions(nodes: List[Any],
+                       ps: float, ss: float,
+                       pd: str, sc: str, exp: bool) -> Dict[Any, Tuple[float, float]]:
+    pos = {}
+    for i, node in enumerate(nodes):
+        if pd == 'top_down':
+            pc, sa = i * -ps, 'x'
+        elif pd == 'bottom_up':
+            pc, sa = i * ps, 'x'
+        elif pd == 'left-to-right':
+            pc, sa = i * ps, 'y'
+        else:  # right-to-left
+            pc, sa = i * -ps, 'y'
+        
+        so = 0.0
+        if i > 0:
+            sm = 1.0 if sc in {'right', 'up'} else -1.0
+            mag = math.ceil(i / 2.0) if exp else 1.0
+            side = 1 if i % 2 else -1
+            so = sm * mag * side * ss
+        
+        pos[node] = (so, pc) if sa == 'x' else (pc, so)
+    return pos
+
 # =============================================================================
 # 1. TEMEL LAYOUT HESAPLAMA FONKSİYONU (2D)
 # Bu fonksiyon sadece koordinatları hesaplar, çizim yapmaz.
 # 1. LAYOUT CALCULATION FUNCTION (UNIFIED AND IMPROVED)
 # =============================================================================
-
 def kececi_layout_v4(graph, primary_spacing=1.0, secondary_spacing=1.0,
                   primary_direction='top_down', secondary_start='right',
                   expanding=True):
@@ -2075,4 +2168,5 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
 
