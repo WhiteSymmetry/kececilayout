@@ -355,6 +355,66 @@ def _compute_positions(nodes: List[Any],
         pos[node] = (so, pc) if sa == 'x' else (pc, so)
     return pos
 
+def count_edge_crossings(pos, edges):
+    """Basit ama etkili crossing sayacı: (bounding box kesişimi - yaklaşık) (O(m²))"""
+    crossings = 0
+    segments = []
+    
+    # Tüm edge'leri segment olarak sakla
+    for u, v in edges:
+        x1, y1 = pos[u]
+        x2, y2 = pos[v]
+        segments.append(((x1, y1), (x2, y2)))
+    
+    # Tüm segment çiftlerini kontrol et
+    for i in range(len(segments)):
+        for j in range(i+1, len(segments)):
+            if _segments_intersect(segments[i], segments[j]):
+                crossings += 1
+    return crossings
+
+def _segments_intersect(seg1, seg2):
+    """İki doğru parçasının kesişip kesişmediğini kontrol eder (Cohen-Sutherland değil, basit)"""
+    (x1, y1), (x2, y2) = seg1
+    (x3, y3), (x4, y4) = seg2
+    
+    # Ortak uç noktaları crossing olarak sayma
+    if (x1, y1) in [(x3, y3), (x4, y4)] or (x2, y2) in [(x3, y3), (x4, y4)]:
+        return False
+    
+    # Yönlendirme fonksiyonu
+    def orientation(ax, ay, bx, by, cx, cy):
+        val = (by - ay) * (cx - bx) - (bx - ax) * (cy - by)
+        if abs(val) < 1e-9: return 0  # colinear
+        return 1 if val > 0 else 2     # clockwise / counterclockwise
+    
+    o1 = orientation(x1, y1, x2, y2, x3, y3)
+    o2 = orientation(x1, y1, x2, y2, x4, y4)
+    o3 = orientation(x3, y3, x4, y4, x1, y1)
+    o4 = orientation(x3, y3, x4, y4, x2, y2)
+    
+    # Genel kesişim durumu
+    if o1 != o2 and o3 != o4:
+        return True
+    
+    return False
+
+edges_small = list(G_small.edges())
+cross_basic = count_edge_crossings(pos_basic, edges_small)
+cross_edge_aware = count_edge_crossings(pos_edge_aware, edges_small)
+
+def avg_edge_length(pos, edges):
+    # Ortalama edge uzunluğu
+    total = 0.0
+    for u, v in edges:
+        x1, y1 = pos[u]
+        x2, y2 = pos[v]
+        total += math.hypot(x1 - x2, y1 - y2)
+    return total / len(edges) if edges else 0
+
+avg_len_basic = avg_edge_length(pos_basic, edges_small)
+avg_len_edge_aware = avg_edge_length(pos_edge_aware, edges_small)
+
 # =============================================================================
 # 1. TEMEL LAYOUT HESAPLAMA FONKSİYONU (2D)
 # Bu fonksiyon sadece koordinatları hesaplar, çizim yapmaz.
@@ -2184,6 +2244,7 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
 
 
 
