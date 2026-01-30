@@ -2070,7 +2070,7 @@ KececiLayout v0.5.0 processes 10,000-node graphs in **2 milliseconds**, deliveri
 [![Complexity](https://img.shields.io/badge/O(n)_complexity-blue)](https://github.com/WhiteSymmetry/kececilayout)
 [![Libraries](https://img.shields.io/badge/6_graph_libraries_supported-27ae60)](https://github.com/WhiteSymmetry/kececilayout)
 
-> 💡 **Profesyonel ipucu:** README'de "süper-lineer" veya abartılı iddialardan kaçının. "Lineer zaman karmaşıklığı (O(n))" ve "NetworkX'e göre 9.463x hız avantajı" gibi **ölçülebilir, bilimsel olarak kanıtlanmış** ifadeler kullanın. Bu, projenizin güvenilirliğini artırır. 🚀
+
 
 
 
