@@ -409,6 +409,10 @@ for i in range(6, 12):
     else:
         G_small.add_edge(i, i-2)
 
+# Layout'ları hesapla
+pos_basic = kececi_layout_edge(G_small, edge=False)
+pos_edge_aware = kececi_layout_edge(G_small, edge=True)
+
 edges_small = list(G_small.edges())
 cross_basic = count_edge_crossings(pos_basic, edges_small)
 cross_edge_aware = count_edge_crossings(pos_edge_aware, edges_small)
@@ -2254,6 +2258,7 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
 
 
 
