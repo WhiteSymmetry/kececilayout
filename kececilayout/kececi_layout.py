@@ -5,6 +5,22 @@ kececilayout.py
 
 This module provides sequential-zigzag ("Keçeci Layout") and advanced visualization styles for various Python graph libraries.
 Bu modül, çeşitli Python graf kütüphaneleri için sıralı-zigzag ("Keçeci Layout") ve gelişmiş görselleştirme stilleri sağlar.
+
+**Key Features:**
+*   **Linear Focus:** Ideal for visualizing paths, chains, or ordered processes.
+*   **Deterministic:** Produces identical results for the same input.
+*   **Overlap Reduction:** Prevents node collisions by spreading them across axes.
+*   **Parametric:** Fully customizable with parameters like `primary_spacing`, `secondary_spacing`, `primary_direction`, and `secondary_start`.
+
+**v0.2.7**: Curved, transparent, 3D, and `expanding=True` styles supported.
+
+**v0.5.0:** 
+
+layouts = ['2d', 'cylindrical', 'cubic', 'spherical', 'elliptical', 'toric']
+
+styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
+
+**v0.5.1:** edge (kececi_layout_edge)
 """
 
 from collections import defaultdict
@@ -2168,5 +2184,6 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
 
 
