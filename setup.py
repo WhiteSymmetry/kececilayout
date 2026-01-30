@@ -44,9 +44,10 @@ setup(
     },
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: AGPL3.0-or-later",
         "Operating System :: OS Independent"
     ],
-    python_requires='>=3.10',
-    license="MIT",
+    python_requires='>=3.11',
+    license="AGPL3.0-or-later",
 )
+
