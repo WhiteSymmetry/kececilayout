@@ -10,7 +10,7 @@ import inspect
 import warnings
 
 # Paket sürüm numarası
-__version__ = "0.5.1"
+__version__ = "0.5.2"
 
 # =============================================================================
 # OTOMATİK İÇE AKTARMA VE __all__ OLUŞTURMA
@@ -62,6 +62,9 @@ from .kececi_layout import (  # Veya fonksiyonların bulunduğu asıl modül
     _compute_positions,
     _extract_graph_data,
     _validate_directions,
+    avg_edge_length,
+    _segments_intersect,
+    count_edge_crossings,
     
     # Drawing functions
     draw_kececi,
@@ -115,6 +118,9 @@ __all__ = [
     '_compute_positions',
     '_extract_graph_data',
     '_validate_directions',
+    'avg_edge_length',
+    '_segments_intersect',
+    'count_edge_crossings',
 
     # Drawing functions
     'draw_kececi',
@@ -165,4 +171,5 @@ def old_function_placeholder():
 
 # Eğer bu eski fonksiyonu da dışa aktarmak istiyorsanız, __all__ listesine ekleyin
 # __all__.append('old_function_placeholder')
+
 
