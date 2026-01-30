@@ -1967,6 +1967,21 @@ Avantaj, grafik büyüdükçe **süper-lineer** olarak artar:
 
 ---
 
-### 📌 Son Tavsiye
+### 📌 Son
 
-> ✅ **"KececiLayout, 1.000 node'luk grafiklerde NetworkX `spring_layout`'a kıyasla 9.857 kat daha hızlı çalışır ve süper-lineer ölçeklenebilirlik sunar."**
+"KececiLayout lineer zaman karmaşıklığına (O(n)) sahipken, NetworkX spring_layout kuadratik karmaşıklıkta (O(n²)) çalışır. Bu nedenle, hızlanma oranı grafik büyüklüğüyle doğrusal olarak artar — 1.000 node'da ~9.857x, 10.000 node'da ~98.000x beklenir."
+
+KececiLayout **lineer zaman karmaşıklığına** (O(n)) sahiptir. NetworkX `spring_layout` ise 
+kuadratik karmaşıklıkta (O(n²)) çalıştığı için, hızlanma oranı grafik büyüklüğüyle 
+doğrusal olarak artar:
+
+| Node | KececiLayout | NetworkX | Hızlanma |
+|------|--------------|----------|----------|
+| 10   | 12.9 μs      | 1.06 ms  | 82x      |
+| 100  | 20.3 μs      | 14.15 ms | 698x     |
+| 1,000| 196.4 μs     | 1.94 s   | 9,857x   |
+
+> 📌 **Bilimsel açıklama:**  
+> Hızlanma(n) ≈ k · n (k ≈ 8-10 sabiti).  
+> 10.000 node için ~~98.000x hızlanma beklenir.
+
