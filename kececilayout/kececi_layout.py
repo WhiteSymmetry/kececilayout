@@ -403,7 +403,7 @@ G_small = nx.complete_bipartite_graph(3, 3)
 # Bağlantısız bileşen ekle (community yapısını test etmek için)
 # Non-planar graf: K_{3,3} + ekstra node'lar (edge crossing farkını net gösterir)
 for i in range(6, 12):
-    small.add_node(i)
+    G_small.add_node(i)
     if i % 2 == 0:
         G_small.add_edge(i, i-1)
     else:
@@ -2254,6 +2254,7 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
 
 
 
