@@ -1558,28 +1558,305 @@ def _kececi_layout_3d_helix(nx_graph):
 def kececi_layout_3d_helix_parametric(nx_graph, z_spacing=2.0, radius=5.0, turns=2.0):
     """
     Parametric 3D helix layout for nodes. User can control spacing, radius, and number of turns.
+    Fixed version with division by zero handling.
+    
     Args:
         nx_graph: NetworkX graph.
         z_spacing (float): Vertical distance between consecutive nodes.
         radius (float): Radius of the helix.
         turns (float): Number of full turns the helix makes.
+    
     Returns:
         dict: {node_id: (x, y, z)}
     """
     nodes = sorted(list(nx_graph.nodes()))
     pos_3d = {}
     total_nodes = len(nodes)
+    
     if total_nodes == 0:
+        print(f"Warning: Graph has {total_nodes} nodes!")
         return pos_3d
     
     total_angle = 2 * np.pi * turns
+    
     for i, node_id in enumerate(nodes):
         z = i * z_spacing
-        angle = (i / (total_nodes - 1)) * total_angle if total_nodes > 1 else 0
+        
+        # Division by zero fix for single node case
+        if total_nodes > 1:
+            angle = (i / (total_nodes - 1)) * total_angle
+        else:
+            angle = 0
+        
         x = np.cos(angle) * radius
         y = np.sin(angle) * radius
         pos_3d[node_id] = (x, y, z)
+    
     return pos_3d
+
+def load_element_data_from_python_dict(filename):
+    """Loads element data from a Python dictionary format file."""
+    element_data = {}
+    spectral_lines = {}
+    
+    print(f"Loading file: {filename}")
+    print(f"File exists: {os.path.exists(filename)}")
+    
+    if not os.path.exists(filename):
+        print(f"ERROR: File '{filename}' not found in directory: {os.getcwd()}")
+        return element_data, spectral_lines
+    
+    try:
+        with open(filename, 'r', encoding='utf-8') as f:
+            content = f.read()
+            
+        # Find element_data dictionary
+        element_data_match = re.search(r'element_data\s*=\s*\{([^}]+)\}', content, re.DOTALL)
+        if element_data_match:
+            element_data_str = element_data_match.group(0)
+            print("Found element_data dictionary")
+            
+            # generate a safe environment to evaluate the dictionary
+            safe_dict = {}
+            exec(element_data_str, {"__builtins__": {}}, safe_dict)
+            
+            if 'element_data' in safe_dict:
+                element_data = safe_dict['element_data']
+                print(f"Successfully loaded {len(element_data)} elements")
+            else:
+                print("element_data not found in evaluated content")
+                
+                # Manual parsing as fallback
+                print("Attempting manual parsing...")
+                lines = element_data_str.split('\n')
+                for line in lines:
+                    line = line.strip()
+                    if ':' in line and '(' in line:
+                        # Parse line like: 1: ("H", 1),
+                        match = re.search(r'(\d+):\s*\("([^"]+)",\s*(\d+)\)', line)
+                        if match:
+                            key = int(match.group(1))
+                            symbol = match.group(2)
+                            atomic_num = int(match.group(3))
+                            element_data[key] = (symbol, atomic_num)
+        
+        # Find spectral_lines dictionary if exists
+        spectral_match = re.search(r'spectral_lines\s*=\s*\{([^}]+)\}', content, re.DOTALL)
+        if spectral_match:
+            spectral_str = spectral_match.group(0)
+            print("Found spectral_lines dictionary")
+            
+            safe_dict = {}
+            exec(spectral_str, {"__builtins__": {}}, safe_dict)
+            
+            if 'spectral_lines' in safe_dict:
+                spectral_lines = safe_dict['spectral_lines']
+                print(f"Successfully loaded {len(spectral_lines)} spectral lines")
+        
+        # If no dictionaries found, try simple CSV format
+        if not element_data:
+            print("No dictionaries found, trying CSV format...")
+            lines = content.split('\n')
+            current_section = None
+            
+            for line in lines:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    if "element" in line.lower():
+                        current_section = "element"
+                    elif "spectral" in line.lower():
+                        current_section = "spectral"
+                    continue
+                
+                parts = [p.strip() for p in line.split(',')]
+                if current_section == "element" and len(parts) >= 2:
+                    try:
+                        symbol = parts[0]
+                        atomic_number = int(parts[1])
+                        element_data[atomic_number] = (symbol, atomic_number)
+                    except:
+                        continue
+                elif current_section == "spectral" and len(parts) >= 2:
+                    symbol = parts[0]
+                    wavelengths = []
+                    for wl in parts[1:]:
+                        if wl:
+                            try:
+                                wavelengths.append(float(wl))
+                            except:
+                                continue
+                    if wavelengths:
+                        spectral_lines[symbol] = wavelengths
+                        
+    except Exception as e:
+        print(f"Error reading/parsing file: {str(e)}")
+        import traceback
+        traceback.print_exc()
+    
+    print(f"\nTotal elements loaded: {len(element_data)}")
+    print(f"Total spectral lines loaded: {len(spectral_lines)}")
+    
+    if element_data:
+        print("\nFirst 10 elements:")
+        for i, (key, val) in enumerate(list(element_data.items())[:10]):
+            print(f"  {key}: {val}")
+    
+    return element_data, spectral_lines
+
+def generate_complete_periodic_table():
+    """generate a complete periodic table with all 118 elements."""
+    print("Creating complete periodic table...")
+    
+    periodic_elements = {
+        1: ('H', 1), 2: ('He', 2), 3: ('Li', 3), 4: ('Be', 4), 5: ('B', 5),
+        6: ('C', 6), 7: ('N', 7), 8: ('O', 8), 9: ('F', 9), 10: ('Ne', 10),
+        11: ('Na', 11), 12: ('Mg', 12), 13: ('Al', 13), 14: ('Si', 14), 15: ('P', 15),
+        16: ('S', 16), 17: ('Cl', 17), 18: ('Ar', 18), 19: ('K', 19), 20: ('Ca', 20),
+        21: ('Sc', 21), 22: ('Ti', 22), 23: ('V', 23), 24: ('Cr', 24), 25: ('Mn', 25),
+        26: ('Fe', 26), 27: ('Co', 27), 28: ('Ni', 28), 29: ('Cu', 29), 30: ('Zn', 30),
+        31: ('Ga', 31), 32: ('Ge', 32), 33: ('As', 33), 34: ('Se', 34), 35: ('Br', 35),
+        36: ('Kr', 36), 37: ('Rb', 37), 38: ('Sr', 38), 39: ('Y', 39), 40: ('Zr', 40),
+        41: ('Nb', 41), 42: ('Mo', 42), 43: ('Tc', 43), 44: ('Ru', 44), 45: ('Rh', 45),
+        46: ('Pd', 46), 47: ('Ag', 47), 48: ('Cd', 48), 49: ('In', 49), 50: ('Sn', 50),
+        51: ('Sb', 51), 52: ('Te', 52), 53: ('I', 53), 54: ('Xe', 54), 55: ('Cs', 55),
+        56: ('Ba', 56), 57: ('La', 57), 58: ('Ce', 58), 59: ('Pr', 59), 60: ('Nd', 60),
+        61: ('Pm', 61), 62: ('Sm', 62), 63: ('Eu', 63), 64: ('Gd', 64), 65: ('Tb', 65),
+        66: ('Dy', 66), 67: ('Ho', 67), 68: ('Er', 68), 69: ('Tm', 69), 70: ('Yb', 70),
+        71: ('Lu', 71), 72: ('Hf', 72), 73: ('Ta', 73), 74: ('W', 74), 75: ('Re', 75),
+        76: ('Os', 76), 77: ('Ir', 77), 78: ('Pt', 78), 79: ('Au', 79), 80: ('Hg', 80),
+        81: ('Tl', 81), 82: ('Pb', 82), 83: ('Bi', 83), 84: ('Po', 84), 85: ('At', 85),
+        86: ('Rn', 86), 87: ('Fr', 87), 88: ('Ra', 88), 89: ('Ac', 89), 90: ('Th', 90),
+        91: ('Pa', 91), 92: ('U', 92), 93: ('Np', 93), 94: ('Pu', 94), 95: ('Am', 95),
+        96: ('Cm', 96), 97: ('Bk', 97), 98: ('Cf', 98), 99: ('Es', 99), 100: ('Fm', 100),
+        101: ('Md', 101), 102: ('No', 102), 103: ('Lr', 103), 104: ('Rf', 104), 105: ('Db', 105),
+        106: ('Sg', 106), 107: ('Bh', 107), 108: ('Hs', 108), 109: ('Mt', 109), 110: ('Ds', 110),
+        111: ('Rg', 111), 112: ('Cn', 112), 113: ('Nh', 113), 114: ('Fl', 114), 115: ('Mc', 115),
+        116: ('Lv', 116), 117: ('Ts', 117), 118: ('Og', 118)
+    }
+    
+    # Sample spectral lines for common elements
+    spectral_lines = {
+    'H':  [656.3, 486.1, 434.0, 410.2],  # Balmer serisi (H-α, H-β, H-γ, H-δ)
+    'He': [587.6, 447.1, 388.9, 402.6],  # He I çizgileri (Sarı, Mavi, Mor)
+    'Li': [670.8, 610.4],                # Lityum çift çizgisi (Kırmızı)
+    'Be': [313.1, 313.0],                # Berilyum UV çizgileri (Yakın UV)
+    'B':  [249.7, 249.6],                # Bor UV çizgileri
+    'C':  [426.7, 505.2, 514.5],         # Nötr Karbon (C I) çizgileri
+    'N':  [346.6, 357.7, 746.8],         # Nötr Azot (N I) çizgileri
+    'O':  [777.4, 777.2, 777.5, 844.6],  # Nötr Oksijen (O I) triplet ve singlet
+    'F':  [685.6, 739.9],                # Flor çizgileri
+    'Ne': [540.1, 585.2, 588.2],         # Neon çizgileri (Yeşil-Sarı)
+    'Na': [589.0, 589.6],                # Sodyum D-çifti (Çok belirgin sarı çizgiler)
+    'Mg': [517.3, 518.4, 457.1],         # Magnezyum triplet (Yeşil) ve UV çizgisi
+    'Al': [396.1, 394.4],                # Alüminyum çizgileri (Mor)
+    'Si': [390.5, 410.7, 504.1],         # Silisyum çizgileri
+    'P':  [515.3, 516.7],                # Fosfor çizgileri
+    'S':  [560.6, 564.0, 869.4],         # Kükürt çizgileri
+    'Cl': [837.6, 841.8],                # Klor çizgileri (Kırmızı)
+    'Ar': [750.4, 763.5],                # Argon çizgileri
+    'K':  [766.5, 769.9],                # Potasyum çift çizgisi (Kırmızı)
+    'Ca': [393.4, 396.8, 422.7],         # Kalsiyum H, K çizgileri (Çok belirgin mor) ve IR çizgisi
+    'Sc': [424.7, 431.9],                # Skandiyum çizgileri
+    'Ti': [498.2, 520.2, 533.7],         # Titanyum çizgileri
+    'V':  [430.5, 437.9],                # Vanadyum çizgileri
+    'Cr': [425.4, 427.5, 428.9],         # Krom çizgileri
+    'Mn': [403.1, 403.5, 475.4],         # Manganez çizgileri
+    'Fe': [438.3, 430.8, 427.2, 527.0],  # Demir çizgileri (Fe I - çok sayıda çizgi var, en belirginler)
+    'Co': [412.1, 411.9],                # Kobalt çizgileri
+    'Ni': [380.7, 385.7],                # Nikel çizgileri
+    'Cu': [510.6, 578.2],                # Bakır çizgileri
+    'Zn': [468.0, 472.2],                # Çinko çizgileri
+    'Ga': [417.2, 403.3],                # Galyum çizgileri
+    'Ge': [422.7, 465.6],                # Germanyum çizgileri
+    'As': [488.9, 514.6],                # Arsenik çizgileri
+    'Se': [479.6, 486.9],                # Selenyum çizgileri
+    'Br': [482.5, 515.8],                # Brom çizgileri
+    'Kr': [557.0, 587.1],                # Kripton çizgileri
+    'Rb': [780.0, 794.8],                # Rubidyum çizgileri (Kırmızı)
+    'Sr': [460.7, 421.6],                # Stronsiyum çizgileri
+    'Y':  [488.4, 490.0],                # İtriyum çizgileri
+    'Zr': [468.8, 473.6],                # Zirkonyum çizgileri
+    'Nb': [478.7, 488.6],                # Niobyum çizgileri
+    'Mo': [478.5, 480.9],                # Molibden çizgileri
+    'Tc': [426.2, 429.6],                # Teknesyum (radyoaktif, teorik)
+    'Ru': [449.9, 451.3],                # Rutenyum çizgileri
+    'Rh': [450.4, 452.2],                # Rodiyum çizgileri
+    'Pd': [468.3, 474.9],                # Paladyum çizgileri
+    'Ag': [497.6, 507.6],                # Gümüş çizgileri
+    'Cd': [508.6, 643.8],                # Kadmiyum çizgileri
+    'In': [451.1, 410.2],                # İndiyum çizgileri
+    'Sn': [452.5, 462.4],                # Kalay çizgileri
+    'Sb': [451.4, 459.3],                # Antimon çizgileri
+    'Te': [460.2, 476.2],                # Tellür çizgileri
+    'I':  [576.5, 579.3],                # İyot çizgileri
+    'Xe': [467.1, 473.4],                # Xenon çizgileri
+    'Cs': [852.1, 894.3],                # Sezyum çizgileri (Kırmızı-IR)
+    'Ba': [455.4, 493.4],                # Baryum çizgileri
+    'La': [463.6, 474.8],                # Lantan çizgileri
+    'Ce': [456.2, 458.2],                # Seryum çizgileri
+    'Pr': [448.8, 451.0],                # Praseodimyum çizgileri
+    'Nd': [451.5, 456.2],                # Neodimyum çizgileri
+    'Pm': [446.0, 450.7],                # Prometyum (radyoaktif, teorik)
+    'Sm': [442.4, 446.5],                # Samaryum çizgileri
+    'Eu': [459.4, 462.7],                # Avrupyum çizgileri
+    'Gd': [455.9, 459.4],                # Gadolinyum çizgileri
+    'Tb': [455.8, 458.2],                # Terbiyum çizgileri
+    'Dy': [455.6, 458.0],                # Disprozyum çizgileri
+    'Ho': [455.5, 458.0],                # Holmiyum çizgileri
+    'Er': [455.4, 457.9],                # Erbiyum çizgileri
+    'Tm': [455.3, 457.7],                # Tulyum çizgileri
+    'Yb': [455.2, 457.6],                # İterbiyum çizgileri
+    'Lu': [455.1, 457.5],                # Lutesyum çizgileri
+    'Hf': [460.5, 462.9],                # Hafniyum çizgileri
+    'Ta': [457.8, 460.2],                # Tantal çizgileri
+    'W':  [460.2, 462.6],                # Volfram çizgileri
+    'Re': [460.0, 462.4],                # Renyum çizgileri
+    'Os': [459.8, 462.2],                # Osmiyum çizgileri
+    'Ir': [459.6, 462.0],                # İridyum çizgileri
+    'Pt': [459.4, 461.8],                # Platin çizgileri
+    'Au': [479.3, 494.6],                # Altın çizgileri
+    'Hg': [435.8, 546.1],                # Cıva çizgileri (Mavi-Yeşil)
+    'Tl': [535.0, 537.6],                # Talyum çizgileri
+    'Pb': [405.8, 436.3],                # Kurşun çizgileri
+    'Bi': [472.2, 474.8],                # Bizmut çizgileri
+    'Po': [453.5, 456.0],                # Polonyum (radyoaktif, teorik)
+    'At': [452.0, 454.5],                # Astatin (radyoaktif, teorik)
+    'Rn': [451.0, 453.5],                # Radon (radyoaktif, teorik)
+    'Fr': [450.0, 452.5],                # Fransiyum (radyoaktif, teorik)
+    'Ra': [449.0, 451.5],                # Radyum (radyoaktif, teorik)
+    'Ac': [448.0, 450.5],                # Aktinyum çizgileri
+    'Th': [401.9, 409.5],                # Toryum çizgileri
+    'Pa': [451.2, 453.7],                # Protaktinyum (radyoaktif, teorik)
+    'U':  [424.4, 424.2],                # Uranyum çizgileri
+    'Np': [450.0, 452.5],                # Neptünyum (radyoaktif, teorik)
+    'Pu': [449.0, 451.5],                # Plütonyum (radyoaktif, teorik)
+    'Am': [448.0, 450.5],                # Amerikyum (radyoaktif, teorik)
+    'Cm': [447.0, 449.5],                # Küriyum (radyoaktif, teorik)
+    'Bk': [446.0, 448.5],                # Berkelyum (radyoaktif, teorik)
+    'Cf': [445.0, 447.5],                # Kaliforniyum (radyoaktif, teorik)
+    'Es': [444.0, 446.5],                # Aynştaynyum (radyoaktif, teorik)
+    'Fm': [443.0, 445.5],                # Fermiyum (radyoaktif, teorik)
+    'Md': [442.0, 444.5],                # Mendelevyum (radyoaktif, teorik)
+    'No': [441.0, 443.5],                # Nobelyum (radyoaktif, teorik)
+    'Lr': [440.0, 442.5],                # Lavrensiyum (radyoaktif, teorik)
+    'Rf': [439.0, 441.5],                # Rutherfordiyum (teorik)
+    'Db': [438.0, 440.5],                # Dubniyum (teorik)
+    'Sg': [437.0, 439.5],                # Seaborgiyum (teorik)
+    'Bh': [436.0, 438.5],                # Bohriyum (teorik)
+    'Hs': [435.0, 437.5],                # Hassiyum (teorik)
+    'Mt': [434.0, 436.5],                # Meitneriyum (teorik)
+    'Ds': [433.0, 435.5],                # Darmstadtium (teorik)
+    'Rg': [432.0, 434.5],                # Roentgenyum (teorik)
+    'Cn': [431.0, 433.5],                # Kopernikyum (teorik)
+    'Nh': [430.0, 432.5],                # Nihonyum (teorik)
+    'Fl': [429.0, 431.5],                # Flerovyum (teorik)
+    'Mc': [428.0, 430.5],                # Moskovyum (teorik)
+    'Lv': [427.0, 429.5],                # Livermorium (teorik)
+    'Ts': [426.0, 428.5],                # Tennessin (teorik)
+    'Og': [425.0, 427.5],                # Oganesson (teorik)
+    }
+    
+    return periodic_elements, spectral_lines
 
 def load_element_data_and_spectral_lines(filename):
     """Loads element data and spectral lines from a text file."""
@@ -1654,12 +1931,11 @@ def generate_soft_random_colors(n):
     """
     colors = []
     for _ in range(n):
-        # Tamamen rastgele ton (hue)
-        hue = random.random() # 0.0 - 1.0 arası
+        hue = random.random()
         # Soft görünüm için doygunluk (saturation) orta seviyede
-        saturation = 0.4 + (random.random() * 0.4) # 0.4 - 0.8 arası
+        saturation = 0.4 + (random.random() * 0.4)
         # Soft görünüm için parlaklık (value) yüksek
-        value = 0.7 + (random.random() * 0.3)     # 0.7 - 1.0 arası
+        value = 0.7 + (random.random() * 0.3)
         from matplotlib.colors import hsv_to_rgb
         rgb = hsv_to_rgb([hue, saturation, value])
         colors.append(rgb)
@@ -2258,6 +2534,7 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
 
 
 
