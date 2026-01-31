@@ -7,7 +7,9 @@ graph type compatibility, error handling, and drawing function routing.
 """
 
 import numpy as np
+import os
 import pytest
+import re
 import sys
 from unittest.mock import patch
 
