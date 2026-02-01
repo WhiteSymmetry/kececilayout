@@ -84,6 +84,8 @@ styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 
 **v0.5.1:** edge (kececi_layout_edge)
 
+**v0.6.0:** periodic table
+
 ---
 
 ### Installation
@@ -2070,7 +2072,59 @@ KececiLayout v0.5.0 processes 10,000-node graphs in **2 milliseconds**, deliveri
 [![Complexity](https://img.shields.io/badge/O(n)_complexity-blue)](https://github.com/WhiteSymmetry/kececilayout)
 [![Libraries](https://img.shields.io/badge/6_graph_libraries_supported-27ae60)](https://github.com/WhiteSymmetry/kececilayout)
 
+# Pixi:
 
+[![Pixi](https://img.shields.io/badge/Pixi-Pixi-brightgreen.svg)](https://prefix.dev/channels/bilgi)
+
+pixi init kececilayout
+
+cd kececilayout
+
+pixi workspace channel add https://repo.prefix.dev/bilgi --prepend
+
+✔ Added https://repo.prefix.dev/bilgi
+
+pixi add kececilayout
+
+✔ Added kececilayout >=0.2.0,<2
+
+pixi install
+
+pixi shell
+
+pixi run python -c "import kececilayout; print(kececilayout.__version__)"
+
+### Çıktı:
+
+pixi remove kececilayout
+
+conda install -c https://prefix.dev/bilgi kececilayout
+
+pixi run python -c "import kececilayout; print(kececilayout.__version__)"
+
+### Çıktı: 
+
+pixi run pip list | grep kececilayout
+
+### kececilayout  
+
+pixi run pip show kececilayout
+
+Name: kececilayout
+
+Version: 0.2.0
+
+Summary:
+
+Home-page: https://github.com/WhiteSymmetry/kececilayout
+
+Author: Mehmet Keçeci
+
+Author-email: Mehmet Keçeci <...>
+
+License: GNU AFFERO GENERAL PUBLIC LICENSE
+
+Copyright (c) 2025-2026 Mehmet Keçeci
 
 
 
