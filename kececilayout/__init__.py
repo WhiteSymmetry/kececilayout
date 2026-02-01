@@ -10,7 +10,7 @@ import inspect
 import warnings
 
 # Paket sürüm numarası
-__version__ = "0.5.9"
+__version__ = "0.6.0"
 
 # =============================================================================
 # OTOMATİK İÇE AKTARMA VE __all__ OLUŞTURMA
@@ -68,7 +68,34 @@ from .kececi_layout import (  # Veya fonksiyonların bulunduğu asıl modül
     generate_complete_periodic_table,
     load_element_data_from_python_dict,
     draw_kececi_custom_labels,
-    
+    draw_kececi_periodic_table,
+    _calculate_layout,
+    _generate_grid_layout,
+    _generate_colors,
+    _get_group_colors,
+    _determine_group,
+    _get_period_colors,
+    _get_block_colors,
+    _get_electronegativity_colors,
+    _generate_labels,
+    _get_draw_order,
+    _get_edge_config,
+    _draw_edges,
+    _draw_nodes,
+    _draw_labels,
+    _generate_title,
+    _configure_axes,
+    _add_legend,
+    quick_periodic_table_3d,
+    generate_comparison_figure,
+    save_periodic_table_visualization,
+    highlight_elements,
+    demo_periodic_table_visualizations,
+    get_element_info,
+    custom_visualization,
+    debug_periodic_table_structure,
+    _generate_labels,
+
     # Drawing functions
     draw_kececi,
     #'_draw_internal',  # <- TESTLER İÇİN GEREKLİ
@@ -127,6 +154,33 @@ __all__ = [
     'generate_complete_periodic_table',
     'load_element_data_from_python_dict',
     'draw_kececi_custom_labels',
+    'draw_kececi_periodic_table',
+    '_calculate_layout',
+    '_generate_grid_layout',
+    '_generate_colors',
+    '_get_group_colors',
+    '_determine_group',
+    '_get_period_colors',
+    '_get_block_colors',
+    '_get_electronegativity_colors',
+    '_generate_labels',
+    '_get_draw_order',
+    '_get_edge_config',
+    '_draw_edges',
+    '_draw_nodes',
+    '_draw_labels',
+    '_generate_title',
+    '_configure_axes',
+    '_add_legend',
+    'quick_periodic_table_3d',
+    'generate_comparison_figure',
+    'save_periodic_table_visualization',
+    'highlight_elements',
+    'demo_periodic_table_visualizations',
+    'get_element_info',
+    'custom_visualization',
+    'debug_periodic_table_structure',
+    '_generate_labels',
 
     # Drawing functions
     'draw_kececi',
@@ -177,6 +231,7 @@ def old_function_placeholder():
 
 # Eğer bu eski fonksiyonu da dışa aktarmak istiyorsanız, __all__ listesine ekleyin
 # __all__.append('old_function_placeholder')
+
 
 
 
