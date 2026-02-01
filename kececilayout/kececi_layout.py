@@ -3363,12 +3363,12 @@ def _generate_title(layout_type, node_count, color_scheme, dimension):
     scheme_text = color_scheme.capitalize()
     
     layout_names = {
-        '3d_helix': '3D Heliks Layout',
-        '2d_linear': '2D Lineer Layout',
+        '3d_helix': 'Heliks Layout',
+        '2d_linear': 'Lineer Layout',
         '2d_circular': 'Dairesel Layout',
-        '3d_spherical': '3D Küresel Layout',
-        '2d_spring': '2D Yay Layout',
-        '2d_grid': '2D Grid Layout'
+        '3d_spherical': 'Küresel Layout',
+        '2d_spring': 'Yay Layout',
+        '2d_grid': 'Grid Layout'
     }
     
     layout_name = layout_names.get(layout_type, layout_type.replace('_', ' ').title())
@@ -4266,3 +4266,4 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
