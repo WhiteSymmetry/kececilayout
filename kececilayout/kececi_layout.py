@@ -21,6 +21,8 @@ layouts = ['2d', 'cylindrical', 'cubic', 'spherical', 'elliptical', 'toric']
 styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 
 **v0.5.1:** edge (kececi_layout_edge)
+
+**v0.6.0:** periodic table
 """
 
 from collections import defaultdict
@@ -29,6 +31,7 @@ import igraph as ig
 import itertools # Graphillion için eklendi
 import math
 import matplotlib.pyplot as plt
+from matplotlib.colors import hsv_to_rgb
 from mpl_toolkits.mplot3d import Axes3D
 import networkit as nk
 import networkx as nx
@@ -2843,6 +2846,1381 @@ def draw_kececi(graph, style='curved', ax=None, **kwargs):
     return ax
 """
 
+def draw_kececi_periodic_table(
+    graph,
+    periodic_elements: Dict[int, Tuple[str, int]],
+    layout_type: str = '3d_helix',
+    layout_params: Optional[Dict] = None,
+    ax: Optional[plt.Axes] = None,
+    dimension: str = 'auto',  # '2d', '3d', or 'auto'
+    color_scheme: str = 'vibrant',  # 'vibrant', 'distinct', 'pastel', 'group', 'period', 'block', 'electronegativity'
+    node_size: Union[int, List[int]] = 1600,
+    font_size: Union[int, List[int]] = 10,
+    edge_style: str = 'standard',  # 'standard', 'light', 'bold', 'hidden'
+    label_position: str = 'center',  # 'center', 'above', 'below', 'right', 'left'
+    zorder_strategy: str = 'smart',  # 'smart', 'fixed', 'z_based'
+    show_legend: bool = False,
+    title: Optional[str] = None,
+    **kwargs
+) -> Tuple[plt.Axes, Dict]:
+    """
+    Gelişmiş periyodik tablo çizimi - Hem 2D hem 3D uyumlu.
+    """
+    # Graph'ı NetworkX'e çevir
+    nx_graph = to_networkx(graph)
+    node_count = len(periodic_elements)
+    
+    # Dimension belirleme
+    if dimension == 'auto':
+        if '3d' in layout_type.lower():
+            dimension = '3d'
+        else:
+            dimension = '2d'
+    
+    # Layout parametreleri
+    if layout_params is None:
+        layout_params = {}
+    
+    # Layout hesapla
+    pos = _calculate_layout(nx_graph, layout_type, layout_params, dimension, node_count)
+    
+    # Renkleri oluştur
+    node_colors = _generate_colors(node_count, color_scheme, periodic_elements)
+    
+    # Etiketleri oluştur
+    custom_labels = _generate_labels(nx_graph, periodic_elements)
+    
+    # Eksen oluştur (eğer verilmemişse)
+    if ax is None:
+        fig_size = kwargs.get('figsize', (20, 20) if dimension == '3d' else (16, 16))
+        fig = plt.figure(figsize=fig_size)
+        if dimension == '3d':
+            ax = fig.add_subplot(111, projection='3d')
+        else:
+            ax = fig.add_subplot(111)
+    
+    # Çizim sırasını belirle
+    draw_order = _get_draw_order(nx_graph, pos, zorder_strategy, dimension)
+    
+    # Edge stilleri
+    edge_config = _get_edge_config(edge_style)
+    
+    # Edge'leri çiz (ilk sırada)
+    _draw_edges(nx_graph, pos, ax, edge_config, dimension)
+    
+    # Node'ları çiz (çizim sırasına göre)
+    _draw_nodes(nx_graph, pos, node_colors, ax, node_size, draw_order, dimension, **kwargs)
+    
+    # Etiketleri çiz
+    _draw_labels(nx_graph, pos, custom_labels, node_colors, ax, font_size, 
+                label_position, dimension, **kwargs)
+    
+    # Başlık
+    if title is None:
+        title = _generate_title(layout_type, node_count, color_scheme, dimension)
+    ax.set_title(title, fontsize=20, fontweight='bold', pad=25)
+    
+    # Eksen ayarları
+    _configure_axes(ax, pos, dimension, layout_params, **kwargs)
+    
+    # Açıklama (legend)
+    if show_legend and color_scheme in ['group', 'period', 'block']:
+        _add_legend(ax, color_scheme, dimension, periodic_elements)
+    
+    return ax, pos
+
+
+# Yardımcı fonksiyonlar (öncekiyle aynı)
+def _calculate_layout(graph, layout_type, params, dimension, node_count=None):
+    """Layout hesapla."""
+    if layout_type == '3d_helix':
+        return kececi_layout_3d_helix_parametric(
+            graph,
+            z_spacing=params.get('z_spacing', 8.0),
+            radius=params.get('radius', 25.0),
+            turns=params.get('turns', 3.0)
+        )
+    
+    elif layout_type == '2d_linear':
+        return kececi_layout_2d(
+            graph,
+            primary_spacing=params.get('primary_spacing', 2.0),
+            secondary_spacing=params.get('secondary_spacing', 2.0),
+            primary_direction=params.get('primary_direction', 'left-to-right'),
+            secondary_start=params.get('secondary_start', 'up'),
+            expanding=params.get('expanding', True)
+        )
+    
+    elif layout_type == '2d_circular':
+        return nx.circular_layout(graph, scale=params.get('scale', 1.0))
+    
+    elif layout_type == '3d_spherical':
+        pos = {}
+        n = len(graph.nodes())
+        for i, node in enumerate(graph.nodes()):
+            phi = np.arccos(1 - 2 * (i + 0.5) / n)
+            theta = np.pi * (1 + 5**0.5) * i
+            radius = params.get('radius', 20.0)
+            pos[node] = (
+                radius * np.sin(phi) * np.cos(theta),
+                radius * np.sin(phi) * np.sin(theta),
+                radius * np.cos(phi)
+            )
+        return pos
+    
+    elif layout_type == '2d_spring':
+        return nx.spring_layout(graph, k=params.get('k', 2.0), 
+                               iterations=params.get('iterations', 50))
+    
+    elif layout_type == '2d_grid':
+        return _generate_grid_layout(graph, params, node_count)
+    
+    else:
+        return kececi_layout_2d(
+            graph,
+            primary_spacing=params.get('primary_spacing', 2.0),
+            secondary_spacing=params.get('secondary_spacing', 2.0),
+            primary_direction=params.get('primary_direction', 'left-to-right'),
+            secondary_start=params.get('secondary_start', 'up'),
+            expanding=params.get('expanding', True)
+        )
+
+def _generate_grid_layout(graph, params, node_count):
+    """Manuel grid layout oluştur."""
+    rows = params.get('rows', None)
+    cols = params.get('cols', None)
+    spacing = params.get('spacing', 2.0)
+    
+    if rows is None and cols is None:
+        cols = int(np.ceil(np.sqrt(node_count)))
+        rows = int(np.ceil(node_count / cols))
+    elif rows is None:
+        rows = int(np.ceil(node_count / cols))
+    elif cols is None:
+        cols = int(np.ceil(node_count / rows))
+    
+    pos = {}
+    for i, node in enumerate(sorted(graph.nodes())):
+        row = i // cols
+        col = i % cols
+        
+        x_offset = -(cols - 1) * spacing / 2
+        y_offset = (rows - 1) * spacing / 2
+        
+        x = col * spacing + x_offset
+        y = -row * spacing + y_offset
+        
+        pos[node] = (x, y)
+    
+    return pos
+
+
+def _generate_colors(node_count, scheme, periodic_elements=None):
+    """Renkleri oluştur."""
+    colors = []
+    
+    if scheme == 'vibrant':
+        for i in range(node_count):
+            hue = (i * 0.618033988749895) % 1.0
+            saturation = 0.7 + np.random.random() * 0.3
+            value = 0.8 + np.random.random() * 0.2
+            colors.append(hsv_to_rgb([hue, saturation, value]))
+    
+    elif scheme == 'distinct':
+        colors = generate_distinct_colors(node_count)
+    
+    elif scheme == 'pastel':
+        for i in range(node_count):
+            hue = i / max(node_count, 1)
+            saturation = 0.4 + np.random.random() * 0.3
+            value = 0.9 + np.random.random() * 0.1
+            colors.append(hsv_to_rgb([hue, saturation, value]))
+    
+    elif scheme == 'group' and periodic_elements:
+        colors = _get_group_colors(node_count, periodic_elements)
+    
+    elif scheme == 'period' and periodic_elements:
+        colors = _get_period_colors(node_count, periodic_elements)
+    
+    elif scheme == 'block' and periodic_elements:
+        colors = _get_block_colors(node_count, periodic_elements)
+    
+    elif scheme == 'electronegativity' and periodic_elements:
+        colors = _get_electronegativity_colors(node_count, periodic_elements)
+    
+    else:
+        cmap = plt.cm.tab20
+        colors = [cmap(i % 20) for i in range(node_count)]
+    
+    return colors
+
+def _get_group_colors(node_count, periodic_elements):
+    """Gruplara göre renkler."""
+    colors = []
+    group_colors = {
+        1: (1.0, 0.6, 0.6),    # Alkali metals
+        2: (1.0, 0.8, 0.6),    # Alkaline earth
+        3: (0.8, 1.0, 0.6),    # Group 3
+        4: (0.7, 0.9, 0.8),    # Group 4
+        5: (0.6, 0.9, 0.9),    # Group 5
+        6: (0.6, 0.8, 1.0),    # Group 6
+        7: (0.8, 0.6, 1.0),    # Group 7
+        8: (0.9, 0.9, 0.6),    # Group 8
+        9: (1.0, 0.9, 0.6),    # Group 9
+        10: (0.9, 0.8, 0.7),   # Group 10
+        11: (1.0, 0.8, 0.8),   # Group 11
+        12: (0.8, 1.0, 0.8),   # Group 12
+        13: (0.8, 0.9, 1.0),   # Boron group
+        14: (0.9, 0.8, 1.0),   # Carbon group
+        15: (1.0, 0.8, 0.9),   # Nitrogen group
+        16: (0.8, 1.0, 0.9),   # Oxygen group
+        17: (1.0, 0.9, 0.8),   # Halogens
+        18: (0.9, 0.9, 0.9),   # Noble gases
+    }
+    
+    lanthanide_color = (0.7, 1.0, 0.7)
+    actinide_color = (1.0, 0.7, 0.7)
+    
+    for node_id in range(1, node_count + 1):
+        if node_id in list(range(57, 72)):
+            colors.append(lanthanide_color)
+        elif node_id in list(range(89, 104)):
+            colors.append(actinide_color)
+        else:
+            group = _determine_group(node_id)
+            colors.append(group_colors.get(group, (0.8, 0.8, 0.8)))
+    
+    return colors
+
+def _determine_group(atomic_num):
+    """Atom numarasına göre grup belirle."""
+    if atomic_num <= 2:
+        return atomic_num
+    elif atomic_num <= 10:
+        return atomic_num - 2
+    elif atomic_num <= 18:
+        return atomic_num - 10
+    elif atomic_num <= 36:
+        if atomic_num <= 20:
+            return atomic_num - 18
+        elif atomic_num <= 30:
+            return atomic_num - 20
+        else:
+            return atomic_num - 28
+    elif atomic_num <= 54:
+        if atomic_num <= 38:
+            return atomic_num - 36
+        elif atomic_num <= 48:
+            return atomic_num - 38
+        else:
+            return atomic_num - 46
+    else:
+        return 18
+
+def _get_period_colors(node_count, periodic_elements):
+    """Periyotlara göre renkler."""
+    colors = []
+    period_colors = [
+        (1.0, 0.7, 0.7),  # Period 1
+        (1.0, 0.9, 0.7),  # Period 2
+        (0.9, 1.0, 0.7),  # Period 3
+        (0.7, 1.0, 0.8),  # Period 4
+        (0.7, 0.9, 1.0),  # Period 5
+        (0.8, 0.7, 1.0),  # Period 6
+        (1.0, 0.7, 0.9),  # Period 7
+    ]
+    
+    for atomic_num in range(1, node_count + 1):
+        if atomic_num <= 2:
+            period = 0
+        elif atomic_num <= 10:
+            period = 1
+        elif atomic_num <= 18:
+            period = 2
+        elif atomic_num <= 36:
+            period = 3
+        elif atomic_num <= 54:
+            period = 4
+        elif atomic_num <= 86:
+            period = 5
+        else:
+            period = 6
+        
+        colors.append(period_colors[period % len(period_colors)])
+    
+    return colors
+
+def _get_block_colors(node_count, periodic_elements):
+    """Bloklara göre renkler."""
+    colors = []
+    
+    for atomic_num in range(1, node_count + 1):
+        if atomic_num in [1, 2, 3, 4, 11, 12, 19, 20, 37, 38, 55, 56, 87, 88]:
+            colors.append((1.0, 0.6, 0.6))  # s-block
+        elif atomic_num in (list(range(5, 11)) + list(range(13, 19)) + 
+                           list(range(31, 37)) + list(range(49, 55)) + 
+                           list(range(81, 87)) + list(range(113, 119))):
+            colors.append((0.6, 0.8, 1.0))  # p-block
+        elif atomic_num in (list(range(21, 31)) + list(range(39, 49)) + 
+                           list(range(72, 81)) + list(range(104, 113))):
+            colors.append((0.6, 1.0, 0.6))  # d-block
+        elif atomic_num in list(range(57, 72)) + list(range(89, 104)):
+            colors.append((1.0, 0.6, 1.0))  # f-block
+        else:
+            colors.append((0.8, 0.8, 0.8))
+    
+    return colors
+
+def _get_electronegativity_colors(node_count, periodic_elements):
+    """Elektronegativiteye göre renkler."""
+    colors = []
+    electronegativity_data = {
+        1: 2.20, 3: 0.98, 4: 1.57, 5: 2.04, 6: 2.55, 7: 3.04, 8: 3.44,
+        9: 3.98, 11: 0.93, 12: 1.31, 13: 1.61, 14: 1.90, 15: 2.19,
+        16: 2.58, 17: 3.16, 19: 0.82, 20: 1.00, 21: 1.36, 22: 1.54,
+        23: 1.63, 24: 1.66, 25: 1.55, 26: 1.83, 27: 1.88, 28: 1.91, 29: 1.90,
+        30: 1.65, 31: 1.81, 32: 2.01, 33: 2.18, 34: 2.55, 35: 2.96,
+        37: 0.82, 38: 0.95, 39: 1.22, 40: 1.33, 41: 1.60, 42: 2.16, 43: 1.90,
+        44: 2.20, 45: 2.28, 46: 2.20, 47: 1.93, 48: 1.69, 49: 1.78, 50: 1.96,
+        51: 2.05, 52: 2.10, 53: 2.66, 55: 0.79, 56: 0.89, 57: 1.10,
+        58: 1.12, 59: 1.13, 60: 1.14, 62: 1.17, 63: 1.20, 64: 1.20, 65: 1.20,
+        66: 1.22, 67: 1.23, 68: 1.24, 69: 1.25, 70: 1.10, 71: 1.27, 72: 1.30,
+        73: 1.50, 74: 2.36, 75: 1.90, 76: 2.20, 77: 2.20, 78: 2.28, 79: 2.54,
+        80: 2.00, 81: 1.62, 82: 1.87, 83: 2.02, 84: 2.00, 85: 2.20,
+        87: 0.70, 88: 0.89, 89: 1.10, 90: 1.30, 91: 1.50, 92: 1.38, 93: 1.36,
+        94: 1.28, 95: 1.30, 96: 1.30, 97: 1.30, 98: 1.30, 99: 1.30, 100: 1.30,
+        101: 1.30, 102: 1.30, 103: 1.30
+    }
+    
+    for atomic_num in range(1, node_count + 1):
+        en = electronegativity_data.get(atomic_num, 1.5)
+        if en < 1.0:
+            color = (0.0, 0.0, 0.8)
+        elif en < 1.5:
+            color = (0.0, 0.5, 1.0)
+        elif en < 2.0:
+            color = (0.0, 0.8, 0.8)
+        elif en < 2.5:
+            color = (0.5, 1.0, 0.5)
+        elif en < 3.0:
+            color = (1.0, 0.8, 0.0)
+        elif en < 3.5:
+            color = (1.0, 0.5, 0.0)
+        else:
+            color = (1.0, 0.0, 0.0)
+        
+        colors.append(color)
+    
+    return colors
+
+
+def _generate_labels(graph, periodic_elements):
+    """Etiketleri oluştur."""
+    return {node_id: f"{periodic_elements[node_id][0]}\n{periodic_elements[node_id][1]}" 
+            for node_id in graph.nodes()}
+
+def _get_draw_order(graph, pos, strategy, dimension):
+    """Çizim sırasını belirle."""
+    if strategy == 'fixed':
+        return list(graph.nodes())
+    elif strategy == 'z_based' and dimension == '3d':
+        return sorted(graph.nodes(), key=lambda n: pos[n][2], reverse=True)
+    elif strategy == 'smart':
+        nodes = list(graph.nodes())
+        if len(nodes) == 0:
+            return nodes
+        
+        if dimension == '3d':
+            positions = np.array([pos[n] for n in nodes])
+            center = np.mean(positions, axis=0)
+            distances = np.linalg.norm(positions - center, axis=1)
+        else:
+            positions = np.array([pos[n] for n in nodes])
+            center = np.mean(positions, axis=0)
+            distances = np.linalg.norm(positions - center, axis=1)
+        
+        sorted_indices = np.argsort(distances)[::-1]
+        return [nodes[i] for i in sorted_indices]
+    else:
+        return list(graph.nodes())
+
+def _get_edge_config(style):
+    """Edge stilini belirle."""
+    configs = {
+        'standard': {'color': 'gray', 'alpha': 0.5, 'width': 1.0},
+        'light': {'color': 'lightgray', 'alpha': 0.3, 'width': 0.8},
+        'bold': {'color': 'black', 'alpha': 0.7, 'width': 2.0},
+        'hidden': {'color': 'none', 'alpha': 0.0, 'width': 0.0}
+    }
+    return configs.get(style, configs['standard'])
+
+
+def _draw_edges(graph, pos, ax, config, dimension):
+    """Edge'leri çiz."""
+    if config['color'] == 'none':
+        return
+    
+    for u, v in graph.edges():
+        if dimension == '3d':
+            ax.plot(
+                [pos[u][0], pos[v][0]],
+                [pos[u][1], pos[v][1]],
+                [pos[u][2], pos[v][2]],
+                color=config['color'],
+                alpha=config['alpha'],
+                linewidth=config['width'],
+                zorder=1
+            )
+        else:
+            ax.plot(
+                [pos[u][0], pos[v][0]],
+                [pos[u][1], pos[v][1]],
+                color=config['color'],
+                alpha=config['alpha'],
+                linewidth=config['width'],
+                zorder=1
+            )
+
+def _draw_nodes(graph, pos, colors, ax, node_size, draw_order, dimension, **kwargs):
+    """Node'ları çiz."""
+    edge_width = kwargs.get('edge_width', 2.0)
+    alpha = kwargs.get('node_alpha', 1.0)
+    
+    for node_id in draw_order:
+        if dimension == '3d':
+            x, y, z = pos[node_id]
+            ax.scatter(x, y, z,
+                      s=node_size if isinstance(node_size, int) else node_size[node_id-1],
+                      c=[colors[node_id-1]],
+                      edgecolors='black',
+                      linewidths=edge_width,
+                      alpha=alpha,
+                      depthshade=False if kwargs.get('no_depth_shade', False) else True,
+                      zorder=10)
+        else:
+            x, y = pos[node_id]
+            ax.scatter(x, y,
+                      s=node_size if isinstance(node_size, int) else node_size[node_id-1],
+                      c=[colors[node_id-1]],
+                      edgecolors='black',
+                      linewidths=edge_width,
+                      alpha=alpha,
+                      zorder=10)
+
+def _draw_labels(graph, pos, labels, colors, ax, font_size, position, dimension, **kwargs):
+    """Etiketleri çiz."""
+    label_offset = kwargs.get('label_offset', 0.0)
+    
+    for node_id in graph.nodes():
+        if dimension == '3d':
+            x, y, z = pos[node_id]
+            if position == 'above':
+                z += label_offset
+            elif position == 'below':
+                z -= label_offset
+            elif position == 'right':
+                x += label_offset
+            elif position == 'left':
+                x -= label_offset
+            
+            bg_color = colors[node_id-1]
+            text_color = get_text_color_for_bg(bg_color)
+            
+            ax.text(x, y, z,
+                   labels[node_id],
+                   fontsize=font_size if isinstance(font_size, int) else font_size[node_id-1],
+                   fontweight='bold',
+                   color=text_color,
+                   ha='center',
+                   va='center',
+                   zorder=1000)
+        else:
+            x, y = pos[node_id]
+            if position == 'above':
+                y += label_offset
+            elif position == 'below':
+                y -= label_offset
+            elif position == 'right':
+                x += label_offset
+            elif position == 'left':
+                x -= label_offset
+            
+            bg_color = colors[node_id-1]
+            text_color = get_text_color_for_bg(bg_color)
+            
+            ax.text(x, y,
+                   labels[node_id],
+                   fontsize=font_size if isinstance(font_size, int) else font_size[node_id-1],
+                   fontweight='bold',
+                   color=text_color,
+                   ha='center',
+                   va='center',
+                   zorder=1000)
+
+def _generate_title(layout_type, node_count, color_scheme, dimension):
+    """Başlık oluştur."""
+    dim_text = "3D" if dimension == '3d' else "2D"
+    scheme_text = color_scheme.capitalize()
+    
+    layout_names = {
+        '3d_helix': '3D Heliks Layout',
+        '2d_linear': '2D Lineer Layout',
+        '2d_circular': 'Dairesel Layout',
+        '3d_spherical': '3D Küresel Layout',
+        '2d_spring': '2D Yay Layout',
+        '2d_grid': '2D Grid Layout'
+    }
+    
+    layout_name = layout_names.get(layout_type, layout_type.replace('_', ' ').title())
+    
+    title = f"Keçeci Layout ile Periyodik Tablo\n"
+    title += f"{dim_text} {layout_name}\n"
+    title += f"({node_count} Element, {scheme_text} Renk Şeması)"
+    
+    return title
+
+def _configure_axes(ax, pos, dimension, layout_params, **kwargs):
+    """Eksenleri yapılandır."""
+    ax.set_axis_off()
+    
+    if dimension == '3d':
+        elev = kwargs.get('elevation', -25)
+        azim = kwargs.get('azimuth', 15)
+        ax.view_init(elev=elev, azim=azim)
+        
+        positions = list(pos.values())
+        if positions:
+            xs, ys, zs = zip(*positions)
+            
+            padding = kwargs.get('padding', 0.2)
+            x_range = max(xs) - min(xs)
+            y_range = max(ys) - min(ys)
+            z_range = max(zs) - min(zs)
+            
+            x_range = max(x_range, 10)
+            y_range = max(y_range, 10)
+            z_range = max(z_range, 10)
+            
+            ax.set_xlim(min(xs) - x_range*padding, max(xs) + x_range*padding)
+            ax.set_ylim(min(ys) - y_range*padding, max(ys) + y_range*padding)
+            ax.set_zlim(min(zs) - z_range*padding, max(zs) + z_range*padding)
+    else:
+        ax.set_aspect('equal')
+        ax.autoscale_view()
+
+def _add_legend(ax, color_scheme, dimension, periodic_elements):
+    """Renk şeması açıklaması ekle."""
+    legend_text = f"Renk Şeması: {color_scheme.capitalize()}\n"
+    
+    if color_scheme == 'group':
+        legend_text += "• Kırmızı: Alkali Metaller\n"
+        legend_text += "• Turuncu: Toprak Alkali\n"
+        legend_text += "• Yeşil: Geçiş Metalleri\n"
+        legend_text += "• Mavi: Ametaller\n"
+        legend_text += "• Mor: Halojenler\n"
+        legend_text += "• Gri: Soygazlar"
+    
+    elif color_scheme == 'period':
+        legend_text += "• Her periyot farklı renk\n"
+        legend_text += "• 7 periyot, 7 renk"
+    
+    elif color_scheme == 'block':
+        legend_text += "• Kırmızı: s-blok\n"
+        legend_text += "• Mavi: p-blok\n"
+        legend_text += "• Yeşil: d-blok\n"
+        legend_text += "• Mor: f-blok"
+    
+    if dimension == '3d':
+        ax.text2D(0.02, 0.98, legend_text, transform=ax.transAxes,
+                 fontsize=9, verticalalignment='top',
+                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+    else:
+        ax.text(0.02, 0.98, legend_text, transform=ax.transAxes,
+               fontsize=9, verticalalignment='top',
+               bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+
+# Ana fonksiyonlar
+def quick_periodic_table_3d():
+    """
+    Hızlı 3D periyodik tablo görselleştirmesi.
+    Boş şablonlar oluşmaz.
+    """
+    # Önceki figürleri temizle
+    plt.close('all')
+    
+    # Periyodik tabloyu yükle
+    periodic_elements, _ = generate_complete_periodic_table()
+    
+    # Graf oluştur
+    node_count = len(periodic_elements)
+    G = nx.DiGraph()
+    G.add_nodes_from(range(1, node_count + 1))
+    for i in range(1, node_count):
+        G.add_edge(i, i + 1)
+    
+    # Tek figür oluştur
+    fig = plt.figure(figsize=(20, 20))
+    ax = fig.add_subplot(111, projection='3d')
+    
+    ax, pos = draw_kececi_periodic_table(
+        G,
+        periodic_elements,
+        layout_type='3d_helix',
+        color_scheme='vibrant',
+        node_size=2000,
+        font_size=10,
+        edge_style='light',
+        title="Keçeci Layout ile Periyodik Tablo\n3D Heliks Layout",
+        elevation=-25,
+        azimuth=15
+    )
+    
+    plt.tight_layout()
+    plt.show()
+    
+    # Kullanıcıya bilgi ver
+    print(f"\n3D periyodik tablo oluşturuldu!")
+    print(f"Toplam {node_count} element gösteriliyor.")
+    print("Grafı kapatmak için figür penceresini kapatın.")
+    
+    return ax, pos
+
+def generate_comparison_figure():
+    """
+    4 farklı görseli bir figürde karşılaştırma.
+    Boş şablon oluşmaz.
+    """
+    # Önceki figürleri temizle
+    plt.close('all')
+    
+    # Periyodik tabloyu yükle
+    periodic_elements, _ = generate_complete_periodic_table()
+    
+    # Graf oluştur
+    node_count = len(periodic_elements)
+    G = nx.DiGraph()
+    G.add_nodes_from(range(1, node_count + 1))
+    for i in range(1, node_count):
+        G.add_edge(i, i + 1)
+    
+    # 2x2 grid şeklinde 4 alt figür oluştur
+    fig = plt.figure(figsize=(24, 20))
+    fig.suptitle('Keçeci Layout ile Periyodik Tablo Görselleştirme Karşılaştırması', 
+                 fontsize=24, fontweight='bold', y=0.98)
+    
+    # 1. 3D Heliks Layout
+    ax1 = fig.add_subplot(221, projection='3d')
+    ax1, pos1 = draw_kececi_periodic_table(
+        G,
+        periodic_elements,
+        layout_type='3d_helix',
+        layout_params={'z_spacing': 6.0, 'radius': 20.0, 'turns': 3.0},
+        ax=ax1,
+        color_scheme='vibrant',
+        node_size=1200,
+        font_size=8,
+        edge_style='light',
+        label_position='center',
+        title="3D Heliks Layout\n(Vibrant Renkler)",
+        elevation=-25,
+        azimuth=15,
+        figsize=None  # Figsize'ı burada kullanmıyoruz
+    )
+    
+    # 2. 2D Linear Layout
+    ax2 = fig.add_subplot(222)
+    ax2, pos2 = draw_kececi_periodic_table(
+        G,
+        periodic_elements,
+        layout_type='2d_linear',
+        layout_params={'primary_spacing': 2.5, 'secondary_spacing': 2.5},
+        ax=ax2,
+        color_scheme='group',
+        dimension='2d',
+        node_size=800,
+        font_size=7,
+        edge_style='standard',
+        show_legend=False,
+        title="2D Linear Layout\n(Grup Renkleri)"
+    )
+    
+    # 3. 2D Grid Layout
+    ax3 = fig.add_subplot(223)
+    ax3, pos3 = draw_kececi_periodic_table(
+        G,
+        periodic_elements,
+        layout_type='2d_grid',
+        layout_params={'rows': 9, 'cols': 14, 'spacing': 2.2},
+        ax=ax3,
+        color_scheme='period',
+        dimension='2d',
+        node_size=600,
+        font_size=6,
+        edge_style='light',
+        show_legend=False,
+        title="2D Grid Layout\n(Periyot Renkleri)"
+    )
+    
+    # 4. 2D Circular Layout
+    ax4 = fig.add_subplot(224)
+    ax4, pos4 = draw_kececi_periodic_table(
+        G,
+        periodic_elements,
+        layout_type='2d_circular',
+        layout_params={'scale': 2.0},
+        ax=ax4,
+        color_scheme='block',
+        dimension='2d',
+        node_size=800,
+        font_size=7,
+        edge_style='light',
+        show_legend=False,
+        title="2D Dairesel Layout\n(Blok Renkleri)"
+    )
+    
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.show()
+    
+    return fig, (ax1, ax2, ax3, ax4)
+
+def save_periodic_table_visualization(
+    filename: str = "periodic_table_kececi",
+    format: str = "png",
+    dpi: int = 300,
+    layout_type: str = "3d_helix",
+    color_scheme: str = "vibrant"
+):
+    """
+    Periyodik tablo görselleştirmesini kaydet.
+    
+    Parameters:
+    -----------
+    filename : str
+        Kaydedilecek dosyanın adı (uzantı olmadan)
+    format : str
+        Kayıt formatı: 'png', 'jpg', 'svg', 'pdf'
+    dpi : int
+        Çözünürlük (dots per inch)
+    layout_type : str
+        Layout tipi
+    color_scheme : str
+        Renk şeması
+    """
+    # Önceki figürleri temizle
+    plt.close('all')
+    
+    # Periyodik tabloyu yükle
+    periodic_elements, _ = generate_complete_periodic_table()
+    
+    # Graf oluştur
+    node_count = len(periodic_elements)
+    G = nx.DiGraph()
+    G.add_nodes_from(range(1, node_count + 1))
+    for i in range(1, node_count):
+        G.add_edge(i, i + 1)
+    
+    # Figür oluştur
+    if '3d' in layout_type.lower():
+        fig = plt.figure(figsize=(16, 16))
+        ax = fig.add_subplot(111, projection='3d')
+    else:
+        fig = plt.figure(figsize=(14, 14))
+        ax = fig.add_subplot(111)
+    
+    # Görseli çiz
+    ax, pos = draw_kececi_periodic_table(
+        G,
+        periodic_elements,
+        layout_type=layout_type,
+        ax=ax,
+        color_scheme=color_scheme,
+        node_size=1500 if '3d' in layout_type.lower() else 1000,
+        font_size=9 if '3d' in layout_type.lower() else 8,
+        edge_style='light',
+        show_legend=True if color_scheme in ['group', 'period', 'block'] else False
+    )
+    
+    # Kaydet
+    full_filename = f"{filename}.{format}"
+    plt.savefig(full_filename, dpi=dpi, bbox_inches='tight', 
+                facecolor='white', edgecolor='none')
+    plt.close()
+    
+    print(f"Görsel kaydedildi: {full_filename}")
+    return full_filename
+
+def highlight_elements(element_symbols: List[str], 
+                      highlight_color: Tuple[float, float, float] = (1.0, 0.0, 0.0),
+                      **kwargs):
+    """
+    Belirli elementleri vurgula.
+    
+    Parameters:
+    -----------
+    element_symbols : List[str]
+        Vurgulanacak element sembolleri
+    highlight_color : Tuple[float, float, float]
+        Vurgulama rengi (RGB)
+    **kwargs : diğer parametreler draw_kececi_periodic_table'a aktarılır
+    """
+    # Önceki figürleri temizle
+    plt.close('all')
+    
+    # Periyodik tabloyu yükle
+    periodic_elements, _ = generate_complete_periodic_table()
+    
+    # Vurgulanacak elementlerin atom numaralarını bul
+    highlight_indices = []
+    element_symbols_found = []
+    valid_symbols = []
+    
+    # Element sembolünden isim eşleştirmesi için sabit sözlük
+    # Güncellenmiş Türkçe element isimleri
+    element_name_map = {
+        'H': 'Hidrojen', 'He': 'Helyum', 'Li': 'Lityum', 'Be': 'Berilyum',
+        'B': 'Bor', 'C': 'Karbon', 'N': 'Azot', 'O': 'Oksijen', 'F': 'Flor',
+        'Ne': 'Neon', 'Na': 'Sodyum', 'Mg': 'Magnezyum', 'Al': 'Alüminyum',
+        'Si': 'Silisyum', 'P': 'Fosfor', 'S': 'Kükürt', 'Cl': 'Klor',
+        'Ar': 'Argon', 'K': 'Potasyum', 'Ca': 'Kalsiyum', 'Sc': 'Skandiyum',
+        'Ti': 'Titanyum', 'V': 'Vanadyum', 'Cr': 'Krom', 'Mn': 'Mangan',
+        'Fe': 'Demir', 'Co': 'Kobalt', 'Ni': 'Nikel', 'Cu': 'Bakır',
+        'Zn': 'Çinko', 'Ga': 'Galyum', 'Ge': 'Germanyum', 'As': 'Arsenik',
+        'Se': 'Selenyum', 'Br': 'Brom', 'Kr': 'Kripton', 'Rb': 'Rubidyum',
+        'Sr': 'Stronsiyum', 'Y': 'İtriyum', 'Zr': 'Zirkonyum', 'Nb': 'Niyobyum',
+        'Mo': 'Molibden', 'Tc': 'Teknesyum', 'Ru': 'Rutenyum', 'Rh': 'Rodyum',
+        'Pd': 'Paladyum', 'Ag': 'Gümüş', 'Cd': 'Kadmiyum', 'In': 'İndiyum',
+        'Sn': 'Kalay', 'Sb': 'Antimon', 'Te': 'Tellür', 'I': 'İyot',
+        'Xe': 'Ksenon', 'Cs': 'Sezyum', 'Ba': 'Baryum', 'La': 'Lantan',
+        'Ce': 'Seryum', 'Pr': 'Praseodim', 'Nd': 'Neodimyum', 'Pm': 'Prometyum',
+        'Sm': 'Samaryum', 'Eu': 'Europyum', 'Gd': 'Gadolinyum', 'Tb': 'Terbiyum',
+        'Dy': 'Disprozyum', 'Ho': 'Holmiyum', 'Er': 'Erbiyum', 'Tm': 'Tulyum',
+        'Yb': 'İterbiyum', 'Lu': 'Lutesyum', 'Hf': 'Hafniyum', 'Ta': 'Tantal',
+        'W': 'Tungsten', 'Re': 'Renyum', 'Os': 'Osmiyum', 'Ir': 'İridyum',
+        'Pt': 'Platin', 'Au': 'Altın', 'Hg': 'Cıva', 'Tl': 'Talyum',
+        'Pb': 'Kurşun', 'Bi': 'Bizmut', 'Po': 'Polonyum', 'At': 'Astatin',
+        'Rn': 'Radon', 'Fr': 'Fransiyum', 'Ra': 'Radyum', 'Ac': 'Aktinyum',
+        'Th': 'Toryum', 'Pa': 'Protaktinyum', 'U': 'Uranyum', 'Np': 'Neptünyum',
+        'Pu': 'Plütonyum', 'Am': 'Amerikyum', 'Cm': 'Küriyum', 'Bk': 'Berkelyum',
+        'Cf': 'Kaliforniyum', 'Es': 'Einsteinyum', 'Fm': 'Fermiyum', 'Md': 'Mendelevyum',
+        'No': 'Nobelyum', 'Lr': 'Lawrensiyum', 'Rf': 'Rutherfordiyum', 'Db': 'Dubniyum',
+        'Sg': 'Seaborgiyum', 'Bh': 'Bohriyum', 'Hs': 'Hassiyum', 'Mt': 'Meitneriyum',
+        'Ds': 'Darmstadtiyum', 'Rg': 'Röntgenyum', 'Cn': 'Kopernikyum', 'Nh': 'Nihonyum',
+        'Fl': 'Flerovyum', 'Mc': 'Moscovyum', 'Lv': 'Livermoryum', 'Ts': 'Tenesin',
+        'Og': 'Oganesson/Oganesyan' 
+    }
+    
+    for input_symbol in element_symbols:
+        input_symbol_clean = str(input_symbol).strip()
+        found = False
+        for atomic_num, (sym, atomic_num_in_tuple) in periodic_elements.items():
+            # Periyodik tablodaki sembol ile kullanıcının girdiği sembolü karşılaştır
+            # Büyük/küçük harf duyarsız karşılaştırma
+            if sym.upper() == input_symbol_clean.upper():
+                highlight_indices.append(atomic_num - 1)  # 0-based index
+                # Orijinal sembolü (büyük/küçük harf korunarak) ekle
+                element_symbols_found.append(sym)  # Burada sym kullanıyoruz (periyodik tablodaki orijinal)
+                valid_symbols.append(sym)  # Orijinal sembolü sakla
+                found = True
+                break
+        
+        if not found:
+            print(f"Uyarı: '{input_symbol_clean}' elementi bulunamadı!")
+    
+    if not highlight_indices:
+        print("Vurgulanacak geçerli element bulunamadı!")
+        return None, None
+    
+    # Element isimlerini bul
+    element_names = [element_name_map.get(sym, sym) for sym in element_symbols_found]
+    
+    print(f"Vurgulanan elementler: {', '.join(element_names)}")
+    
+    # Graf oluştur
+    node_count = len(periodic_elements)
+    G = nx.DiGraph()
+    G.add_nodes_from(range(1, node_count + 1))
+    for i in range(1, node_count):
+        G.add_edge(i, i + 1)
+    
+    # Özel renk şeması oluştur
+    colors = []
+    for i in range(1, node_count + 1):
+        if (i - 1) in highlight_indices:
+            colors.append(highlight_color)
+        else:
+            # Gri tonlarında diğer elementler
+            colors.append((0.9, 0.9, 0.9))
+    
+    # Layout tipini belirle
+    layout_type = kwargs.get('layout_type', '3d_helix')
+    dimension = '3d' if '3d' in layout_type.lower() else '2d'
+    
+    # Figür oluştur
+    if dimension == '3d':
+        fig = plt.figure(figsize=(16, 16))
+        ax = fig.add_subplot(111, projection='3d')
+    else:
+        fig = plt.figure(figsize=(14, 14))
+        ax = fig.add_subplot(111)
+    
+    # Layout hesapla
+    layout_params = kwargs.get('layout_params', {})
+    pos = _calculate_layout(G, layout_type, layout_params, dimension, node_count)
+    
+    # Özel etiketler oluştur
+    custom_labels = _generate_labels(G, periodic_elements)
+    
+    # Node boyutlarını ayarla (vurgulananlar daha büyük)
+    node_sizes = []
+    for i in range(1, node_count + 1):
+        if (i - 1) in highlight_indices:
+            node_sizes.append(kwargs.get('highlight_size', 2000))
+        else:
+            node_sizes.append(kwargs.get('normal_size', 800))
+    
+    # Font boyutlarını ayarla
+    font_sizes = []
+    for i in range(1, node_count + 1):
+        if (i - 1) in highlight_indices:
+            font_sizes.append(kwargs.get('highlight_font_size', 12))
+        else:
+            font_sizes.append(kwargs.get('normal_font_size', 7))
+    
+    # Çizim sırasını belirle
+    draw_order = _get_draw_order(G, pos, 'smart', dimension)
+    
+    # Edge stilini al
+    edge_config = _get_edge_config(kwargs.get('edge_style', 'light'))
+    
+    # Çiz
+    _draw_edges(G, pos, ax, edge_config, dimension)
+    _draw_nodes(G, pos, colors, ax, node_sizes, draw_order, dimension, 
+               edge_width=kwargs.get('edge_width', 2.0),
+               node_alpha=kwargs.get('node_alpha', 1.0))
+    
+    # Etiketleri çiz
+    _draw_labels(G, pos, custom_labels, colors, ax, font_sizes, 
+                kwargs.get('label_position', 'center'), dimension,
+                label_offset=kwargs.get('label_offset', 0.0))
+    
+    # Başlık
+    title = kwargs.get('title')
+    if title is None:
+        # Orijinal sembolleri (büyük/küçük harf korunarak) kullan
+        element_symbols_str = ', '.join(element_symbols_found)
+        element_names_str = ', '.join(element_names)
+        title = f"Keçeci Layout ile Vurgulanan Elementler\nHighlighted Elements with Keçeci Layout:\n: {element_names_str} ({element_symbols_str})\n"
+        title += f"Layout: {layout_type}, Toplam/Total {node_count} Element"
+    
+    ax.set_title(title, fontsize=18, fontweight='bold', pad=20)
+    
+    # Eksen ayarları
+    _configure_axes(ax, pos, dimension, layout_params,
+                   elevation=kwargs.get('elevation', -25),
+                   azimuth=kwargs.get('azimuth', 15))
+    
+    plt.tight_layout()
+    
+    # Açıklama ekle
+    if dimension == '3d':
+        ax.text2D(0.02, 0.98, 
+                 f"Kırmızı: {', '.join(element_names)}\nGri: Diğer elementler", 
+                 transform=ax.transAxes,
+                 fontsize=10, verticalalignment='top',
+                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+    else:
+        ax.text(0.02, 0.98, 
+               f"Kırmızı: {', '.join(element_names)}\nGri: Diğer elementler", 
+               transform=ax.transAxes,
+               fontsize=10, verticalalignment='top',
+               bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+    
+    plt.show()
+    
+    print(f"\nVurgulama tamamlandı!")
+    print(f"Toplam {node_count} element, {len(highlight_indices)} element vurgulandı.")
+    print("Grafı kapatmak için figür penceresini kapatın.")
+    
+    return ax, pos
+
+def demo_periodic_table_visualizations():
+    """
+    Periyodik tablo görselleştirmelerinin demo gösterimi.
+    Her görsel ayrı ayrı gösterilir, boş şablonlar oluşmaz.
+    """
+    # Tüm figürleri temizle
+    plt.close('all')
+    
+    # Periyodik tabloyu yükle
+    print("Periyodik tablo yükleniyor...")
+    periodic_elements, _ = generate_complete_periodic_table()
+    
+    # Graf oluştur
+    node_count = len(periodic_elements)
+    G = nx.DiGraph()
+    G.add_nodes_from(range(1, node_count + 1))
+    for i in range(1, node_count):
+        G.add_edge(i, i + 1)
+    
+    print("=" * 70)
+    print("PERİYODİK TABLO GÖRSELLEŞTİRME DEMOLARI")
+    print("=" * 70)
+    print(f"Toplam {node_count} element gösterilecek.")
+    print("Her görsel 5 saniye boyunca gösterilecek...")
+    
+    demos = [
+        {
+            "name": "3D Heliks Layout",
+            "layout_type": "3d_helix",
+            "color_scheme": "vibrant",
+            "params": {'z_spacing': 8.0, 'radius': 25.0, 'turns': 3.0},
+            "figsize": (20, 20),
+            "projection": '3d'
+        },
+        {
+            "name": "2D Linear Layout", 
+            "layout_type": "2d_linear",
+            "color_scheme": "group",
+            "params": {'primary_spacing': 3.0, 'secondary_spacing': 3.0},
+            "figsize": (16, 16),
+            "projection": None
+        },
+        {
+            "name": "2D Grid Layout",
+            "layout_type": "2d_grid",
+            "color_scheme": "period",
+            "params": {'rows': 9, 'cols': 14, 'spacing': 3.0},
+            "figsize": (18, 18),
+            "projection": None
+        },
+        {
+            "name": "2D Circular Layout",
+            "layout_type": "2d_circular",
+            "color_scheme": "block",
+            "params": {'scale': 2.0},
+            "figsize": (16, 16),
+            "projection": None
+        }
+    ]
+    
+    for i, demo in enumerate(demos, 1):
+        print(f"\n{i}. {demo['name']} ({demo['color_scheme']} renkler) oluşturuluyor...")
+        
+        if demo['projection'] == '3d':
+            fig = plt.figure(figsize=demo['figsize'])
+            ax = fig.add_subplot(111, projection='3d')
+        else:
+            fig = plt.figure(figsize=demo['figsize'])
+            ax = fig.add_subplot(111)
+        
+        ax, pos = draw_kececi_periodic_table(
+            G,
+            periodic_elements,
+            layout_type=demo['layout_type'],
+            layout_params=demo['params'],
+            ax=ax,
+            color_scheme=demo['color_scheme'],
+            node_size=2000 if demo['projection'] == '3d' else 1000,
+            font_size=10 if demo['projection'] == '3d' else 8,
+            edge_style='light',
+            show_legend=True if demo['color_scheme'] in ['group', 'period', 'block'] else False,
+            title=f"Keçeci Layout ile\n {i}/4: {demo['name']}\n{demo['color_scheme'].capitalize()} Renk Şeması"
+        )
+        
+        plt.tight_layout()
+        plt.show(block=False)
+        plt.pause(5)
+        plt.close(fig)
+    
+    print("\n" + "=" * 70)
+    print("TÜM DEMOLAR TAMAMLANDI!")
+    print("=" * 70)
+    
+    return True
+
+def get_element_info(element_symbol: str) -> Dict[str, Any]:
+    """
+    Element sembolünden element bilgilerini getir.
+    
+    Parameters:
+    -----------
+    element_symbol : str
+        Element sembolü (örn: 'H', 'He', 'Fe')
+    
+    Returns:
+    --------
+    dict : Element bilgileri
+    """
+    # Periyodik tabloyu yükle
+    periodic_elements, element_dict = generate_complete_periodic_table()
+    
+    # Element sembolünden atom numarasını bul
+    atomic_num_found = None
+    original_symbol = None
+    
+    for atomic_num, (sym, atomic_num_in_tuple) in periodic_elements.items():
+        if sym.upper() == element_symbol.upper():
+            atomic_num_found = atomic_num
+            original_symbol = sym  # Orijinal sembolü sakla
+            break
+    
+    if atomic_num_found is None:
+        raise ValueError(f"Element bulunamadı: {element_symbol}")
+    
+    # Element ismini bul - Güncellenmiş Türkçe isimler
+    element_name_map = {
+        'H': 'Hidrojen', 'He': 'Helyum', 'Li': 'Lityum', 'Be': 'Berilyum',
+        'B': 'Bor', 'C': 'Karbon', 'N': 'Azot', 'O': 'Oksijen', 'F': 'Flor',
+        'Ne': 'Neon', 'Na': 'Sodyum', 'Mg': 'Magnezyum', 'Al': 'Alüminyum',
+        'Si': 'Silisyum', 'P': 'Fosfor', 'S': 'Kükürt', 'Cl': 'Klor',
+        'Ar': 'Argon', 'K': 'Potasyum', 'Ca': 'Kalsiyum', 'Sc': 'Skandiyum',
+        'Ti': 'Titanyum', 'V': 'Vanadyum', 'Cr': 'Krom', 'Mn': 'Mangan',
+        'Fe': 'Demir', 'Co': 'Kobalt', 'Ni': 'Nikel', 'Cu': 'Bakır',
+        'Zn': 'Çinko', 'Ga': 'Galyum', 'Ge': 'Germanyum', 'As': 'Arsenik',
+        'Se': 'Selenyum', 'Br': 'Brom', 'Kr': 'Kripton', 'Rb': 'Rubidyum',
+        'Sr': 'Stronsiyum', 'Y': 'İtriyum', 'Zr': 'Zirkonyum', 'Nb': 'Niyobyum',
+        'Mo': 'Molibden', 'Tc': 'Teknesyum', 'Ru': 'Rutenyum', 'Rh': 'Rodyum',
+        'Pd': 'Paladyum', 'Ag': 'Gümüş', 'Cd': 'Kadmiyum', 'In': 'İndiyum',
+        'Sn': 'Kalay', 'Sb': 'Antimon', 'Te': 'Tellür', 'I': 'İyot',
+        'Xe': 'Ksenon', 'Cs': 'Sezyum', 'Ba': 'Baryum', 'La': 'Lantan',
+        'Ce': 'Seryum', 'Pr': 'Praseodim', 'Nd': 'Neodimyum', 'Pm': 'Prometyum',
+        'Sm': 'Samaryum', 'Eu': 'Europyum', 'Gd': 'Gadolinyum', 'Tb': 'Terbiyum',
+        'Dy': 'Disprozyum', 'Ho': 'Holmiyum', 'Er': 'Erbiyum', 'Tm': 'Tulyum',
+        'Yb': 'İterbiyum', 'Lu': 'Lutesyum', 'Hf': 'Hafniyum', 'Ta': 'Tantal',
+        'W': 'Tungsten', 'Re': 'Renyum', 'Os': 'Osmiyum', 'Ir': 'İridyum',
+        'Pt': 'Platin', 'Au': 'Altın', 'Hg': 'Cıva', 'Tl': 'Talyum',
+        'Pb': 'Kurşun', 'Bi': 'Bizmut', 'Po': 'Polonyum', 'At': 'Astatin',
+        'Rn': 'Radon', 'Fr': 'Fransiyum', 'Ra': 'Radyum', 'Ac': 'Aktinyum',
+        'Th': 'Toryum', 'Pa': 'Protaktinyum', 'U': 'Uranyum', 'Np': 'Neptünyum',
+        'Pu': 'Plütonyum', 'Am': 'Amerikyum', 'Cm': 'Küriyum', 'Bk': 'Berkelyum',
+        'Cf': 'Kaliforniyum', 'Es': 'Einsteinyum', 'Fm': 'Fermiyum', 'Md': 'Mendelevyum',
+        'No': 'Nobelyum', 'Lr': 'Lawrensiyum', 'Rf': 'Rutherfordiyum', 'Db': 'Dubniyum',
+        'Sg': 'Seaborgiyum', 'Bh': 'Bohriyum', 'Hs': 'Hassiyum', 'Mt': 'Meitneriyum',
+        'Ds': 'Darmstadtiyum', 'Rg': 'Röntgenyum', 'Cn': 'Kopernikyum', 'Nh': 'Nihonyum',
+        'Fl': 'Flerovyum', 'Mc': 'Moscovyum', 'Lv': 'Livermoryum', 'Ts': 'Tenesin',
+        'Og': 'Oganesson/Oganesyan'
+    }
+    
+    element_name = element_name_map.get(original_symbol.upper(), original_symbol)
+    
+    # Yuri Oganessian hakkında ek bilgi
+    additional_info = ""
+    if original_symbol.upper() == 'OG':
+        additional_info = "\n  Not: Element, Rus-Armeni fizikçi Yuri Oganessian (Юрий Оганесян) onuruna adlandırılmıştır."
+    
+    # Grup ve periyot bilgilerini hesapla
+    group = _determine_group(atomic_num_found)
+    
+    # Periyot hesapla
+    if atomic_num_found <= 2:
+        period = 1
+    elif atomic_num_found <= 10:
+        period = 2
+    elif atomic_num_found <= 18:
+        period = 3
+    elif atomic_num_found <= 36:
+        period = 4
+    elif atomic_num_found <= 54:
+        period = 5
+    elif atomic_num_found <= 86:
+        period = 6
+    else:
+        period = 7
+    
+    # Blok bilgisi
+    if atomic_num_found in [1, 2, 3, 4, 11, 12, 19, 20, 37, 38, 55, 56, 87, 88]:
+        block = "s"
+    elif atomic_num_found in (list(range(5, 11)) + list(range(13, 19)) + 
+                       list(range(31, 37)) + list(range(49, 55)) + 
+                       list(range(81, 87)) + list(range(113, 119))):
+        block = "p"
+    elif atomic_num_found in (list(range(21, 31)) + list(range(39, 49)) + 
+                       list(range(72, 81)) + list(range(104, 113))):
+        block = "d"
+    elif atomic_num_found in list(range(57, 72)) + list(range(89, 104)):
+        block = "f"
+    else:
+        block = "unknown"
+    
+    # Elektronegativite verisi
+    electronegativity_data = {
+        1: 2.20, 2: None, 3: 0.98, 4: 1.57, 5: 2.04, 6: 2.55, 7: 3.04, 8: 3.44,
+        9: 3.98, 10: None, 11: 0.93, 12: 1.31, 13: 1.61, 14: 1.90, 15: 2.19,
+        16: 2.58, 17: 3.16, 18: None, 19: 0.82, 20: 1.00, 21: 1.36, 22: 1.54,
+        23: 1.63, 24: 1.66, 25: 1.55, 26: 1.83, 27: 1.88, 28: 1.91, 29: 1.90,
+        30: 1.65, 31: 1.81, 32: 2.01, 33: 2.18, 34: 2.55, 35: 2.96, 36: None,
+        37: 0.82, 38: 0.95, 39: 1.22, 40: 1.33, 41: 1.60, 42: 2.16, 43: 1.90,
+        44: 2.20, 45: 2.28, 46: 2.20, 47: 1.93, 48: 1.69, 49: 1.78, 50: 1.96,
+        51: 2.05, 52: 2.10, 53: 2.66, 54: None, 55: 0.79, 56: 0.89, 57: 1.10,
+        58: 1.12, 59: 1.13, 60: 1.14, 61: 1.13, 62: 1.17, 63: 1.20, 64: 1.20,
+        65: 1.20, 66: 1.22, 67: 1.23, 68: 1.24, 69: 1.25, 70: 1.10, 71: 1.27,
+        72: 1.30, 73: 1.50, 74: 2.36, 75: 1.90, 76: 2.20, 77: 2.20, 78: 2.28,
+        79: 2.54, 80: 2.00, 81: 1.62, 82: 1.87, 83: 2.02, 84: 2.00, 85: 2.20,
+        86: None, 87: 0.70, 88: 0.89, 89: 1.10, 90: 1.30, 91: 1.50, 92: 1.38,
+        93: 1.36, 94: 1.28, 95: 1.30, 96: 1.30, 97: 1.30, 98: 1.30, 99: 1.30,
+        100: 1.30, 101: 1.30, 102: 1.30, 103: 1.30, 118: None  # Oganesson
+    }
+    
+    result = {
+        'atomic_number': atomic_num_found,
+        'symbol': original_symbol,  # Orijinal sembolü döndür
+        'name': element_name,
+        'group': group,
+        'period': period,
+        'block': block,
+        'electronegativity': electronegativity_data.get(atomic_num_found, None)
+    }
+    
+    # Ek bilgiyi de döndürelim
+    result['additional_info'] = additional_info
+    
+    return result
+
+def custom_visualization():
+    """
+    Özelleştirilmiş görselleştirme menüsü.
+    """
+    print("\n" + "=" * 70)
+    print("Custom Visualization")
+    print("=" * 70)
+    
+    # Periyodik tabloyu yükle
+    periodic_elements, _ = generate_complete_periodic_table()
+    
+    # Graf oluştur
+    node_count = len(periodic_elements)
+    G = nx.DiGraph()
+    G.add_nodes_from(range(1, node_count + 1))
+    for i in range(1, node_count):
+        G.add_edge(i, i + 1)
+    
+    # Layout seçenekleri
+    layouts = {
+        '1': ('3d_helix', '3D Heliks Layout'),
+        '2': ('2d_linear', '2D Linear Layout'),
+        '3': ('2d_grid', '2D Grid Layout'),
+        '4': ('2d_circular', '2D Dairesel Layout'),
+        '5': ('2d_spring', '2D Yay Layout')
+    }
+    
+    print("\nLayout Tipleri:")
+    for key, (_, name) in layouts.items():
+        print(f"{key}. {name}")
+    
+    layout_choice = input("\nLayout tipi seçin (1-5): ").strip()
+    if layout_choice not in layouts:
+        print("Varsayılan olarak 3D Heliks seçildi.")
+        layout_type = '3d_helix'
+    else:
+        layout_type, layout_name = layouts[layout_choice]
+    
+    # Renk şeması seçenekleri
+    color_schemes = {
+        '1': 'vibrant',
+        '2': 'distinct',
+        '3': 'pastel',
+        '4': 'group',
+        '5': 'period',
+        '6': 'block'
+    }
+    
+    print("\nRenk Şemaları:")
+    print("1. Vibrant (Canlı renkler)")
+    print("2. Distinct (Farklı renkler)")
+    print("3. Pastel (Pastel tonlar)")
+    print("4. Group (Gruplara göre)")
+    print("5. Period (Periyotlara göre)")
+    print("6. Block (Bloklara göre)")
+    
+    color_choice = input("\nRenk şeması seçin (1-6): ").strip()
+    if color_choice not in color_schemes:
+        print("Varsayılan olarak Vibrant seçildi.")
+        color_scheme = 'vibrant'
+    else:
+        color_scheme = color_schemes[color_choice]
+    
+    # Boyut seçimi
+    try:
+        node_size = int(input(f"\nNode boyutu (varsayılan: 1600): ") or "1600")
+    except:
+        node_size = 1600
+    
+    try:
+        font_size = int(input(f"Font boyutu (varsayılan: 10): ") or "10")
+    except:
+        font_size = 10
+    
+    # 3D için özel parametreler
+    if '3d' in layout_type:
+        fig = plt.figure(figsize=(20, 20))
+        ax = fig.add_subplot(111, projection='3d')
+    else:
+        fig = plt.figure(figsize=(16, 16))
+        ax = fig.add_subplot(111)
+    
+    # Özel başlık
+    custom_title = input("\nÖzel başlık (boş bırakırsanız otomatik oluşturulur): ").strip()
+    
+    # Çizim yap
+    ax, pos = draw_kececi_periodic_table(
+        G,
+        periodic_elements,
+        layout_type=layout_type,
+        ax=ax,
+        color_scheme=color_scheme,
+        node_size=node_size,
+        font_size=font_size,
+        title=custom_title if custom_title else None,
+        show_legend=(color_scheme in ['group', 'period', 'block'])
+    )
+    
+    plt.tight_layout()
+    plt.show()
+    
+    print(f"\n{layout_name} ile {color_scheme} renk şeması başarıyla oluşturuldu!")
+    return ax, pos
+
+def debug_periodic_table_structure():
+    """Periyodik tablo veri yapısını kontrol et."""
+    print("Periyodik tablo veri yapısı kontrol ediliyor...")
+    periodic_elements, _ = generate_complete_periodic_table()
+    
+    print(f"\nToplam element sayısı: {len(periodic_elements)}")
+    
+    # İlk 5 elementi göster
+    print("\nİlk 5 element:")
+    for i, (atomic_num, value) in enumerate(list(periodic_elements.items())[:5]):
+        print(f"  Atom numarası {atomic_num}:")
+        print(f"    Değer: {value}")
+        print(f"    Tip: {type(value)}")
+        
+        if isinstance(value, tuple):
+            print(f"    Tuple uzunluğu: {len(value)}")
+            for j, item in enumerate(value):
+                print(f"      Item {j}: {item} (tip: {type(item)})")
+    
+    # Rastgele bir element kontrolü
+    print("\nRastgele element kontrolü (atom numarası 26 - Demir):")
+    if 26 in periodic_elements:
+        value = periodic_elements[26]
+        print(f"  Değer: {value}")
+        print(f"  Tip: {type(value)}")
+        if isinstance(value, tuple) and len(value) >= 2:
+            print(f"  Sembol: {value[0]}")
+            print(f"  İsim: {value[1]}")
+
+def _generate_labels(graph, periodic_elements):
+    """Etiketleri oluştur."""
+    labels = {}
+    for node_id in graph.nodes():
+        if node_id in periodic_elements:
+            sym, atomic_num = periodic_elements[node_id]
+            # Etiket formatı: Sembol\nAtom Numarası
+            labels[node_id] = f"{sym}\n{atomic_num}"
+        else:
+            labels[node_id] = str(node_id)
+    return labels
+
 # =============================================================================
 # MODULE TEST CODE
 # =============================================================================
@@ -2888,14 +4266,3 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
-
-
-
-
-
-
-
-
-
-
-
