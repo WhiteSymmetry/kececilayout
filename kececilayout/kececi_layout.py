@@ -658,7 +658,7 @@ def kececi_layout_ig(graph: "ig.Graph", primary_spacing=1.0, secondary_spacing=1
     if num_nodes == 0:
         return []
 
-    # Create coordinate list (will be ordered by vertex IDs 0 to N-1)
+    # generate coordinate list (will be ordered by vertex IDs 0 to N-1)
     pos_list = [[0.0, 0.0]] * num_nodes
     # Since vertex IDs are already 0 to N-1, we can use range directly
     nodes = range(num_nodes)  # Vertex IDs
@@ -722,7 +722,7 @@ def kececi_layout_igraph(graph: "ig.Graph", primary_spacing=1.0, secondary_spaci
     if num_nodes == 0:
         return []
 
-    # Create coordinate list (will be ordered by vertex IDs 0 to N-1)
+    # generate coordinate list (will be ordered by vertex IDs 0 to N-1)
     pos_list = [[0.0, 0.0]] * num_nodes
     # Since vertex IDs are already 0 to N-1, we can use range directly
     nodes = range(num_nodes)  # Vertex IDs
@@ -934,7 +934,7 @@ def kececi_layout_gg(graph_set: "gg.GraphSet", primary_spacing=1.0, secondary_sp
         return {}
 
     # Graphillion often uses 1-based node indexing.
-    # Create the node ID list: 1, 2, ..., num_vertices
+    # generate the node ID list: 1, 2, ..., num_vertices
     nodes = list(range(1, num_vertices + 1))
 
     pos = {}
@@ -999,7 +999,7 @@ def kececi_layout_graphillion(graph_set: "gg.GraphSet", primary_spacing=1.0, sec
         return {}
 
     # Graphillion often uses 1-based node indexing.
-    # Create the node ID list: 1, 2, ..., num_vertices
+    # generate the node ID list: 1, 2, ..., num_vertices
     nodes = list(range(1, num_vertices + 1))
 
     pos = {}
@@ -2820,7 +2820,7 @@ def draw_kececi(graph, style='curved', ax=None, **kwargs):
         graph: The graph object to be drawn.
         style (str): The drawing style. Options: 'curved', 'transparent', '3d'.
         ax (matplotlib.axis.Axis, optional): The axis to draw on. If not
-            provided, a new figure and axis are created.
+            provided, a new figure and axis are generated.
         **kwargs: Additional keyword arguments passed to both `kececi_layout`
                   and the drawing functions (e.g., expanding=True, node_size=500).
 
@@ -4096,11 +4096,11 @@ def custom_visualization():
     
     # Layout seçenekleri
     layouts = {
-        '1': ('3d_helix', '3D Heliks Layout'),
-        '2': ('2d_linear', '2D Linear Layout'),
-        '3': ('2d_grid', '2D Grid Layout'),
-        '4': ('2d_circular', '2D Dairesel Layout'),
-        '5': ('2d_spring', '2D Yay Layout')
+        '1': ('3d_helix', 'Heliks Layout'),
+        '2': ('2d_linear', 'Linear Layout'),
+        '3': ('2d_grid', 'Grid Layout'),
+        '4': ('2d_circular', 'Dairesel Layout'),
+        '5': ('2d_spring', 'Yay Layout')
     }
     
     print("\nLayout Tipleri:")
@@ -4121,7 +4121,7 @@ def custom_visualization():
         '3': 'pastel',
         '4': 'group',
         '5': 'period',
-        '6': 'block'
+        '7': 'electronegativity',
     }
     
     print("\nRenk Şemaları:")
@@ -4131,8 +4131,9 @@ def custom_visualization():
     print("4. Group (Gruplara göre)")
     print("5. Period (Periyotlara göre)")
     print("6. Block (Bloklara göre)")
+    print("7. electronegativity (Electronegativitiye göre)")
     
-    color_choice = input("\nRenk şeması seçin (1-6): ").strip()
+    color_choice = input("\nRenk şeması seçin (1-7): ").strip()
     if color_choice not in color_schemes:
         print("Varsayılan olarak Vibrant seçildi.")
         color_scheme = 'vibrant'
@@ -4171,7 +4172,7 @@ def custom_visualization():
         node_size=node_size,
         font_size=font_size,
         title=custom_title if custom_title else None,
-        show_legend=(color_scheme in ['group', 'period', 'block'])
+        show_legend=(color_scheme in ['vibrant', 'distinct', 'pastel', 'group', 'period', 'block', 'electronegativity'])
     )
     
     plt.tight_layout()
@@ -4266,4 +4267,5 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
 
