@@ -1,6 +1,6 @@
 {
   "name": "kececilayout",
-  "version": "0.6.0",
+  "version": "0.6.2",
   "description": "Kececi Layout: Deterministic graph layout algorithm for visualizing linear structures with zig-zag patterns.",
   "main": "index.js",
   "scripts": {
@@ -26,7 +26,7 @@
     "networkx-integration"
   ],
   "author": "Mehmet Keçeci",
-  "license": "MIT",
+  "license": "AGPL3.0-or-later",
   "bugs": {
     "url": "https://github.com/WhiteSymmetry/kececilayout/issues"
   },
