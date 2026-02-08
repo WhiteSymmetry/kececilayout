@@ -10,7 +10,7 @@ import inspect
 import warnings
 
 # Paket sürüm numarası
-__version__ = "0.6.2"
+__version__ = "0.6.3"
 
 # =============================================================================
 # OTOMATİK İÇE AKTARMA VE __all__ OLUŞTURMA
@@ -100,6 +100,11 @@ from .kececi_layout import (  # Veya fonksiyonların bulunduğu asıl modül
     split_into_cliques,
     detect_barbell_structure,
     kececi_barbell_layout,
+    classic_small_barbell,
+    extended_barbell_layout,
+    zigzag_kececi_layout,
+    KececiZigzagValidator,
+    KececiBayesianOptimizer,
 
     # Drawing functions
     draw_kececi,
@@ -191,6 +196,11 @@ __all__ = [
     'split_into_cliques',
     'detect_barbell_structure',
     'kececi_barbell_layout',
+    'classic_small_barbell',
+    'extended_barbell_layout',
+    'zigzag_kececi_layout',
+    'KececiZigzagValidator',
+    'KececiBayesianOptimizer',
 
     # Drawing functions
     'draw_kececi',
@@ -241,16 +251,3 @@ def old_function_placeholder():
 
 # Eğer bu eski fonksiyonu da dışa aktarmak istiyorsanız, __all__ listesine ekleyin
 # __all__.append('old_function_placeholder')
-
-
-
-
-
-
-
-
-
-
-
-
-
