@@ -1,12 +1,12 @@
 # pyproject.toml
 
 [build-system]
-requires = ["setuptools>=77.0"]
+requires = ["setuptools>=80.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "kececilayout"
-version = "0.6.2"
+version = "0.6.3"
 
 # Diğer proje bilgileri (isteğe bağlı ama tavsiye edilir)
 authors = [
@@ -73,6 +73,7 @@ configuration = "docs/conf.py"  # Build konfigürasyonu belirtin
 [project.urls]
 "Homepage" = "https://github.com/WhiteSymmetry/kececilayout"
 "Bug Tracker" = "https://github.com/WhiteSymmetry/kececilayout/issues"
+
 
 
 
