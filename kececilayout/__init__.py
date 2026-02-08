@@ -95,6 +95,11 @@ from .kececi_layout import (  # Veya fonksiyonların bulunduğu asıl modül
     custom_visualization,
     debug_periodic_table_structure,
     _generate_labels,
+    fallback_kececi_layout,
+    horizontal_barbell_layout,
+    split_into_cliques,
+    detect_barbell_structure,
+    kececi_barbell_layout,
 
     # Drawing functions
     draw_kececi,
@@ -181,6 +186,11 @@ __all__ = [
     'custom_visualization',
     'debug_periodic_table_structure',
     '_generate_labels',
+    'fallback_kececi_layout',
+    'horizontal_barbell_layout',
+    'split_into_cliques',
+    'detect_barbell_structure',
+    'kececi_barbell_layout',
 
     # Drawing functions
     'draw_kececi',
@@ -231,6 +241,7 @@ def old_function_placeholder():
 
 # Eğer bu eski fonksiyonu da dışa aktarmak istiyorsanız, __all__ listesine ekleyin
 # __all__.append('old_function_placeholder')
+
 
 
 
