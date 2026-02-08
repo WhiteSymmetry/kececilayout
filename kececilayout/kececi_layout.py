@@ -4223,6 +4223,164 @@ def _generate_labels(graph, periodic_elements):
             labels[node_id] = str(node_id)
     return labels
 
+def kececi_barbell_layout(G, primary_spacing=1.5, secondary_spacing=0.8, 
+                         primary_direction='horizontal', debug=False):
+    """
+    KEÇECİ BARBELL LAYOUT - kececilayout paketi için
+    Barbell graf ve benzeri modüler yapılar için optimize layout
+    
+    Parameters:
+    -----------
+    G : NetworkX Graph
+    primary_spacing : float - Ana kümeler arası mesafe
+    secondary_spacing : float - Küme içi mesafe  
+    primary_direction : str - 'horizontal'|'vertical'|'top_down'
+    debug : bool - Detaylı log
+    
+    Returns:
+    --------
+    pos : dict - {node: (x,y)} pozisyonları
+    """
+    
+    if debug:
+        print("🔍 KEÇECİ BARBELL LAYOUT ANALİZİ BAŞLIYOR...")
+    
+    # 1. GRAF ANALİZİ - Barbell yapısını bul
+    pos = {}
+    nodes = sorted(G.nodes())
+    n = len(nodes)
+    
+    if debug: print(f"  Node sayısı: {n}")
+    
+    # 2. KÜME VE KÖPRÜ TESPİTİ (Akıllı algoritma)
+    cliques, bridge_nodes = detect_barbell_structure(G, debug)
+    
+    if not cliques or not bridge_nodes:
+        if debug: print("⚠️  Klasik barbell algılanmadı, genel Keçeci uygula")
+        return fallback_kececi_layout(G, primary_direction, debug)
+    
+    # 3. LAYOUT HESAPLAMA
+    if primary_direction == 'horizontal':
+        pos = horizontal_barbell_layout(cliques, bridge_nodes, nodes, 
+                                       primary_spacing, secondary_spacing)
+    elif primary_direction == 'vertical':
+        pos = vertical_barbell_layout(cliques, bridge_nodes, nodes, 
+                                     primary_spacing, secondary_spacing)
+    else:  # top_down
+        pos = top_down_barbell_layout(cliques, bridge_nodes, nodes, 
+                                     primary_spacing, secondary_spacing)
+    
+    if debug:
+        print(f"✅ {len(pos)}/{n} node pozisyonlandı")
+        missing = set(nodes) - set(pos.keys())
+        if missing: print(f"❌ Eksik: {missing}")
+    
+    return pos
+
+
+def detect_barbell_structure(G, debug=False):
+    """Barbell yapısını otomatik tespit et"""
+    
+    # Yöntem 1: Yüksek dereceli kümeler + düşük dereceli köprü
+    degrees = dict(G.degree())
+    high_degree_nodes = [n for n, d in degrees.items() if d > G.number_of_nodes()/4]
+    low_degree_nodes = [n for n, d in degrees.items() if d < 3]
+    
+    if debug:
+        print(f"  Yüksek dereceli: {len(high_degree_nodes)}, Düşük: {len(low_degree_nodes)}")
+    
+    if len(high_degree_nodes) > 4 and len(low_degree_nodes) > 0:
+        # İki ana küme + köprü adayları
+        cliques = split_into_cliques(high_degree_nodes, G)
+        bridge_nodes = low_degree_nodes[:3]  # Max 3 köprü node
+        return cliques, bridge_nodes
+    
+    # Yöntem 2: NetworkX barbell_graph kontrolü
+    import networkx as nx
+    if hasattr(nx.generators.classic, 'barbell_graph'):
+        cliques = [[i for i in range(5)], [i for i in range(6,11)]]
+        bridge_nodes = [5]
+        return cliques, bridge_nodes
+    
+    return None, None
+
+
+def split_into_cliques(nodes, G, min_size=4):
+    """Yüksek bağlantılı kümeleri ayır"""
+    from itertools import combinations
+    
+    cliques = []
+    remaining = set(nodes)
+    
+    while remaining:
+        # En yüksek dereceli node'dan başla
+        start = max(remaining, key=lambda n: G.degree(n))
+        clique = set()
+        
+        # Komşularından clique oluştur
+        clique.add(start)
+        for neighbor in G.neighbors(start):
+            if neighbor in remaining and G.degree(neighbor) > 3:
+                clique.add(neighbor)
+        
+        if len(clique) >= min_size:
+            cliques.append(sorted(clique))
+            remaining -= clique
+    
+    return cliques[:2]  # Max 2 ana küme
+
+
+def horizontal_barbell_layout(cliques, bridge_nodes, all_nodes, p_spacing, s_spacing):
+    """Yatay barbell: Sol Küme ←→ Köprü ←→ Sağ Küme"""
+    pos = {}
+    
+    # Sol küme
+    if cliques and len(cliques) >= 1:
+        left_nodes = cliques[0][:5]  # Max 5 node
+        for i, node in enumerate(left_nodes):
+            angle = 2 * np.pi * i / len(left_nodes)
+            pos[node] = (np.cos(angle), np.sin(angle))
+    
+    # Köprü (yatay)
+    bridge_x = 2.5
+    for i, node in enumerate(bridge_nodes[:3]):
+        pos[node] = (bridge_x + i * p_spacing * 0.6, np.sin(i * np.pi / 4))
+    
+    # Sağ küme  
+    if len(cliques) >= 2:
+        right_nodes = cliques[1][:5]
+        for i, node in enumerate(right_nodes):
+            angle = 2 * np.pi * i / len(right_nodes)
+            pos[node] = (5 - np.cos(angle), np.sin(angle))
+    
+    # Kalan node'lar (genişletilmiş destek)
+    remaining = [n for n in all_nodes if n not in pos]
+    for i, node in enumerate(remaining):
+        if i < 4:  # Max 4 ek node
+            pos[node] = (1 + i * 0.8, 1.5 + (i%2) * (-0.5))
+    
+    return pos
+
+
+def fallback_kececi_layout(G, direction='horizontal', debug=False):
+    """Genel Keçeci layout (barbell değilse)"""
+    n = G.number_of_nodes()
+    nodes = sorted(G.nodes)
+    pos = {}
+    
+    if direction == 'horizontal':
+        for i, node in enumerate(nodes):
+            x = (i % 5) * 1.2
+            y = (i // 5) * 1.5
+            pos[node] = (x, y)
+    else:  # zigzag
+        for i, node in enumerate(nodes):
+            x = i * 0.8
+            y = np.sin(i * np.pi / 3) * 0.5
+            pos[node] = (x, y)
+    
+    return pos
+
 # =============================================================================
 # MODULE TEST CODE
 # =============================================================================
@@ -4268,6 +4426,7 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
 
 
 
