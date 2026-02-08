@@ -14,4 +14,4 @@ extend-select = [
     "UP",  # pyupgrade
     "I",   # isort
 ]
-target-version = "py310"  # Python versiyonunuza uygun şekilde
+target-version = "py311"  # Python versiyonunuza uygun şekilde
