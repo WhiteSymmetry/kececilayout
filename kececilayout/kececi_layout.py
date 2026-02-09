@@ -105,7 +105,7 @@ class KececiZigzagValidator:
         }
     
     def perfect_kececi(self, G):
-        """🦙 MÜKEMMEL KEÇECİ"""
+        """🦙 MÜKEMMEL Keçeci"""
         nodes = sorted(G.nodes())
         pos = {}
         for i, node in enumerate(nodes):
@@ -164,7 +164,7 @@ class KececiZigzagValidator:
         }
     
     def final_champion_test(self):
-        """FINAL KEÇECİ ŞAMPİYONLARI"""
+        """FINAL Skor"""
         graphs = {
             'path_50': nx.path_graph(50),
             'sawtooth_45': self._sawtooth_extreme(45),
@@ -178,7 +178,7 @@ class KececiZigzagValidator:
             'spring': lambda G: nx.spring_layout(G, seed=42, iterations=50)
         }
         
-        print("KEÇECİ ZZ SKORU")
+        print("Keçeci ZZ SKORU")
         print("="*60)
         
         results = {}
@@ -233,7 +233,7 @@ class KececiBayesianOptimizer:
         self.posterior = {}
         self.best_params = None
         
-        # 🦙 KEÇECİ ZZ SCORING
+        # 🦙 Keçeci ZZ SCORING
         self.kececi_spec = {
             'x_spacing': 0.85,
             'sin_freq': 0.714,  # π/2.2
@@ -263,7 +263,7 @@ class KececiBayesianOptimizer:
         return graphs
     
     def champion_zz_score(self, G: nx.Graph, pos: Dict) -> Dict:
-        """🏆 KEÇECİ ZZ"""
+        """🏆 Keçeci ZZ"""
         nodes_x = sorted(G.nodes(), key=lambda n: pos[n][0])
         xs = np.array([pos[n][0] for n in nodes_x])
         ys = np.array([pos[n][1] for n in nodes_x])
@@ -302,7 +302,7 @@ class KececiBayesianOptimizer:
         }
     
     def kececi_layout(self, G, params: Dict) -> Dict:
-        """🦙 KEÇECİ BAYESÇİ LAYOUT"""
+        """🦙 Keçeci Bayesian Layout"""
         x_spacing = params.get('x_spacing', 0.85)
         sin_freq = params.get('sin_freq', 0.714)
         y_amp = params.get('y_amp', 1.4)
@@ -332,7 +332,7 @@ class KececiBayesianOptimizer:
     
     def optimize_kececi_bayes(self, graphs: List[Tuple[str, nx.Graph]], n_iters: int = 50):
         """🔬 BAYESIAN OPTIMIZATION"""
-        print("🦙 KEÇECİ BAYESÇİ ÖĞRENME BAŞLADI")
+        print("🦙 Keçeci Bayesian Öğrenme Başladı")
         print("="*60)
         
         # Initial random search
@@ -375,7 +375,7 @@ class KececiBayesianOptimizer:
         return history
     
     def visualize_bayesian_learning(self, history: List[Tuple[Dict, float]]):
-        """📊 BAYESÇİ ÖĞRENME GÖRSELLEŞTİRME"""
+        """📊 Bayesian Öğrenme Görselleştirmesi"""
         fig, axes = plt.subplots(2, 3, figsize=(18, 12))
         
         zz_scores = [h[1] for h in history]
@@ -434,7 +434,7 @@ class KececiBayesianOptimizer:
         axes[1,2].set_xticks(range(len(layouts)))
         axes[1,2].set_xticklabels(layouts.keys(), rotation=45)
         
-        plt.suptitle('🦙 KEÇECİ BAYESÇİ ZİG-ZAG ÖĞRENİCİSİ v1.0', fontsize=16, fontweight='bold')
+        plt.suptitle('🦙 Keçeci Bayesian Zig-Zag Öğrencisi v1.0', fontsize=16, fontweight='bold')
         plt.tight_layout()
         plt.show()
     
@@ -4708,12 +4708,12 @@ def _generate_labels(graph, periodic_elements):
 def kececi_barbell_layout(G, primary_spacing=1.5, secondary_spacing=0.8, 
                          primary_direction='horizontal', debug=False):
     """
-    KEÇECİ BARBELL LAYOUT v3.0 - %100 NODE KAPSAMA GARANTİSİ
+    Keçeci Barbell Layout - %100 NODE KAPSAMA GARANTİSİ
     kececilayout.draw_kececi ile uyumlu
     """
     
     if debug:
-        print("🔍 KEÇECİ BARBELL LAYOUT v3.0 - %100 KAPSAMA")
+        print("🔍 Keçeci Barbell Layout- %100 KAPSAMA")
     
     pos = {}
     nodes = sorted(G.nodes())
