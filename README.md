@@ -86,6 +86,8 @@ styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 
 **v0.6.0:** periodic table
 
+**v0.6.3:** KececiBayesianOptimizer, kececi_barbell_layout
+
 ---
 
 ### Installation
@@ -2125,6 +2127,7 @@ Author-email: Mehmet Keçeci <...>
 License: GNU AFFERO GENERAL PUBLIC LICENSE
 
 Copyright (c) 2025-2026 Mehmet Keçeci
+
 
 
 
