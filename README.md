@@ -2,7 +2,7 @@
 
 ---
 
-# graycoder <img src="docs/kha256.jpg" alt="logo" align="right" height="140"/>
+# KHA-256 <img src="docs/kha256.jpg" alt="logo" align="right" height="140"/>
 
 [![PyPI version](https://badge.fury.io/py/kececilayout.svg)](https://badge.fury.io/py/kececilayout)
 [![License: AGPL-3.0 license](https://img.shields.io/badge/License-AGPL-yellow.svg)](https://opensource.org/licenses/AGPL)
@@ -2131,6 +2131,7 @@ Author-email: Mehmet Keçeci <...>
 License: GNU AFFERO GENERAL PUBLIC LICENSE
 
 Copyright (c) 2025-2026 Mehmet Keçeci
+
 
 
 
