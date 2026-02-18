@@ -105,7 +105,7 @@ class KececiZigzagValidator:
         }
     
     def perfect_kececi(self, G):
-        """🦙 MÜKEMMEL Keçeci"""
+        """🦙 MÜKEMMEL KEÇECİ"""
         nodes = sorted(G.nodes())
         pos = {}
         for i, node in enumerate(nodes):
@@ -164,7 +164,7 @@ class KececiZigzagValidator:
         }
     
     def final_champion_test(self):
-        """FINAL Skor"""
+        """FINAL KEÇECİ ŞAMPİYONLARI"""
         graphs = {
             'path_50': nx.path_graph(50),
             'sawtooth_45': self._sawtooth_extreme(45),
@@ -178,7 +178,7 @@ class KececiZigzagValidator:
             'spring': lambda G: nx.spring_layout(G, seed=42, iterations=50)
         }
         
-        print("Keçeci ZZ SKORU")
+        print("KEÇECİ ZZ SKORU")
         print("="*60)
         
         results = {}
@@ -233,7 +233,7 @@ class KececiBayesianOptimizer:
         self.posterior = {}
         self.best_params = None
         
-        # 🦙 Keçeci ZZ SCORING
+        # 🦙 KEÇECİ ZZ SCORING
         self.kececi_spec = {
             'x_spacing': 0.85,
             'sin_freq': 0.714,  # π/2.2
@@ -263,7 +263,7 @@ class KececiBayesianOptimizer:
         return graphs
     
     def champion_zz_score(self, G: nx.Graph, pos: Dict) -> Dict:
-        """🏆 Keçeci ZZ"""
+        """🏆 KEÇECİ ZZ"""
         nodes_x = sorted(G.nodes(), key=lambda n: pos[n][0])
         xs = np.array([pos[n][0] for n in nodes_x])
         ys = np.array([pos[n][1] for n in nodes_x])
@@ -302,7 +302,7 @@ class KececiBayesianOptimizer:
         }
     
     def kececi_layout(self, G, params: Dict) -> Dict:
-        """🦙 Keçeci Bayesian Layout"""
+        """🦙 KEÇECİ BAYESÇİ LAYOUT"""
         x_spacing = params.get('x_spacing', 0.85)
         sin_freq = params.get('sin_freq', 0.714)
         y_amp = params.get('y_amp', 1.4)
@@ -332,7 +332,7 @@ class KececiBayesianOptimizer:
     
     def optimize_kececi_bayes(self, graphs: List[Tuple[str, nx.Graph]], n_iters: int = 50):
         """🔬 BAYESIAN OPTIMIZATION"""
-        print("🦙 Keçeci Bayesian Öğrenme Başladı")
+        print("🦙 KEÇECİ BAYESÇİ ÖĞRENME BAŞLADI")
         print("="*60)
         
         # Initial random search
@@ -375,7 +375,7 @@ class KececiBayesianOptimizer:
         return history
     
     def visualize_bayesian_learning(self, history: List[Tuple[Dict, float]]):
-        """📊 Bayesian Öğrenme Görselleştirmesi"""
+        """📊 BAYESÇİ ÖĞRENME GÖRSELLEŞTİRME"""
         fig, axes = plt.subplots(2, 3, figsize=(18, 12))
         
         zz_scores = [h[1] for h in history]
@@ -434,7 +434,7 @@ class KececiBayesianOptimizer:
         axes[1,2].set_xticks(range(len(layouts)))
         axes[1,2].set_xticklabels(layouts.keys(), rotation=45)
         
-        plt.suptitle('🦙 Keçeci Bayesian Zig-Zag Öğrencisi v1.0', fontsize=16, fontweight='bold')
+        plt.suptitle('🦙 KEÇECİ BAYESÇİ ZİG-ZAG ÖĞRENİCİSİ v1.0', fontsize=16, fontweight='bold')
         plt.tight_layout()
         plt.show()
     
@@ -2470,82 +2470,84 @@ def draw_kececi_weighted(
     nx_graph: nx.Graph,
     pos: Dict[int, Tuple[float, ...]],
     ax: Optional[plt.Axes] = None,
+    layout: str = "unknown",          # ✅ Varsayılan değer
+    style: str = "weighted",          # ✅ Varsayılan değer
     node_size: int = 300,
     edge_width_scale: float = 2.0,
     with_labels: bool = True,
+    font_size: int = 10,
     font_weight: str = 'bold',
     **kwargs
 ) -> plt.Axes:
+
     """
     2D/3D Weighted edges ile Keçeci layout çizimi.
     """
+    if ax is None or not hasattr(ax, 'scatter'):  # ax bozuksa yeniden oluştur
+        is_3d = len(next(iter(pos.values()))) == 3
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(111, projection='3d' if is_3d else None)
+    
+    # ✅ nodes_kwargs'ı SIFIRLA (en güvenli)
+    nx.draw_networkx_nodes(nx_graph, pos, ax=ax, 
+                          node_size=node_size, node_color='lightblue')
+    """
     if ax is None:
-        # 2D mi 3D mi kontrol et
-        is_3d = len(pos[next(iter(pos))]) == 3
+        is_3d = len(next(iter(pos.values()))) == 3
         fig = plt.figure(figsize=(10, 8))
         if is_3d:
             ax = fig.add_subplot(111, projection='3d')
         else:
             ax = fig.add_subplot(111)
 
-    # Node'ları çiz
+    # ✅ KWARGS FİLTRELEME
+    nodes_kwargs = {k: v for k, v in kwargs.items() if k not in ['font_size', 'font_weight']}
     node_color = kwargs.get('node_color', 'lightblue')
+
+    # Node'ları çiz ✅ font_size yok
     nx.draw_networkx_nodes(nx_graph, pos, ax=ax, node_size=node_size, 
-                          node_color=node_color, **kwargs)
+                          node_color=node_color, **nodes_kwargs)
+    """
 
-    # Etiketleri çiz
+    # Etiketleri çiz ✅ font_size var
     if with_labels:
-        is_3d = len(pos[next(iter(pos))]) == 3
-        if is_3d:
-            # 3D için özel etiket çizimi
+        if len(next(iter(pos.values()))) == 3:  # 3D
             for node, coord in pos.items():
-                ax.text(coord[0], coord[1], coord[2],  # 3D koordinatlar
-                       str(node),  # 's' parametresi - etiket metni
-                       size=10, 
-                       zorder=1, 
-                       color='black',
-                       fontweight=font_weight)
-        else:
-            # 2D için NetworkX etiket çizimi
-            nx.draw_networkx_labels(nx_graph, pos, ax=ax, font_weight=font_weight)
+                ax.text(coord[0], coord[1], coord[2], str(node),
+                       size=font_size, zorder=1, color='black', fontweight=font_weight)
+        else:  # 2D
+            nx.draw_networkx_labels(nx_graph, pos, ax=ax, 
+                                  font_size=font_size, font_weight=font_weight)
 
-    # Edge'leri çiz (weight'e göre)
+    # Weighted edges
     weights = nx.get_edge_attributes(nx_graph, 'weight')
     if not weights:
         weights = {edge: 1.0 for edge in nx_graph.edges()}
-
-    is_3d = len(pos[next(iter(pos))]) == 3
+    
+    is_3d = len(next(iter(pos.values()))) == 3
     for (u, v), weight in weights.items():
         width = weight * edge_width_scale
         if is_3d:
-            # 3D edge çizimi
-            ax.plot(
-                [pos[u][0], pos[v][0]],
-                [pos[u][1], pos[v][1]],
-                [pos[u][2], pos[v][2]],
-                linewidth=width,
-                color='gray',
-                alpha=0.7
-            )
+            ax.plot([pos[u][0], pos[v][0]], [pos[u][1], pos[v][1]], [pos[u][2], pos[v][2]],
+                   linewidth=width, color='gray', alpha=0.7)
         else:
-            # 2D edge çizimi
-            ax.plot(
-                [pos[u][0], pos[v][0]],
-                [pos[u][1], pos[v][1]],
-                linewidth=width,
-                color='gray',
-                alpha=0.7
-            )
+            ax.plot([pos[u][0], pos[v][0]], [pos[u][1], pos[v][1]],
+                   linewidth=width, color='gray', alpha=0.7)
 
-    ax.set_title("Keçeci Layout: Weighted Edges")
+    #ax.set_title("Keçeci Layout: Weighted Edges", fontsize=font_size + 2)
+    ax.set_title(f"Keçeci Layout: {layout.capitalize()} (Weighted Edges)", fontsize=font_size + 2)
     return ax
+
 
 def draw_kececi_colored(
     nx_graph: nx.Graph,
     pos: Dict[int, Tuple[float, ...]],
-    ax: Optional[plt.Axes] = None,
+    layout: str,                    # ✅ 1. Zorunlu (en başta)
+    style: str = 'colored',         # ✅ 2. Varsayılan  
+    ax: Optional[plt.Axes] = None,  # ✅ 3. Varsayılan
     node_size: int = 300,
     with_labels: bool = True,
+    font_size: int = 10,
     font_weight: str = 'bold',
     **kwargs
 ) -> plt.Axes:
@@ -2553,59 +2555,48 @@ def draw_kececi_colored(
     2D/3D Renkli node'lar ile Keçeci layout çizimi.
     """
     if ax is None:
-        # 2D mi 3D mi kontrol et
-        is_3d = len(pos[next(iter(pos))]) == 3
+        is_3d = len(next(iter(pos.values()))) == 3
         fig = plt.figure(figsize=(10, 8))
         if is_3d:
             ax = fig.add_subplot(111, projection='3d')
         else:
             ax = fig.add_subplot(111)
 
+    # ✅ KWARGS FİLTRELEME
+    nodes_kwargs = {k: v for k, v in kwargs.items() if k not in ['font_size', 'font_weight']}
+
     # Dereceye göre renk hesapla
     degrees = dict(nx_graph.degree())
     max_degree = max(degrees.values()) if degrees else 1
     node_colors = [plt.cm.viridis(deg / max_degree) for deg in degrees.values()]
 
-    # Node'ları çiz
-    nx.draw_networkx_nodes(
-        nx_graph, pos, ax=ax,
-        node_color=node_colors,
-        node_size=node_size,
-        **kwargs
-    )
+    # Node'ları çiz ✅ font_size yok
+    nx.draw_networkx_nodes(nx_graph, pos, ax=ax, node_color=node_colors,
+                          node_size=node_size, **nodes_kwargs)
 
-    # Etiketleri çiz
+    # Etiketleri çiz ✅ font_size var
     if with_labels:
-        is_3d = len(pos[next(iter(pos))]) == 3
-        if is_3d:
-            # 3D için özel etiket çizimi
+        if len(next(iter(pos.values()))) == 3:  # 3D
             for node, coord in pos.items():
-                ax.text(coord[0], coord[1], coord[2],  # 3D koordinatlar
-                       str(node),  # 's' parametresi - etiket metni
-                       size=10, 
-                       zorder=1, 
-                       color='black',
-                       fontweight=font_weight)
-        else:
-            # 2D için NetworkX etiket çizimi
-            nx.draw_networkx_labels(nx_graph, pos, ax=ax, font_weight=font_weight)
+                ax.text(coord[0], coord[1], coord[2], str(node),
+                       size=font_size, zorder=1, color='black', fontweight=font_weight)
+        else:  # 2D
+            nx.draw_networkx_labels(nx_graph, pos, ax=ax, 
+                                  font_size=font_size, font_weight=font_weight)
 
-    # Edge'leri çiz
-    is_3d = len(pos[next(iter(pos))]) == 3
+    # Edges
+    is_3d = len(next(iter(pos.values()))) == 3
     if is_3d:
         for u, v in nx_graph.edges():
-            ax.plot(
-                [pos[u][0], pos[v][0]],
-                [pos[u][1], pos[v][1]],
-                [pos[u][2], pos[v][2]],
-                color='gray',
-                alpha=0.5
-            )
+            ax.plot([pos[u][0], pos[v][0]], [pos[u][1], pos[v][1]], [pos[u][2], pos[v][2]],
+                   color='gray', alpha=0.5)
     else:
         nx.draw_networkx_edges(nx_graph, pos, ax=ax, alpha=0.5)
 
-    ax.set_title("Keçeci Layout: Colored Nodes")
+    #ax.set_title("Keçeci Layout: Colored Nodes", fontsize=font_size + 2)
+    ax.set_title(f"Keçeci Layout: {layout.capitalize()} (Colored Nodes)", fontsize=font_size + 2)
     return ax
+
 
 """
 def draw_kececi_weighted(
@@ -2807,92 +2798,68 @@ def _draw_internal(nx_graph, ax, style, **kwargs):
 # 4. MAIN USER-FACING DRAWING FUNCTION
 # =============================================================================
 def draw_kececi(
-    graph,
-    pos: Optional[Dict[int, Tuple[float, ...]]] = None,
-    layout: Optional[str] = None,
-    style: str = 'default',
-    ax: Optional[plt.Axes] = None,
-    with_labels: bool = True,
-    node_color: Union[str, List] = 'lightblue',
-    node_size: int = 500,
-    font_size: int = 10,  # ✅ YENİ: Opsiyonel font boyutu
-    font_weight: str = 'bold',
-    edge_color: str = 'gray',
-    edge_alpha: float = 0.5,
-    edge_width: float = 1.0,
-    **kwargs
+    graph, pos=None, layout=None, style='default', ax=None,
+    with_labels=True, node_color='lightblue', node_size=500,
+    font_size=10, font_weight='bold', edge_color='gray',
+    edge_alpha=0.5, edge_width=1.0, **kwargs
 ) -> plt.Axes:
-    """
-    Keçeci Layout ile 2D/3D uyumlu graf çizimi.
-
-    Args:
-        graph: Graf objesi (NetworkX, igraph, vb.).
-        pos: Önceden hesaplanmış koordinatlar (opsiyonel).
-        layout: '2d', 'cylindrical', 'cubic', 'spherical', 'elliptical', 'toric'.
-        style: 'default', 'weighted', 'colored'.
-        ax: Matplotlib ekseni.
-        with_labels: Düğüm etiketlerini göster.
-        node_color: Düğüm rengi.
-        node_size: Düğüm boyutu.
-        font_size: Etiket yazı boyutu (varsayılan: 10).  # ✅ YENİ
-        font_weight: Yazı kalınlığı.
-        edge_color: Kenar rengi.
-        edge_alpha: Kenar şeffaflığı.
-        edge_width: Kenar kalınlığı.
-        **kwargs: Ek parametreler.
-
-    Returns:
-        Matplotlib ekseni.
-    """
     nx_graph = to_networkx(graph)
 
-    # Layout hesaplama (değişmedi)
+    # Layout hesaplama ✅
     if pos is None:
-        if layout is None:
-            layout = '2d'
-        pos = kececi_layout_2d(nx_graph, **kwargs) if layout == '2d' else \
-              kececi_layout_cylindrical(nx_graph, **kwargs)  # ... diğer layoutlar
+        layout = layout or '2d'
+        if layout == '2d':
+            pos = kececi_layout_2d(nx_graph)
+        elif layout == 'cylindrical':
+            pos = kececi_layout_cylindrical(nx_graph)
+        elif layout == 'cubic':
+            pos = kececi_layout_cubic(nx_graph, **kwargs)
+        elif layout == 'spherical':
+            pos = kececi_layout_spherical(nx_graph, **kwargs)
+        elif layout == 'elliptical':
+            pos = kececi_layout_elliptical(nx_graph, **kwargs)
+        elif layout == 'toric':
+            pos = kececi_layout_toric(nx_graph, **kwargs)
+        else:
+            raise ValueError(f"Geçersiz layout: {layout}")
 
-    # 2D/3D kontrol (değişmedi)
-    is_3d = len(pos[next(iter(pos))]) == 3
-    if ax is None:
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection='3d' if is_3d else None)
+    # ✅ YENİ FIGÜR HER ZAMAN (backend temizliği)
+    fig = plt.figure(figsize=(10, 8))
+    is_3d = len(next(iter(pos.values()))) == 3
+    ax = fig.add_subplot(111, projection='3d' if is_3d else None)
 
-    # Style çizimi (değişmedi)
+    nodes_kwargs = {k: v for k, v in kwargs.items() if k not in ['font_size', 'font_weight']}
+
+    # Style bazlı çizim
     if style == 'weighted':
-        draw_kececi_weighted(nx_graph, pos, ax, node_size=node_size, 
-                            with_labels=with_labels, font_size=font_size,  # ✅ Geçir
+        draw_kececi_weighted(nx_graph=nx_graph, pos=pos, ax=ax, 
+                            layout=layout, style='weighted',
+                            node_size=node_size, font_size=font_size,
                             font_weight=font_weight, **kwargs)
     elif style == 'colored':
-        draw_kececi_colored(nx_graph, pos, ax, node_size=node_size,
-                           with_labels=with_labels, font_size=font_size,  # ✅ Geçir
+        draw_kececi_colored(nx_graph=nx_graph, pos=pos, ax=ax,
+                           layout=layout, style='colored',
+                           node_size=node_size, font_size=font_size,
                            font_weight=font_weight, **kwargs)
-    else:  # 'default'
-        # Node'lar (değişmedi)
-        nx.draw_networkx_nodes(nx_graph, pos, ax=ax, 
-                              node_color=node_color, 
-                              node_size=node_size, **kwargs)
 
-        # ✅ ETİKETLER - font_size entegre edildi
+
+    else:  # default/standard/curved/helix/3d
+        # Default çizim (önceki kodunuz)
+        nx.draw_networkx_nodes(nx_graph, pos, ax=ax, node_color=node_color, 
+                              node_size=node_size, **nodes_kwargs)
+
+        # Labels ✅ font_size var
         if with_labels:
             if is_3d:
-                # 3D etiketler (font_size eklendi)
                 for node, coord in pos.items():
-                    ax.text(coord[0], coord[1], coord[2],
-                           str(node),
-                           size=font_size,  # ✅ Kullan
-                           zorder=1,
-                           color='black',
-                           fontweight=font_weight,
-                           ha='center', va='center')
+                    ax.text(coord[0], coord[1], coord[2], str(node),
+                           size=font_size, zorder=1, color='black',
+                           fontweight=font_weight, ha='center', va='center')
             else:
-                # 2D etiketler (font_size eklendi)
                 nx.draw_networkx_labels(nx_graph, pos, ax=ax, 
-                                      font_size=font_size,  # ✅ Ana değişiklik
-                                      font_weight=font_weight)
+                                      font_size=font_size, font_weight=font_weight)
 
-        # Edge'ler (değişmedi)
+        # Edges
         if is_3d:
             for u, v in nx_graph.edges():
                 ax.plot([pos[u][0], pos[v][0]], [pos[u][1], pos[v][1]], [pos[u][2], pos[v][2]],
@@ -2901,11 +2868,10 @@ def draw_kececi(
             nx.draw_networkx_edges(nx_graph, pos, ax=ax, 
                                   alpha=edge_alpha, edge_color=edge_color, width=edge_width)
 
-    # Başlık ve eksen (değişmedi)
-    title = f"Keçeci Layout: {layout.capitalize() if layout else 'Custom'} ({style})"
-    ax.set_title(title, fontsize=font_size + 2 if 'font_size' in kwargs else 12)  # ✅ Bonus
+    plt.tight_layout()  # ✅ Backend temizliği
+    layout_display = (layout or "Custom").capitalize()
+    ax.set_title(f"Keçeci Layout: {layout_display} ({style})", fontsize=font_size + 2)
     ax.set_axis_off()
-    
     return ax
 
 """
@@ -4708,12 +4674,12 @@ def _generate_labels(graph, periodic_elements):
 def kececi_barbell_layout(G, primary_spacing=1.5, secondary_spacing=0.8, 
                          primary_direction='horizontal', debug=False):
     """
-    Keçeci Barbell Layout - %100 NODE KAPSAMA GARANTİSİ
+    KEÇECİ BARBELL LAYOUT v3.0 - %100 NODE KAPSAMA GARANTİSİ
     kececilayout.draw_kececi ile uyumlu
     """
     
     if debug:
-        print("🔍 Keçeci Barbell Layout- %100 KAPSAMA")
+        print("🔍 KEÇECİ BARBELL LAYOUT v3.0 - %100 KAPSAMA")
     
     pos = {}
     nodes = sorted(G.nodes())
