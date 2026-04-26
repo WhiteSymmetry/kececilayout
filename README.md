@@ -37,6 +37,7 @@
 [![Speedup](https://img.shields.io/badge/9.463x_faster_than_NetworkX-orange)](https://github.com/WhiteSymmetry/kececilayout)
 [![Complexity](https://img.shields.io/badge/O(n)_complexity-blue)](https://github.com/WhiteSymmetry/kececilayout)
 [![Libraries](https://img.shields.io/badge/6_graph_libraries_supported-27ae60)](https://github.com/WhiteSymmetry/kececilayout)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/WhiteSymmetry/kececilayout)
 
 kececinumbers
 
