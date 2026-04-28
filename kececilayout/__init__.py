@@ -10,7 +10,7 @@ import inspect
 import warnings
 
 # Paket sürüm numarası
-__version__ = "0.6.4"
+__version__ = "0.6.5"
 
 # =============================================================================
 # OTOMATİK İÇE AKTARMA VE __all__ OLUŞTURMA
@@ -105,6 +105,35 @@ from .kececi_layout import (  # Veya fonksiyonların bulunduğu asıl modül
     zigzag_kececi_layout,
     KececiZigzagValidator,
     KececiBayesianOptimizer,
+    center_layout,
+    scale_layout,
+    gnn_gru_colored_comparison,
+    draw_maze_kececi,
+    solve_maze,
+    build_maze_graph,
+    generate_maze,
+    kececi_maze_demo,
+    kececi_game_tree_demo,
+    draw_chess_shortest_kececi,
+    build_chess_shortest_games,
+    draw_chess_3d_toric,
+    draw_chess_3d_spherical,
+    draw_chess_3d_cylindrical,
+    draw_chess_3d_kececi,
+    build_chess_shortest_games,
+    chess_engine_2d_demo,
+    chess_engine_3d_cyl_demo,
+    chess_engine_3d_sph_demo,
+    chess_engine_3d_tor_demo,
+    draw_chess_engine_tree_3d,
+    draw_chess_engine_tree_2d,
+    build_chess_tree,
+    thermodynamics_concept_map,
+    quantum_mechanics_concept_map,
+    quantum_field_theory_concept_map,
+
+    # Menü
+    show_menu,
 
     # Drawing functions
     draw_kececi,
@@ -201,6 +230,35 @@ __all__ = [
     'zigzag_kececi_layout',
     'KececiZigzagValidator',
     'KececiBayesianOptimizer',
+    'center_layout',
+    'scale_layout',
+    'gnn_gru_colored_comparison',
+    'draw_maze_kececi',
+    'solve_maze',
+    'build_maze_graph',
+    'generate_maze',
+    'kececi_maze_demo',
+    'kececi_game_tree_demo',
+    'draw_chess_shortest_kececi',
+    'build_chess_shortest_games',
+    'draw_chess_3d_toric',
+    'draw_chess_3d_spherical',
+    'draw_chess_3d_cylindrical',
+    'draw_chess_3d_kececi',
+    'build_chess_shortest_games',
+    'chess_engine_2d_demo',
+    'chess_engine_3d_cyl_demo',
+    'chess_engine_3d_sph_demo',
+    'chess_engine_3d_tor_demo',
+    'draw_chess_engine_tree_3d',
+    'draw_chess_engine_tree_2d',
+    'build_chess_tree',
+    'thermodynamics_concept_map',
+    'quantum_mechanics_concept_map',
+    'quantum_field_theory_concept_map',
+
+    # Menü
+    'show_menu',
 
     # Drawing functions
     'draw_kececi',
@@ -251,4 +309,3 @@ def old_function_placeholder():
 
 # Eğer bu eski fonksiyonu da dışa aktarmak istiyorsanız, __all__ listesine ekleyin
 # __all__.append('old_function_placeholder')
-
