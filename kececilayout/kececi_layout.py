@@ -23,9 +23,12 @@ styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 **v0.5.1:** edge (kececi_layout_edge)
 
 **v0.6.0:** periodic table
+
+**v0.6.5:** show_menu()
 """
 
-from collections import defaultdict
+import chess # pip install -U chess
+from collections import defaultdict, deque
 import graphillion as gg
 import igraph as ig
 import itertools # Graphillion için eklendi
@@ -48,6 +51,7 @@ from scipy import stats
 from scipy.optimize import minimize
 from typing import Any, Dict, List, Optional, Tuple, Union
 import warnings
+
 
 
 # Ana bağımlılıklar (çizim için gerekli)
@@ -2798,6 +2802,162 @@ def _draw_internal(nx_graph, ax, style, **kwargs):
 # 4. MAIN USER-FACING DRAWING FUNCTION
 # =============================================================================
 def draw_kececi(
+    graph,
+    pos=None,
+    layout=None,
+    style='default',
+    ax=None,
+    with_labels=True,
+    node_color='lightblue',
+    node_size=500,
+    font_size=10,
+    font_weight='bold',
+    edge_color='gray',
+    edge_alpha=0.5,
+    edge_width=1.0,
+    **kwargs
+) -> plt.Axes:
+    """
+    Keçeci Layout ile 2B/3B uyumlu graf çizimi.
+    Stiller: 'default', 'standard', 'curved', 'transparent', '3d', 'helix',
+             'weighted', 'colored'
+    """
+    from kececilayout import to_networkx, kececi_layout_2d, kececi_layout_cylindrical, \
+        kececi_layout_cubic, kececi_layout_spherical, kececi_layout_elliptical, \
+        kececi_layout_toric, draw_kececi_weighted, draw_kececi_colored, \
+        _kececi_layout_3d_helix
+
+    nx_graph = to_networkx(graph)
+
+    # -------- Layout hesaplama (pos verilmemişse) --------
+    if pos is None:
+        layout = layout or '2d'
+        if layout == '2d':
+            pos = kececi_layout_2d(nx_graph, **kwargs)
+        elif layout == 'cylindrical':
+            pos = kececi_layout_cylindrical(nx_graph, **kwargs)
+        elif layout == 'cubic':
+            pos = kececi_layout_cubic(nx_graph, **kwargs)
+        elif layout == 'spherical':
+            pos = kececi_layout_spherical(nx_graph, **kwargs)
+        elif layout == 'elliptical':
+            pos = kececi_layout_elliptical(nx_graph, **kwargs)
+        elif layout == 'toric':
+            pos = kececi_layout_toric(nx_graph, **kwargs)
+        else:
+            raise ValueError(f"Geçersiz layout: {layout}")
+
+    # -------- Figür ve eksen --------
+    is_3d = len(next(iter(pos.values()))) == 3
+    if ax is None:
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(111, projection='3d' if is_3d else None)
+
+    # -------- Stile göre çizim --------
+    style_lower = style.lower()
+
+    # Ağırlıklı ve renkli stiller kendi özel fonksiyonlarına yönlendirilir
+    if style_lower == 'weighted':
+        return draw_kececi_weighted(
+            nx_graph=nx_graph, pos=pos, ax=ax, layout=layout or 'custom',
+            style='weighted', node_size=node_size, font_size=font_size,
+            font_weight=font_weight, **kwargs
+        )
+    elif style_lower == 'colored':
+        return draw_kececi_colored(
+            nx_graph=nx_graph, pos=pos, ax=ax, layout=layout or 'custom',
+            style='colored', node_size=node_size, font_size=font_size,
+            font_weight=font_weight, **kwargs
+        )
+
+    # -------- Diğer stiller (default, curved, transparent, 3d, helix) --------
+    if is_3d:
+        # 3D stiller için
+        if style_lower in ('3d', 'helix'):
+            pos_3d = _kececi_layout_3d_helix(nx_graph)
+            for node, (x, y, z) in pos_3d.items():
+                ax.scatter(x, y, z, s=node_size, c=[node_color], depthshade=True)
+                if with_labels:
+                    ax.text(x, y, z, f'  {node}', size=font_size, zorder=1,
+                            color='black', fontweight=font_weight)
+            for u, v in nx_graph.edges():
+                coords = np.array([pos_3d[u], pos_3d[v]])
+                ax.plot(coords[:, 0], coords[:, 1], coords[:, 2],
+                        color=edge_color, alpha=edge_alpha, linewidth=edge_width)
+            ax.set_title("Keçeci Layout: 3D Helix")
+            ax.set_axis_off()
+            ax.view_init(elev=20, azim=-60)
+            return ax
+        else:
+            # 3D layout ama özel stil değil → düz çizim
+            for node, coord in pos.items():
+                ax.scatter(*coord, s=node_size, c=[node_color], depthshade=True)
+                if with_labels:
+                    ax.text(*coord, f'  {node}', size=font_size, zorder=1,
+                            color='black', fontweight=font_weight)
+            for u, v in nx_graph.edges():
+                ax.plot([pos[u][0], pos[v][0]], [pos[u][1], pos[v][1]], [pos[u][2], pos[v][2]],
+                        color=edge_color, alpha=edge_alpha, linewidth=edge_width)
+            ax.set_axis_off()
+            return ax
+
+    # -------- 2B Stiller --------
+    if style_lower == 'curved':
+        # Kavisli kenarlar (oklu)
+        nx.draw(
+            nx_graph, pos, ax=ax,
+            with_labels=with_labels,
+            node_color=node_color,
+            node_size=node_size,
+            font_size=font_size,
+            font_weight=font_weight,
+            edge_color=edge_color,
+            connectionstyle='arc3,rad=0.2',
+            arrows=True,
+            arrowstyle='-|>',
+            arrowsize=12,
+            width=edge_width
+        )
+    elif style_lower == 'transparent':
+        # Saydam kenarlar
+        nx.draw_networkx_nodes(nx_graph, pos, ax=ax, node_color=node_color,
+                               node_size=node_size, **kwargs)
+        if with_labels:
+            nx.draw_networkx_labels(nx_graph, pos, ax=ax,
+                                    font_size=font_size, font_weight=font_weight)
+        # Kenar uzunluklarına göre alfa ayarla
+        edge_lengths = {
+            e: np.linalg.norm(np.array(pos[e[0]]) - np.array(pos[e[1]]))
+            for e in nx_graph.edges()
+        }
+        max_len = max(edge_lengths.values()) if edge_lengths else 1.0
+        for edge, length in edge_lengths.items():
+            alpha = 0.15 + 0.85 * (1 - length / max_len)
+            nx.draw_networkx_edges(nx_graph, pos, edgelist=[edge], ax=ax,
+                                   width=edge_width, edge_color=edge_color,
+                                   alpha=alpha)
+    else:  # default, standard
+        # Düz kenarlar
+        nx.draw_networkx_nodes(nx_graph, pos, ax=ax, node_color=node_color,
+                               node_size=node_size, **kwargs)
+        if with_labels:
+            nx.draw_networkx_labels(nx_graph, pos, ax=ax,
+                                    font_size=font_size, font_weight=font_weight)
+        nx.draw_networkx_edges(nx_graph, pos, ax=ax,
+                               alpha=edge_alpha, edge_color=edge_color,
+                               width=edge_width)
+
+    # Başlık ve eksen ayarları
+    layout_display = (layout or "Custom").capitalize()
+    style_display = style_lower.capitalize()
+    ax.set_title(f"Keçeci Layout: {layout_display} ({style_display})",
+                 fontsize=font_size + 2)
+    ax.set_axis_off()
+    plt.tight_layout()
+    return ax
+
+"""
+def draw_kececi(
     graph, pos=None, layout=None, style='default', ax=None,
     with_labels=True, node_color='lightblue', node_size=500,
     font_size=10, font_weight='bold', edge_color='gray',
@@ -2873,6 +3033,7 @@ def draw_kececi(
     ax.set_title(f"Keçeci Layout: {layout_display} ({style})", fontsize=font_size + 2)
     ax.set_axis_off()
     return ax
+"""
 
 """
 def draw_kececi(
@@ -4879,6 +5040,1484 @@ def zigzag_kececi_layout(nodes, p_spacing, s_spacing):
         y = np.sin(i * np.pi / 3) * s_spacing
         pos[node] = (x, y)
     return pos
+
+def center_layout(pos):
+    if not pos: return pos
+    xs = [p[0] for p in pos.values()]
+    ys = [p[1] for p in pos.values()]
+    cx, cy = (min(xs)+max(xs))/2, (min(ys)+max(ys))/2
+    return {n: (x-cx, y-cy) for n, (x,y) in pos.items()}
+
+def scale_layout(pos, scale=1.0):
+    return {n: (x*scale, y*scale) for n, (x,y) in pos.items()}
+
+def gnn_gru_colored_comparison():
+    """
+    GNN‑GRU hesaplama çizgesini 5 farklı Keçeci Layout ile
+    tek bir figürde, düğümler kategorilere göre renkli olarak çizer.
+    """
+    # Çizgeyi oluştur
+    G = nx.DiGraph()
+    edges = [
+        ("X0","GNN0"), ("GNN0","GRU0"), ("h_init","GRU0"), ("GRU0","h0"),
+        ("X1","GNN1"), ("GNN1","GRU1"), ("h0","GRU1"), ("GRU1","h1"),
+        ("h1","Output")
+    ]
+    G.add_edges_from(edges)
+
+    # Renk haritası
+    color_map = {
+        "X0": "#2ca02c", "X1": "#2ca02c",
+        "GNN0": "#1f77b4", "GNN1": "#1f77b4",
+        "GRU0": "#ff7f0e", "GRU1": "#ff7f0e",
+        "h_init": "#d62728", "h0": "#d62728", "h1": "#d62728",
+        "Output": "#9467bd"
+    }
+    node_colors = [color_map[node] for node in G.nodes()]
+
+    # Tüm layoutları hazırla
+    layouts = {
+        "2D Zigzag": kececi_layout_2d(G, primary_direction='left-to-right',
+                                      secondary_start='up', expanding=True),
+        "Eliptik": kececi_layout_elliptical(G, a=4, b=4),
+        "3D Silindirik": kececi_layout_cylindrical(G, radius=4, height=10),
+        "3D Küresel": kececi_layout_spherical(G, radius=5),
+        "3D Torik": kececi_layout_toric(G, major_radius=5, minor_radius=2),
+    }
+
+    fig = plt.figure(figsize=(18, 12))
+    for idx, (title, pos) in enumerate(layouts.items(), 1):
+        is_3d = len(next(iter(pos.values()))) == 3
+        if is_3d:
+            ax = fig.add_subplot(2, 3, idx, projection='3d')
+            for node, coord in pos.items():
+                ax.scatter(*coord, s=200, c=color_map[node], edgecolors='black')
+                ax.text(*coord, f' {node}', fontsize=8)
+            for u, v in G.edges():
+                ax.plot([pos[u][0], pos[v][0]],
+                        [pos[u][1], pos[v][1]],
+                        [pos[u][2], pos[v][2]], color='gray', alpha=0.5)
+            ax.set_axis_off()
+        else:
+            ax = fig.add_subplot(2, 3, idx)
+            nx.draw(G, pos, ax=ax, with_labels=True, node_color=node_colors,
+                    node_size=600, edge_color='gray', arrows=True,
+                    arrowstyle='-|>', arrowsize=15, font_size=8)
+            if 'Eliptik' in title:
+                ax.set_aspect('equal')
+        ax.set_title(title, fontsize=11)
+
+    plt.tight_layout()
+    plt.show()
+
+def generate_maze(rows, cols):
+    """
+    Recursive Backtracking ile rows x cols boyutunda mükemmel bir labirent üretir.
+    Düğümler: (r, c) tuple'ları.
+    Kenarlar: aralarında duvar OLMAYAN komşu hücreleri bağlar.
+    """
+    # Başlangıçta tüm hücreler ziyaret edilmemiş
+    visited = [[False] * cols for _ in range(rows)]
+    # Labirent kenar listesi (bağlı hücreler)
+    edges = []
+
+    def carve(r, c):
+        visited[r][c] = True
+        directions = [(-1,0), (1,0), (0,-1), (0,1)]
+        random.shuffle(directions)
+        for dr, dc in directions:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < rows and 0 <= nc < cols and not visited[nr][nc]:
+                edges.append(((r, c), (nr, nc)))
+                carve(nr, nc)
+
+    # Rastgele başlangıç noktasından başla
+    start_r, start_c = random.randint(0, rows-1), random.randint(0, cols-1)
+    carve(start_r, start_c)
+    return edges
+
+def build_maze_graph(rows, cols, edges):
+    """Labirent kenarlarından NetworkX grafı oluşturur (yönsüz)."""
+    G = nx.Graph()
+    for u, v in edges:
+        G.add_edge(u, v)
+    # Tüm düğümleri ekle (izole kalmasın)
+    for r in range(rows):
+        for c in range(cols):
+            G.add_node((r, c))
+    return G
+
+def solve_maze(G, start, end):
+    """BFS ile en kısa yolu bulur, düğüm listesi döndürür."""
+    visited = {start}
+    queue = deque([(start, [start])])
+    while queue:
+        node, path = queue.popleft()
+        if node == end:
+            return path
+        for neighbor in G.neighbors(node):
+            if neighbor not in visited:
+                visited.add(neighbor)
+                queue.append((neighbor, path + [neighbor]))
+    return None
+
+def draw_maze_kececi(rows, cols, edges, solution_path=None):
+    """
+    Keçeci Layout ile labirent hücrelerini zigzag pozisyonlara yerleştirir,
+    duvarları ve isteğe bağlı çözüm yolunu çizer.
+    """
+    G = build_maze_graph(rows, cols, edges)
+
+    # Keçeci Layout: hücreleri soldan sağa, zigzag yukarı-aşağı sıralar.
+    # Düğümlerin sırasını (r,c) tuple'ına göre sıralayıp pozisyon veriyoruz.
+    pos = kececi_layout_2d(
+        G,
+        primary_direction='left-to-right',
+        secondary_start='up',
+        expanding=True,
+        primary_spacing=0.8,
+        secondary_spacing=0.6
+    )
+
+    plt.figure(figsize=(12, 8))
+    # Tüm mümkün komşulukları çiz (duvarları değil, sadece bağlı olanları)
+    nx.draw_networkx_edges(G, pos, edgelist=edges, edge_color='black', width=2)
+    
+    # Düğümleri daire olarak çiz (hücre merkezleri)
+    nx.draw_networkx_nodes(G, pos, node_size=200, node_color='white', edgecolors='black', linewidths=1)
+
+    # Çözüm yolu varsa kırmızı ile vurgula
+    if solution_path:
+        path_edges = [(solution_path[i], solution_path[i+1]) for i in range(len(solution_path)-1)]
+        nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color='red', width=4)
+        # Başlangıç ve bitişi farklı renklerle göster
+        nx.draw_networkx_nodes(G, pos, nodelist=[solution_path[0]], node_color='green', node_size=300)
+        nx.draw_networkx_nodes(G, pos, nodelist=[solution_path[-1]], node_color='blue', node_size=300)
+
+    plt.title("Keçeci Labirent (Maze) - Zigzag Düzen", fontsize=14)
+    plt.axis('off')
+    plt.show()
+
+def kececi_maze_demo(rows=10, cols=10):
+    """
+    Keçeci Labirent Demo:
+    - rows x cols boyutunda rastgele mükemmel labirent oluşturur,
+    - Keçeci Layout ile zigzag düzende çizer,
+    - En kısa çözüm yolunu kırmızıyla gösterir.
+    """
+    edges = generate_maze(rows, cols)
+    G = build_maze_graph(rows, cols, edges)
+    start = (0, 0)
+    end = (rows-1, cols-1)
+    solution = solve_maze(G, start, end)
+    draw_maze_kececi(rows, cols, edges, solution)
+
+def kececi_game_tree_demo(depth=3, branching=2, seed=42):
+    """
+    İki kişilik sıfır toplamlı oyun için sentetik bir oyun ağacı oluşturur
+    (satranç / go benzeri) ve Keçeci Layout (zigzag) ile çizer.
+    
+    - depth: ağacın derinliği (kök hariç)
+    - branching: her düğümden çıkan ortalama hamle sayısı
+    - seed: rastgelelik için sabit
+    """
+    random.seed(seed)
+    G = nx.DiGraph()
+    
+    # Kök düğüm (MAX oyuncusu – genelde beyaz)
+    root = 0
+    G.add_node(root, player='MAX')
+    node_counter = 1
+    current_level = [root]
+    
+    for level in range(depth):
+        next_level = []
+        for parent in current_level:
+            # Bu seviyede her düğümden branching kadar çocuk üret (biraz rastgele)
+            num_children = random.randint(max(1, branching-1), branching+1)
+            for _ in range(num_children):
+                child = node_counter
+                node_counter += 1
+                # Sıradaki oyuncu: MAX'a karşı MIN
+                child_player = 'MIN' if G.nodes[parent]['player'] == 'MAX' else 'MAX'
+                G.add_node(child, player=child_player)
+                G.add_edge(parent, child)
+                next_level.append(child)
+        current_level = next_level
+        # Çok fazla büyümesini engellemek için sınırla
+        if len(current_level) > 20:
+            current_level = random.sample(current_level, 20)
+    
+    # Renk haritası
+    color_map = {'MAX': '#ff7f0e', 'MIN': '#1f77b4'}  # turuncu, mavi
+    node_colors = [color_map[G.nodes[n]['player']] for n in G.nodes()]
+    
+    # Keçeci Layout – soldan sağa zigzag
+    pos = kececi_layout_2d(
+        G, primary_direction='left-to-right',
+        secondary_start='up', expanding=True,
+        primary_spacing=1.0, secondary_spacing=0.6
+    )
+    
+    plt.figure(figsize=(14, 6))
+    nx.draw(G, pos, with_labels=True, node_color=node_colors,
+            node_size=800, edge_color='gray', arrows=True,
+            arrowstyle='-|>', arrowsize=12,
+            font_size=9, font_weight='bold')
+    
+    # Lejant ekle
+    from matplotlib.patches import Patch
+    legend_elements = [
+        Patch(facecolor=color_map['MAX'], label='MAX (Beyaz)'),
+        Patch(facecolor=color_map['MIN'], label='MIN (Siyah)')
+    ]
+    plt.legend(handles=legend_elements, loc='upper right')
+    
+    plt.title(f"Oyun Ağacı – Derinlik: {depth}, Dallanma ≈ {branching}\n(Keçeci Zigzag Layout)", fontsize=14)
+    plt.axis('off')
+    plt.show()
+
+def build_chess_shortest_games():
+    """
+    Birkaç ünlü en kısa mat varyantını (Çoban Matı (Scholar's Mate), Aptal Matı (Fool's Mate), iki hamlede mat vb.)
+    içeren yönlü bir oyun ağacı oluşturur.
+    Düğümler tahta konumları değil, hamle sırası + taraf bilgisidir.
+    Kenarlar hamle metnini (SAN) taşır.
+    """
+    # Her bir oyun = (oyun_adı, [(oyuncu, hamle), ...])   oyuncu: 'W' veya 'B'
+    games = [
+        ("Aptal Matı (Fool's Mate)", [
+            ('W', 'f3'), ('B', 'e5'), ('W', 'g4'), ('B', 'Qh4#')
+        ]),
+        ("Çoban Matı (Scholar's Mate)", [
+            ('W', 'e4'), ('B', 'e5'), ('W', 'Qh5'), ('B', 'Nc6'),('W', 'Bc4'), ('B', 'Nf6'), ('W', 'Qxf7#')
+        ]),
+        # Ek olarak iki hamlede mat (Beyaz oynarsa? Aslında en kısa 2 hamlede mat yok, ama ilginç)
+        ("En Kısa Mat (Siyah 2 hamlede)", [
+            ('W', 'f4'), ('B', 'e6'), ('W', 'g4'), ('B', 'Qh4#')
+        ]),
+    ]
+
+    G = nx.DiGraph()
+    root = "Başlangıç"
+    G.add_node(root, side='start')
+
+    # Renkler
+    color_map = {'W': '#ffffff', 'B': '#000000', 'start': '#cccccc'}
+    node_colors_dict = {root: color_map['start']}
+
+    # Oyunları ekle
+    for game_name, moves in games:
+        prev_node = root
+        move_num = 1
+        for side, move_san in moves:
+            # Düğüm adı: oyun adı + hamle numarası (benzersiz olsun diye)
+            node_id = f"{game_name}_{move_num}.{side}"
+            G.add_node(node_id, side=side)
+            edge_label = f"{move_num}.{move_san}" if side == 'W' else f"{move_num}...{move_san}"
+            G.add_edge(prev_node, node_id, label=edge_label)
+            node_colors_dict[node_id] = color_map[side] if side != 'start' else color_map['start']
+            prev_node = node_id
+            if side == 'B':
+                move_num += 1
+
+    # Renk listesini düğüm sırasına göre hazırla
+    node_colors = [node_colors_dict[n] for n in G.nodes()]
+    return G, node_colors_dict
+
+def draw_chess_shortest_kececi():
+    G, cdict = build_chess_shortest_games()
+    node_colors = [cdict[n] for n in G.nodes()]
+
+    # Keçeci Layout (soldan sağa zigzag)
+    pos = kececi_layout_2d(
+        G, primary_direction='left-to-right',
+        secondary_start='up', expanding=True,
+        primary_spacing=1.5, secondary_spacing=0.8
+    )
+
+    plt.figure(figsize=(14, 7))
+    nx.draw_networkx_nodes(G, pos, node_color=node_colors, edgecolors='gray',
+                           node_size=1200, linewidths=1.5)
+    nx.draw_networkx_edges(G, pos, edge_color='gray', arrows=True,
+                           arrowstyle='-|>', arrowsize=15)
+
+    # Düğüm etiketleri: kenarlarda hamle yazacak, düğümlerin içine kısa bilgi
+    # Düğüm etiketi olarak sadece taraf simgesi koyalım
+    labels = {}
+    for node, data in G.nodes(data=True):
+        if node == "Başlangıç":
+            labels[node] = "♟️"
+        else:
+            side = data.get('side', '')
+            labels[node] = "♔" if side == 'W' else "♚" if side == 'B' else "?"
+    nx.draw_networkx_labels(G, pos, labels=labels, font_size=12, font_weight='bold')
+
+    # Kenar etiketleri: hamle isimleri
+    edge_labels = {(u, v): d['label'] for u, v, d in G.edges(data=True)}
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels,
+                                 font_size=8, label_pos=0.5, rotate=False)
+
+    # Başlık ve lejant
+    plt.title("En Kısa Satranç Matları\n(Aptal Matı (Fool's Mate ('W', 'f3'), ('B', 'e5'), ('W', 'g4'), ('B', 'Qh4#'))\nÇoban Matı (Scholar's Mate ('W', 'e4'), ('B', 'e5'), ('W', 'Qh5'), ('B', 'Nc6'),('W', 'Bc4'), ('B', 'Nf6'), ('W', 'Qxf7#'))\nİki hamlede mat ('W', 'f4'), ('B', 'e6'), ('W', 'g4'), ('B', 'Qh4#')\nKeçeci Layout (Zigzag)", fontsize=14)
+    # Lejant
+    from matplotlib.patches import Patch
+    legend_elements = [
+        Patch(facecolor='white', edgecolor='gray', label='Beyaz (♔)'),
+        Patch(facecolor='black', edgecolor='gray', label='Siyah (♚)'),
+        Patch(facecolor='#cccccc', edgecolor='gray', label='Başlangıç')
+    ]
+    plt.legend(handles=legend_elements, loc='upper left')
+    plt.axis('off')
+    plt.tight_layout()
+    plt.show()
+
+def build_chess_shortest_games():
+    """
+    Aptal Matı, Çoban Matı ve iki hamlede mat varyantlarını içeren
+    yönlü oyun ağacı oluşturur.
+    """
+    games = [
+        ("Aptal Matı (Fool's Mate)", [
+            ('W', 'f3'), ('B', 'e5'), ('W', 'g4'), ('B', 'Qh4#')
+        ]),
+        ("Çoban Matı (Scholar's Mate)", [
+            ('W', 'e4'), ('B', 'e5'), ('W', 'Qh5'), ('B', 'Nc6'),
+            ('W', 'Bc4'), ('B', 'Nf6'), ('W', 'Qxf7#')
+        ]),
+        ("İki Hamlede Mat", [
+            ('W', 'f4'), ('B', 'e6'), ('W', 'g4'), ('B', 'Qh4#')
+        ]),
+    ]
+
+    G = nx.DiGraph()
+    root = "Başlangıç"
+    G.add_node(root, side='start')
+    color_map = {'W': '#ffffff', 'B': '#000000', 'start': '#cccccc'}
+    node_colors_dict = {root: color_map['start']}
+
+    for game_name, moves in games:
+        prev_node = root
+        move_num = 1
+        for side, move_san in moves:
+            node_id = f"{game_name}_{move_num}.{side}"
+            G.add_node(node_id, side=side)
+            edge_label = f"{move_num}.{move_san}" if side == 'W' else f"{move_num}...{move_san}"
+            G.add_edge(prev_node, node_id, label=edge_label)
+            node_colors_dict[node_id] = color_map[side]
+            prev_node = node_id
+            if side == 'B':
+                move_num += 1
+
+    return G, node_colors_dict
+
+def draw_chess_3d_kececi(layout_type='cylindrical'):
+    """
+    3B Keçeci Layout ile satranç kısa matlarını çizer.
+    layout_type: 'cylindrical', 'spherical' veya 'toric'
+    """
+    G, cdict = build_chess_shortest_games()
+    node_colors = [cdict[n] for n in G.nodes()]
+
+    # 3B pozisyonları hesapla
+    if layout_type == 'spherical':
+        pos = kececi_layout_spherical(G, radius=5)
+    elif layout_type == 'toric':
+        pos = kececi_layout_toric(G, major_radius=5, minor_radius=2)
+    else:  # varsayılan silindirik
+        pos = kececi_layout_cylindrical(G, radius=4, height=12)
+
+    # 3B çizim
+    fig = plt.figure(figsize=(14, 10))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Düğümleri çiz
+    for node, (x, y, z) in pos.items():
+        color = cdict[node]
+        edgecolor = 'black' if color == '#ffffff' else 'white'
+        ax.scatter(x, y, z, s=200, c=color, edgecolors=edgecolor, linewidths=2)
+        # Etiket (sadece sembol)
+        if node == "Başlangıç":
+            label = "♟️"
+        else:
+            side = G.nodes[node]['side']
+            label = "♔" if side == 'W' else "♚"
+        ax.text(x, y, z+0.3, label, fontsize=10, ha='center', color='black')
+
+    # Kenarları çiz
+    for u, v, data in G.edges(data=True):
+        ax.plot([pos[u][0], pos[v][0]],
+                [pos[u][1], pos[v][1]],
+                [pos[u][2], pos[v][2]], color='gray', alpha=0.7)
+        # Kenar orta noktasına hamle etiketini ekle
+        mid = np.array([(pos[u][i] + pos[v][i])/2 for i in range(3)])
+        ax.text(mid[0] + 0.1, mid[1] + 0.1, mid[2] + 0.1,
+                data['label'], fontsize=7, color='darkred')
+
+    # Başlık – önemli terimler hashtag'li
+    title = ("En Kısa #Satranç Matları #Chess\n"
+             "Aptal Matı (Fool's Mate) • Çoban Matı (Scholar's Mate) • İki Hamlede Mat\n"
+             f"3B Keçeci Layout: {layout_type.capitalize()}")
+    ax.set_title(title, fontsize=13, pad=20)
+    ax.set_axis_off()
+    ax.view_init(elev=25, azim=-60)
+    plt.tight_layout()
+    plt.show()
+
+# Menüden kolay çağırmak için üç varyant
+def draw_chess_3d_cylindrical():
+    draw_chess_3d_kececi('cylindrical')
+
+def draw_chess_3d_spherical():
+    draw_chess_3d_kececi('spherical')
+
+def draw_chess_3d_toric():
+    draw_chess_3d_kececi('toric')
+
+def build_chess_tree(board=None, depth=2, max_moves=30):
+    """
+    Python‑chess ile yasal hamleleri kullanarak oyun ağacı oluşturur.
+    Her düğüme 'path' özelliği eklenir (ör: "1.e4 1...e5").
+    """
+    if board is None:
+        board = chess.Board()
+
+    G = nx.DiGraph()
+    root_fen = board.fen()
+    G.add_node(root_fen, turn=board.turn, path="Başlangıç")
+
+    def _recurse(node_board, node_fen, current_depth, path_str):
+        if current_depth <= 0:
+            return
+        legal_moves = list(node_board.legal_moves)
+        if len(legal_moves) > max_moves:
+            legal_moves = legal_moves[:max_moves]
+        move_number = node_board.fullmove_number
+        for move in legal_moves:
+            child_board = node_board.copy()
+            child_board.push(move)
+            child_fen = child_board.fen()
+            move_san = node_board.san(move)
+            # Hamle numarası ve taraf
+            if node_board.turn == chess.WHITE:
+                move_text = f"{move_number}.{move_san}"
+            else:
+                move_text = f"{move_number}...{move_san}"
+
+            new_path = f"{path_str} {move_text}".strip()
+            G.add_node(child_fen, turn=child_board.turn, path=new_path)
+            G.add_edge(node_fen, child_fen, move=move_san)
+            _recurse(child_board, child_fen, current_depth - 1, new_path)
+
+    _recurse(board, root_fen, depth, "")
+    return G
+
+### 2B Zigzag (Büyük yazı, büyük düğüm)
+def draw_chess_engine_tree_2d(depth=2, max_moves=6):
+    G = build_chess_tree(depth=depth, max_moves=max_moves)
+    node_colors = ['#ffe0b2' if G.nodes[n]['turn'] == chess.WHITE else '#bbdefb' for n in G.nodes()]
+    labels = {n: G.nodes[n]['path'] for n in G.nodes()}
+
+    pos = kececi_layout_2d(
+        G, primary_direction='left-to-right',
+        secondary_start='up', expanding=True,
+        primary_spacing=2.5, secondary_spacing=1.5
+    )
+
+    plt.figure(figsize=(20, 14))
+    nx.draw_networkx_nodes(G, pos, node_color=node_colors,
+                           node_size=700, edgecolors='gray', linewidths=1.5)
+    nx.draw_networkx_edges(G, pos, edge_color='gray', width=1.2,
+                           arrows=True, arrowstyle='-|>', arrowsize=15)
+    nx.draw_networkx_labels(G, pos, labels=labels, font_size=7, font_weight='bold')
+
+    edge_labels = {(u, v): d['move'] for u, v, d in G.edges(data=True)}
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels,
+                                 font_size=6, label_pos=0.5, rotate=False)
+
+    plt.title(f"Satranç Oyun Ağacı – python‑chess (derinlik={depth})\n"
+              "#Satranç #Chess #Keçeci", fontsize=18, fontweight='bold')
+    from matplotlib.patches import Patch
+    legend = [Patch(facecolor='#ffe0b2', label='Beyaz'), Patch(facecolor='#bbdefb', label='Siyah')]
+    plt.legend(handles=legend, loc='upper left', fontsize=12)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.show()
+
+### 3B Silindirik / Küresel / Torik (Büyük, okunaklı)
+def draw_chess_engine_tree_3d(depth=2, layout_type='cylindrical', max_moves=6):
+    G = build_chess_tree(depth=depth, max_moves=max_moves)
+    colors = ['#ffe0b2' if G.nodes[n]['turn'] == chess.WHITE else '#bbdefb' for n in G.nodes()]
+    node_list = list(G.nodes())
+
+    if layout_type == 'spherical':
+        pos = kececi_layout_spherical(G, radius=7)
+    elif layout_type == 'toric':
+        pos = kececi_layout_toric(G, major_radius=7, minor_radius=3)
+    else:
+        pos = kececi_layout_cylindrical(G, radius=6, height=16)
+
+    fig = plt.figure(figsize=(18, 14))
+    ax = fig.add_subplot(111, projection='3d')
+
+    for node, (x, y, z) in pos.items():
+        idx = node_list.index(node)
+        ax.scatter(x, y, z, s=200, c=colors[idx], edgecolors='black', linewidths=0.5)
+        # Düğüm yanına path etiketi
+        path = G.nodes[node]['path']
+        ax.text(x, y, z + 0.5, path, fontsize=6, color='black', ha='center', va='bottom')
+
+    for u, v, data in G.edges(data=True):
+        ax.plot([pos[u][0], pos[v][0]], [pos[u][1], pos[v][1]], [pos[u][2], pos[v][2]],
+                color='gray', alpha=0.7, linewidth=1.2)
+        if 'move' in data:
+            mid = [(pos[u][i] + pos[v][i]) / 2 for i in range(3)]
+            ax.text(mid[0], mid[1], mid[2], data['move'], fontsize=5, color='darkred',
+                    ha='center', va='center')
+
+    ax.set_title(f"Satranç Oyun Ağacı – python‑chess 3D {layout_type}\n"
+                 "#Satranç #Chess #Keçeci", fontsize=16, fontweight='bold', pad=25)
+    ax.set_axis_off()
+    fig.subplots_adjust(left=0.02, right=0.98, top=0.92, bottom=0.02)
+    plt.show()
+
+# Menü için kısa fonksiyonlar
+def chess_engine_2d_demo(): draw_chess_engine_tree_2d(depth=2, max_moves=6)
+def chess_engine_3d_cyl_demo(): draw_chess_engine_tree_3d(depth=2, layout_type='cylindrical', max_moves=6)
+def chess_engine_3d_sph_demo(): draw_chess_engine_tree_3d(depth=2, layout_type='spherical', max_moves=6)
+def chess_engine_3d_tor_demo(): draw_chess_engine_tree_3d(depth=2, layout_type='toric', max_moves=6)
+
+def random_chess_opening_moves():
+    """
+    Beyazın 20 olası ilk hamlesini rastgele sırayla karıştırır ve
+    '(Nh3, Nf3, Nc3, Na3, h3, g3, f3, e3, d3, c3, b3, a3, h4, g4, f4, e4, d4, c4, b4, a4)'
+    formatında ekrana yazdırır. Her çalıştırmada farklı bir sıra gösterir.
+    """
+    moves = ["Nh3","Nf3","Nc3","Na3","h3","g3","f3","e3","d3","c3","b3","a3",
+             "h4","g4","f4","e4","d4","c4","b4","a4"]
+    random.shuffle(moves)
+    output = "(" + ", ".join(moves) + ")"
+    print(output)
+
+def thermodynamics_concept_map():
+    """
+    Termodinamiğin temel büyüklüklerini ve aralarındaki ilişkileri
+    Keçeci Layout (2B zigzag) ile görselleştirir.
+    """
+    G = nx.Graph()
+
+    # Düğüm bilgileri: kısaltma, Türkçe adı, türü
+    nodes_info = {
+        'P': ('Basınç', 'state'),
+        'V': ('Hacim', 'state'),
+        'T': ('Sıcaklık', 'state'),
+        'n': ('Mol Sayısı', 'state'),
+        'U': ('İç Enerji', 'energy'),
+        'H': ('Entalpi', 'energy'),
+        'S': ('Entropi', 'energy'),
+        'Q': ('Isı', 'process'),
+        'W': ('İş', 'process')
+    }
+    for node, (name, typ) in nodes_info.items():
+        G.add_node(node, label=name, type=typ)
+
+    # İlişkiler (denklem etiketleriyle birlikte)
+    edges = [
+        ('P', 'V', 'PV=nRT'),
+        ('V', 'T', 'PV=nRT'),
+        ('P', 'T', 'PV=nRT'),
+        ('n', 'P', 'PV=nRT'),
+        ('n', 'V', 'PV=nRT'),
+        ('n', 'T', 'PV=nRT'),
+        ('U', 'Q', 'ΔU=Q-W'),
+        ('U', 'W', 'ΔU=Q-W'),
+        ('S', 'Q', 'dS ≥ δQ/T'),
+        ('S', 'T', 'dS ≥ δQ/T'),
+        ('H', 'U', 'H = U + PV'),
+        ('H', 'P', 'H = U + PV'),
+        ('H', 'V', 'H = U + PV'),
+    ]
+    for u, v, label in edges:
+        G.add_edge(u, v, equation=label)
+
+    # Türlere göre renkler
+    type_color = {
+        'state': '#a6cee3',   # açık mavi – durum değişkenleri
+        'energy': '#b2df8a',  # açık yeşil – enerji büyüklükleri
+        'process': '#fb9a99'  # somon – süreç büyüklükleri
+    }
+    node_colors = [type_color[G.nodes[n]['type']] for n in G.nodes()]
+
+    # Düğüm etiketleri: sembol ve ad
+    labels = {n: f"{n}\n({G.nodes[n]['label']})" for n in G.nodes()}
+
+    # Keçeci Zigzag konumlandırması
+    pos = kececi_layout_2d(
+        G,
+        primary_direction='left-to-right',
+        secondary_start='up',
+        expanding=True,
+        primary_spacing=2.5,   # yatay boşluk
+        secondary_spacing=1.5  # dikey zigzag boşluğu
+    )
+
+    # Çizim
+    plt.figure(figsize=(16, 10))
+    nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=2500,
+                           edgecolors='black', linewidths=1.5)
+    nx.draw_networkx_labels(G, pos, labels=labels, font_size=10, font_weight='bold')
+    nx.draw_networkx_edges(G, pos, edge_color='gray', width=2)
+
+    # Kenar etiketlerini yalnızca denklem olanlara ekle
+    edge_labels = {(u, v): data['equation']
+                   for u, v, data in G.edges(data=True) if data.get('equation')}
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels,
+                                 font_size=9, rotate=False,
+                                 bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
+
+    plt.title("Termodinamik Kavram Haritası\nKeçeci Layout ile Fiziksel Model",
+              fontsize=18, fontweight='bold')
+
+    # Lejant
+    from matplotlib.patches import Patch
+    legend_elements = [
+        Patch(facecolor='#a6cee3', label='Durum Değişkenleri (P, V, T, n)'),
+        Patch(facecolor='#b2df8a', label='Enerji Büyüklükleri (U, H, S)'),
+        Patch(facecolor='#fb9a99', label='Süreç Büyüklükleri (Q, W)')
+    ]
+    plt.legend(handles=legend_elements, loc='lower left', fontsize=11)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.show()
+
+def quantum_mechanics_concept_map():
+    """
+    Kuantum mekaniğinin temel kavramlarını ve aralarındaki matematiksel/fiziksel ilişkileri,
+    Keçeci Layout (genişleyen zigzag) kullanarak renkli bir kavram haritası olarak çizer.
+    """
+    G = nx.Graph()
+
+    # Düğüm bilgileri: id, etiket, kategori
+    nodes = {
+        'psi': ('Dalga Fonksiyonu (ψ)', 'state'),
+        'sch_eq': ('Schrödinger Denklemi', 'equation'),
+        'hamiltonian': ('Hamiltonyen (Ĥ)', 'operator'),
+        'energy': ('Enerji Özdeğerleri (E_n)', 'observable'),
+        'superpos': ('Süperpozisyon', 'principle'),
+        'measure': ('Ölçüm', 'process'),
+        'uncertainty': ('Belirsizlik İlkesi', 'principle'),
+        'entangle': ('Dolanıklık', 'phenomenon'),
+        'operator': ('Operatörler', 'operator'),
+        'eigen': ('Özdurumlar', 'state'),
+    }
+
+    # Kategori renkleri
+    categories = {
+        'state':       '#a6cee3',   # açık mavi
+        'equation':    '#b2df8a',   # açık yeşil
+        'operator':    '#fb9a99',   # somon
+        'observable':  '#fdbf6f',   # açık turuncu
+        'principle':   '#cab2d6',   # lavanta
+        'process':     '#ffff99',   # açık sarı
+        'phenomenon':  '#ff7f00',   # turuncu
+    }
+
+    for nid, (name, cat) in nodes.items():
+        G.add_node(nid, label=name, category=cat)
+
+    # İlişkiler (kenar açıklamalarıyla birlikte)
+    edges = [
+        ('sch_eq', 'psi', 'iħ ∂ψ/∂t = Ĥψ'),
+        ('sch_eq', 'hamiltonian', 'Ĥ = T + V'),
+        ('hamiltonian', 'energy', 'Ĥψ_n = E_n ψ_n'),
+        ('psi', 'superpos', 'Doğrusal Birleşim'),
+        ('superpos', 'measure', 'Dalga Fonksiyonu Çökmesi'),
+        ('measure', 'uncertainty', 'Δx·Δp ≥ ħ/2'),
+        ('psi', 'eigen', 'Özdurum Bazı'),
+        ('operator', 'hamiltonian', 'Enerji Operatörü'),
+        ('operator', 'measure', 'Gözlenebilir Ölçümü'),
+        ('superpos', 'entangle', 'Dolanık Durumlar'),
+        ('eigen', 'energy', 'Ayrık Tayf'),
+        ('entangle', 'measure', 'Bell Eşitsizliği'),
+    ]
+    for u, v, desc in edges:
+        G.add_edge(u, v, description=desc)
+
+    # Renk listesi ve etiketler
+    node_colors = [categories[G.nodes[n]['category']] for n in G.nodes()]
+    labels = {n: G.nodes[n]['label'] for n in G.nodes()}
+
+    # Keçeci Layout pozisyonları
+    pos = kececi_layout_2d(
+        G,
+        primary_direction='left-to-right',
+        secondary_start='up',
+        expanding=True,
+        primary_spacing=2.8,
+        secondary_spacing=1.8
+    )
+
+    # Çizim
+    plt.figure(figsize=(18, 12))
+    nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=2500,
+                           edgecolors='black', linewidths=2.5)
+    nx.draw_networkx_labels(G, pos, labels=labels, font_size=14, font_weight='bold')
+    nx.draw_networkx_edges(G, pos, edge_color='gray', width=3.5)
+
+    # Kenar etiketleri – fontu büyütüldü, arka plan hafifletildi
+    edge_labels = {(u, v): data['description'] for u, v, data in G.edges(data=True)}
+    nx.draw_networkx_edge_labels(
+        G, pos, edge_labels=edge_labels,
+        font_size=11,                      # daha büyük yazı
+        label_pos=0.5,
+        bbox=dict(boxstyle='round,pad=0.3',
+                  facecolor='white',       # beyaz arka plan
+                  alpha=0.65,              # daha transparan
+                  edgecolor='none')        # kenar çizgisi olmasın
+    )
+
+    plt.title("Kuantum Mekaniği Kavram Haritası\nKeçeci Layout", fontsize=20, fontweight='bold')
+
+    # Lejant
+    from matplotlib.patches import Patch
+    legend_elements = [Patch(facecolor=color, label=cat) for cat, color in categories.items()]
+    plt.legend(handles=legend_elements, loc='lower right', fontsize=14)
+
+    plt.axis('off')
+    plt.tight_layout()
+    plt.show()
+"""
+def quantum_field_theory_concept_map():
+    
+    Kuantum Alan Teorisi (QFT) kavram haritası – Keçeci Layout,
+    çakışan düğüm/kenar etiketleri düzeltilmiştir.
+
+    G = nx.Graph()
+
+    # Düğümler: (id, (etiket, kategori))
+    # Uzun etiketler iki satıra bölündü → \n eklenerek okunurluk arttı.
+    nodes = {
+        'field':       ('Alan Operatörü\nφ(x)', 'field'),
+        'lagrangian':  ('Lagranjiyen\nYoğunluğu ℒ', 'equation'),
+        'euler':       ('Euler‑Lagrange\nDenklemleri', 'equation'),
+        'quantization':('Kanonik\nKuantizasyon', 'method'),
+        'feynman':     ('Feynman\nDiyagramları', 'method'),
+        'propagator':  ('Feynman\nPropagatörü Δ_F', 'observable'),
+        'vacuum':      ('Vakum\nDalgalanmaları', 'phenomenon'),
+        'gauge':       ('Ayar Teorisi\nU(1), SU(2), SU(3)', 'theory'),
+        'renorm':      ('Renormalizasyon', 'method'),
+        'scattering':  ('Saçılma\nMatrisi (S)', 'observable'),
+    }
+
+    categories = {
+        'field':       '#a6cee3',
+        'equation':    '#b2df8a',
+        'method':      '#fb9a99',
+        'observable':  '#fdbf6f',
+        'phenomenon':  '#cab2d6',
+        'theory':      '#ffff99',
+    }
+
+    for nid, (label, cat) in nodes.items():
+        G.add_node(nid, label=label, category=cat)
+
+    edges = [
+        ('lagrangian', 'field', 'ℒ(φ, ∂_μφ)'),
+        ('lagrangian', 'euler', 'δS/δφ = 0'),
+        ('euler', 'field', '∂_μ ∂^μφ + m²φ = 0'),
+        ('field', 'quantization', '    [φ(x), π(y)] = iħ δ³(x-y)'),
+        ('quantization', 'propagator', 'Δ_F(x-y) = ⟨0|T φ(x)φ(y)|0⟩'),
+        ('propagator', 'feynman', 'Diyagram Kuralları'),
+        ('feynman', 'scattering', '    S = T exp(-i∫ ℋ_int d⁴x)'),
+        ('vacuum', 'field', 'Vakum Beklenen Değeri'),
+        ('quantization', 'vacuum', 'Sıfır Noktası Enerjisi'),
+        ('gauge', 'field', 'A_μ(x) → A_μ(x) + ∂_μ α(x)'),
+        ('gauge', 'renorm', 'β(g) = μ ∂g/∂μ'),
+        ('renorm', 'propagator', 'Karşıt Terimler'),
+        ('scattering', 'renorm', 'Sonlu Genlikler'),
+    ]
+    for u, v, desc in edges:
+        G.add_edge(u, v, description=desc)
+
+    node_colors = [categories[G.nodes[n]['category']] for n in G.nodes()]
+    labels = {n: G.nodes[n]['label'] for n in G.nodes()}
+
+    # Keçeci Layout
+    pos = kececi_layout_2d(
+        G,
+        primary_direction='left-to-right',
+        secondary_start='up',
+        expanding=True,
+        primary_spacing=3.0,
+        secondary_spacing=2.0
+    )
+
+    # Çakışan düğümleri hafifçe kaydır (lagrangian, propagator, gauge)
+    shift_nodes = {
+        'lagrangian': (0, -0.15),
+        'propagator': (0, 0.15),
+        'gauge': (0, -0.15),
+    }
+    for node, (dx, dy) in shift_nodes.items():
+        if node in pos:
+            x, y = pos[node]
+            pos[node] = (x, y + dy)
+
+    plt.figure(figsize=(18, 12))
+    nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=2500,
+                           edgecolors='black', linewidths=2.5)
+    nx.draw_networkx_labels(G, pos, labels=labels, font_size=12, font_weight='bold')
+    nx.draw_networkx_edges(G, pos, edge_color='gray', width=3)
+
+    # Kenar etiketleri: label_pos 0.65 (ortadan biraz uzak)
+    edge_labels = {(u, v): data['description'] for u, v, data in G.edges(data=True)}
+    nx.draw_networkx_edge_labels(
+        G, pos, edge_labels=edge_labels,
+        font_size=10, label_pos=0.65, rotate=False,
+        bbox=dict(boxstyle='round,pad=0.3', facecolor='white',
+                  alpha=0.75, edgecolor='none')
+    )
+
+    plt.title("Kuantum Alan Teorisi (QFT) Kavram Haritası\nKeçeci Layout",
+              fontsize=18, fontweight='bold')
+    from matplotlib.patches import Patch
+    legend_elements = [Patch(facecolor=color, label=cat) for cat, color in categories.items()]
+    plt.legend(handles=legend_elements, loc='lower right', fontsize=12)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.show()
+"""
+
+"""
+def quantum_field_theory_concept_map():
+    #Kuantum Alan Teorisi (QFT) Kavram Haritası – Keçeci Layout (curved kenarlar)
+
+    G = nx.Graph()
+
+    nodes = {
+        'field': ('Alan Operatörü\nφ(x)', 'field'),
+        'lagrangian': ('Lagranjiyen\nYoğunluğu ℒ', 'equation'),
+        'euler': ('Euler‑Lagrange\nDenklemleri', 'equation'),
+        'quantization': ('Kanonik\nKuantizasyon', 'method'),
+        'feynman': ('Feynman\nDiyagramları', 'method'),
+        'propagator': ('Feynman\nPropagatörü Δ_F', 'observable'),
+        'vacuum': ('Vakum\nDalgalanmaları', 'phenomenon'),
+        'gauge': ('Ayar Teorisi\nU(1), SU(2), SU(3)', 'theory'),
+        'renorm': ('Renormalizasyon', 'method'),
+        'scattering': ('Saçılma\nMatrisi (S)', 'observable'),
+    }
+
+    categories = {
+        'field': '#a6cee3', 'equation': '#b2df8a', 'method': '#fb9a99',
+        'observable': '#fdbf6f', 'phenomenon': '#cab2d6', 'theory': '#ffff99',
+    }
+
+    for nid, (label, cat) in nodes.items():
+        G.add_node(nid, label=label, category=cat)
+
+    edges = [
+        ('lagrangian', 'field', 'ℒ(φ, ∂_μφ)'),
+        ('lagrangian', 'euler', '                                                                         δS/δφ = 0'),
+        ('euler', 'field', '        ∂_μ ∂^μφ + m²φ = 0'),
+        ('field', 'quantization', '                                                       [φ(x), π(y)] = iħ δ³(x-y)'),
+        ('quantization', 'propagator', 'Δ_F(x-y) = ⟨0|T φ(x)φ(y)|0⟩'),
+        ('propagator', 'feynman', '                                 Diyagram Kuralları'),
+        ('feynman', 'scattering', '                S = T exp(-i∫ ℋ_int d⁴x)'),
+        ('vacuum', 'field', 'Vakum Beklenen Değeri'),
+        ('quantization', 'vacuum', 'Sıfır Noktası Enerjisi'),
+        ('gauge', 'field', 'A_μ(x) → A_μ(x) + ∂_μ α(x)'),
+        ('gauge', 'renorm', '                                    β(g) = μ ∂g/∂μ'),
+        ('renorm', 'propagator', 'Karşıt Terimler'),
+        ('scattering', 'renorm', 'Sonlu Genlikler'),
+    ]
+    for u, v, desc in edges:
+        G.add_edge(u, v, description=desc)
+
+    # Renk ve etiket listeleri
+    node_colors = [categories[G.nodes[n]['category']] for n in G.nodes()]
+    labels = {n: G.nodes[n]['label'] for n in G.nodes()}
+
+    # Keçeci Layout pozisyonları (yatay zigzag)
+    pos = kececi_layout_2d(G,
+                           primary_direction='left-to-right',
+                           secondary_start='up',
+                           expanding=True,
+                           primary_spacing=6.5,
+                           secondary_spacing=3.0)
+
+    # Çakışma riski olan düğümleri hafifçe kaydır
+    shift = {'lagrangian': (0, -0.15), 'propagator': (0, 0.15), 'gauge': (0, -0.15)}
+    for node, (dx, dy) in shift.items():
+        if node in pos:
+            pos[node] = (pos[node][0], pos[node][1] + dy)
+
+    # ------ draw_kececi ile çizim (curved stil) ------
+    ax = draw_kececi(G, pos=pos, style='curved', with_labels=False,
+                     node_color=node_colors, node_size=2500,
+                     edge_color='gray', edge_width=2.5)
+
+    # Düğüm etiketleri
+    nx.draw_networkx_labels(G, pos, labels=labels,
+                            font_size=12, font_weight='bold')
+
+    # Kenar etiketleri (denklemler)
+    edge_labels = {(u, v): data['description'] for u, v, data in G.edges(data=True)}
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels,
+                                 font_size=10, label_pos=0.6, rotate=False,
+                                 bbox=dict(boxstyle='round,pad=0.3',
+                                           facecolor='white', alpha=0.8,
+                                           edgecolor='none'))
+
+    # Başlık ve açıklama kutusu
+    ax.set_title("Kuantum Alan Teorisi (QFT) Kavram Haritası\n"
+                 "Keçeci Layout (curved)", fontsize=18, fontweight='bold')
+
+    from matplotlib.patches import Patch
+    legend_elements = [Patch(facecolor=color, label=cat) for cat, color in categories.items()]
+    ax.legend(handles=legend_elements, loc='lower left', fontsize=12)
+
+    plt.tight_layout()
+    plt.show()
+"""
+def quantum_field_theory_concept_map():
+    """Kuantum Alan Teorisi (QFT) Kavram Haritası – Keçeci Layout (curved kenarlar)"""
+
+    G = nx.Graph()
+
+    nodes = {
+        'field':        ('Alan Operatörü\nφ(x)', 'field'),
+        'lagrangian':   ('Lagranjiyen\nYoğunluğu ℒ', 'equation'),
+        'euler':        ('Euler‑Lagrange\nDenklemleri', 'equation'),
+        'quantization': ('Kanonik\nKuantizasyon', 'method'),
+        'feynman':      ('Feynman\nDiyagramları', 'method'),
+        'propagator':   ('Feynman\nPropagatörü Δ_F', 'observable'),
+        'vacuum':       ('Vakum\nDalgalanmaları', 'phenomenon'),
+        'gauge':        ('Ayar Teorisi\nU(1), SU(2), SU(3)', 'theory'),
+        'renorm':       ('Renormalizasyon', 'method'),
+        'scattering':   ('Saçılma\nMatrisi (S)', 'observable'),
+    }
+
+    categories = {
+        'field':       '#a6cee3',
+        'equation':    '#b2df8a',
+        'method':      '#fb9a99',
+        'observable':  '#fdbf6f',
+        'phenomenon':  '#cab2d6',
+        'theory':      '#ffff99',
+    }
+
+    for nid, (label, cat) in nodes.items():
+        G.add_node(nid, label=label, category=cat)
+
+    edges = [
+        ('lagrangian', 'field',        'ℒ(φ, ∂_μφ)'),
+        ('lagrangian', 'euler',        'δS/δφ = 0'),
+        ('euler', 'field',             '∂_μ ∂^μφ + m²φ = 0'),
+        ('field', 'quantization',      '[φ(x), π(y)] = iħ δ³(x-y)'),
+        ('quantization', 'propagator', 'Δ_F(x-y) = ⟨0|T φ(x)φ(y)|0⟩'),
+        ('propagator', 'feynman',      'Diyagram Kuralları'),
+        ('feynman', 'scattering',      'S = T exp(-i∫ ℋ_int d⁴x)'),
+        ('vacuum', 'field',            'Vakum Beklenen Değeri'),
+        ('quantization', 'vacuum',     'Sıfır Noktası Enerjisi'),
+        ('gauge', 'field',             'A_μ(x) → A_μ(x) + ∂_μ α(x)'),
+        ('gauge', 'renorm',            'β(g) = μ ∂g/∂μ'),
+        ('renorm', 'propagator',       'Karşıt Terimler'),
+        ('scattering', 'renorm',       'Sonlu Genlikler'),
+    ]
+    for u, v, desc in edges:
+        G.add_edge(u, v, description=desc)
+
+    node_colors = [categories[G.nodes[n]['category']] for n in G.nodes()]
+    labels = {n: G.nodes[n]['label'] for n in G.nodes()}
+
+    # Keçeci Layout: geniş aralıklar
+    pos = kececi_layout_2d(
+        G,
+        primary_direction='left-to-right',
+        secondary_start='up',
+        expanding=True,
+        primary_spacing=4.5,      # yatay boşluk – ferah
+        secondary_spacing=2.5     # dikey zigzag boşluğu
+    )
+
+    # Çakışma riskli düğümleri hafifçe kaydır (öncekiyle aynı)
+    shift = {
+        'lagrangian': (0, -0.2),
+        'propagator': (0,  0.2),
+        'gauge':      (0, -0.2),
+    }
+    for node, (dx, dy) in shift.items():
+        if node in pos:
+            pos[node] = (pos[node][0], pos[node][1] + dy)
+
+    # draw_kececi ile çizim – curved stil
+    ax = draw_kececi(
+        G, pos=pos, style='curved', with_labels=False,
+        node_color=node_colors, node_size=600,   # biraz daha ufak, temiz
+        edge_color='gray', edge_width=2.5
+    )
+
+    # Düğüm etiketleri
+    nx.draw_networkx_labels(
+        G, pos, labels=labels,
+        font_size=11, font_weight='bold'
+    )
+
+    # Kenar etiketleri – label_pos = 0.7 ile düğümlerden uzaklaştırıldı
+    edge_labels = {(u, v): data['description'] for u, v, data in G.edges(data=True)}
+    nx.draw_networkx_edge_labels(
+        G, pos, edge_labels=edge_labels,
+        font_size=11, label_pos=0.7, rotate=False,
+        bbox=dict(boxstyle='round,pad=0.3',
+                  facecolor='white', alpha=0.85, edgecolor='none')
+    )
+
+    ax.set_title("Kuantum Alan Teorisi (QFT) Kavram Haritası\n"
+                 "Keçeci Layout (curved)", fontsize=18, fontweight='bold')
+
+    from matplotlib.patches import Patch
+    legend_elements = [Patch(facecolor=color, label=cat) for cat, color in categories.items()]
+    ax.legend(handles=legend_elements, loc='lower left', fontsize=12)
+
+    plt.tight_layout()
+    plt.show()
+
+def show_menu():
+    """
+    KEÇECİ Layout Menüsü – Tüm fonksiyonlar eksiksiz, ardışık numaralar, 
+    grafikler otomatik gösterilir.
+    """
+    # -------------------------------------------------------------------------
+    # Yardımcılar
+    # -------------------------------------------------------------------------
+    def _test_graph_nx(n=15, p=0.25):
+        """Bağlı rastgele graf oluşturur."""
+        for _ in range(100):
+            G = nx.gnp_random_graph(n, p, seed=random.randint(1, 9999))
+            if nx.is_connected(G):
+                return G
+        return nx.path_graph(n)
+
+    def _draw_curved(G, primary_direction='left-to-right', secondary_start='up', expanding=True):
+        pos = kececi_layout(G, primary_direction=primary_direction,
+                            secondary_start=secondary_start, expanding=expanding)
+        plt.figure(figsize=(10, 8))
+        nx.draw(G, pos, with_labels=True, node_color='#1f78b4', node_size=700,
+                font_color='white', connectionstyle='arc3,rad=0.2', arrows=True)
+        plt.title("Keçeci Curved Style")
+        plt.show()
+
+    def _draw_transparent(G, primary_direction='top_down', secondary_start='right', expanding=True):
+        pos = kececi_layout(G, primary_direction=primary_direction,
+                            secondary_start=secondary_start, expanding=expanding)
+        plt.figure(figsize=(10, 8))
+        nx.draw_networkx_nodes(G, pos, node_color='#2ca02c', node_size=700)
+        nx.draw_networkx_labels(G, pos, font_color='white')
+        edge_lengths = {e: np.linalg.norm(np.array(pos[e[0]]) - np.array(pos[e[1]]))
+                        for e in G.edges()}
+        max_len = max(edge_lengths.values()) if edge_lengths else 1.0
+        for edge, length in edge_lengths.items():
+            alpha = 0.15 + 0.85 * (1 - length / max_len)
+            nx.draw_networkx_edges(G, pos, edgelist=[edge], width=1.5,
+                                   edge_color='black', alpha=alpha)
+        plt.title("Keçeci Transparent Style")
+        plt.show()
+
+    def _draw_3d_helix(G):
+        pos = _kececi_layout_3d_helix(G)
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(111, projection='3d')
+        for node, (x, y, z) in pos.items():
+            ax.scatter([x], [y], [z], s=200, c='#d62728', depthshade=True)
+            ax.text(x, y, z, f'  {node}', size=10, zorder=1, color='k')
+        for u, v in G.edges():
+            coords = np.array([pos[u], pos[v]])
+            ax.plot(coords[:, 0], coords[:, 1], coords[:, 2], color='gray', alpha=0.8)
+        ax.set_title("Keçeci 3D Helix")
+        ax.set_axis_off()
+        ax.view_init(elev=20, azim=-60)
+        plt.show()
+
+    def _draw_3d_generic(G, pos, title):
+        fig = plt.figure(figsize=(10,8))
+        ax = fig.add_subplot(111, projection='3d')
+        for node, (x,y,z) in pos.items():
+            ax.scatter(x,y,z, s=100, c='orange')
+            ax.text(x,y,z, str(node), size=8)
+        for u,v in G.edges():
+            ax.plot([pos[u][0],pos[v][0]], [pos[u][1],pos[v][1]], [pos[u][2],pos[v][2]],
+                    color='gray', alpha=0.5)
+        ax.set_title(title)
+        ax.set_axis_off()
+        plt.show()
+
+    # -------------------------------------------------------------------------
+    # Demo fonksiyonları (menü içinde kullanılan)
+    # -------------------------------------------------------------------------
+    def _edge_aware_demo():
+        G = nx.complete_bipartite_graph(3, 3)
+        for i in range(6, 12):
+            G.add_node(i)
+            if i % 2 == 0: G.add_edge(i, i-1)
+            else: G.add_edge(i, i-2)
+        pos_basic = kececi_layout_edge(G, edge=False)
+        pos_aware = kececi_layout_edge(G, edge=True)
+        edges = list(G.edges())
+        cb, ca = count_edge_crossings(pos_basic, edges), count_edge_crossings(pos_aware, edges)
+        lb, la = avg_edge_length(pos_basic, edges), avg_edge_length(pos_aware, edges)
+        print(f"Basic   | crossings={cb}, avg_length={lb:.3f}")
+        print(f"EdgeAware | crossings={ca}, avg_length={la:.3f}")
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12,5))
+        nx.draw(G, pos_basic, ax=ax1, with_labels=True, node_color='lightblue')
+        ax1.set_title("Basic Layout")
+        nx.draw(G, pos_aware, ax=ax2, with_labels=True, node_color='lightgreen')
+        ax2.set_title("Edge‑Aware Layout")
+        plt.show()
+
+    def _bayesian_demo():
+        opt = KececiBayesianOptimizer()
+        graphs = opt.generate_test_suite(8)
+        history = opt.optimize_kececi_bayes(graphs, n_iters=15)
+        opt.visualize_bayesian_learning(history)
+
+    def _barbell_demo():
+        G = nx.barbell_graph(5, 2)
+        pos = kececi_barbell_layout(G, debug=True)
+        draw_kececi(G, pos=pos)
+        plt.show()   # <-- EKLENDİ
+
+    def _expanding_demo():
+        G = _test_graph_nx(12, 0.3)
+        fig, (ax1, ax2) = plt.subplots(1,2, figsize=(14,6))
+        pos1 = kececi_layout_2d(G, expanding=True, primary_direction='left-to-right')
+        nx.draw(G, pos1, ax=ax1, with_labels=True, node_color='lightblue')
+        ax1.set_title("expanding=True")
+        pos2 = kececi_layout_2d(G, expanding=False, primary_direction='left-to-right')
+        nx.draw(G, pos2, ax=ax2, with_labels=True, node_color='lightgreen')
+        ax2.set_title("expanding=False (paralel)")
+        plt.show()
+
+    def _direction_demo():
+        G = _test_graph_nx(10, 0.3)
+        directions = ['top_down', 'bottom_up', 'left-to-right', 'right-to-left']
+        starts = ['right', 'left', 'up', 'down']
+        fig, axes = plt.subplots(2,2, figsize=(12,10))
+        for ax, d, s in zip(axes.flat, directions, starts):
+            pos = kececi_layout_2d(G, primary_direction=d, secondary_start=s)
+            nx.draw(G, pos, ax=ax, with_labels=True, node_size=300)
+            ax.set_title(f"{d}\nsecondary_start={s}")
+        plt.tight_layout()
+        plt.show()
+
+    def _secondary_start_demo():
+        G = _test_graph_nx(10, 0.3)
+        fig, (ax1, ax2) = plt.subplots(1,2, figsize=(12,5))
+        pos1 = kececi_layout_2d(G, primary_direction='top_down', secondary_start='left')
+        nx.draw(G, pos1, ax=ax1, with_labels=True, node_color='lightblue')
+        ax1.set_title("secondary_start='left'")
+        pos2 = kececi_layout_2d(G, primary_direction='top_down', secondary_start='right')
+        nx.draw(G, pos2, ax=ax2, with_labels=True, node_color='lightgreen')
+        ax2.set_title("secondary_start='right'")
+        plt.show()
+
+    def _spacing_demo():
+        G = _test_graph_nx(10, 0.3)
+        params = [(1.0,1.0), (2.0,0.5), (0.5,2.0)]
+        fig, axes = plt.subplots(1,3, figsize=(15,5))
+        for ax, (ps, ss) in zip(axes, params):
+            pos = kececi_layout_2d(G, primary_spacing=ps, secondary_spacing=ss)
+            nx.draw(G, pos, ax=ax, with_labels=True, node_size=300)
+            ax.set_title(f"ps={ps}, ss={ss}")
+        plt.tight_layout()
+        plt.show()
+
+    def _helix_param_demo():
+        G = nx.path_graph(20)
+        combos = [(3,10), (5,10), (5,15)]
+        for r, h in combos:
+            pos = kececi_layout_cylindrical(G, radius=r, height=h)
+            fig = plt.figure(figsize=(8,6))
+            ax = fig.add_subplot(111, projection='3d')
+            for node, (x,y,z) in pos.items():
+                ax.scatter(x,y,z, s=50)
+                ax.text(x,y,z, str(node), size=8)
+            for u,v in G.edges():
+                ax.plot([pos[u][0],pos[v][0]], [pos[u][1],pos[v][1]], [pos[u][2],pos[v][2]],
+                        color='gray', alpha=0.5)
+            ax.set_title(f"Cylindrical: r={r}, h={h}")
+            ax.set_axis_off()
+            plt.show()
+
+    def _cylindrical_demo():
+        G = _test_graph_nx(15, 0.2)
+        pos = kececi_layout_cylindrical(G, radius=5, height=10)
+        _draw_3d_generic(G, pos, "Silindirik Layout")  # içinde plt.show() var
+
+    def _cubic_demo():
+        G = _test_graph_nx(27, 0.15)
+        pos = kececi_layout_cubic(G, size=3)
+        _draw_3d_generic(G, pos, "Kübik Layout")
+
+    def _spherical_demo():
+        G = _test_graph_nx(20, 0.2)
+        pos = kececi_layout_spherical(G, radius=5)
+        _draw_3d_generic(G, pos, "Küresel Layout")
+
+    def _elliptical_demo():
+        G = _test_graph_nx(15, 0.2)
+        pos = kececi_layout_elliptical(G, a=5, b=3)
+        plt.figure(figsize=(8,8))
+        nx.draw(G, pos, with_labels=True, node_color='gold', edge_color='gray')
+        plt.title("Eliptik Layout")
+        plt.axis('equal')
+        plt.show()
+
+    def _toric_demo():
+        G = _test_graph_nx(20, 0.2)
+        pos = kececi_layout_toric(G, major_radius=5, minor_radius=2)
+        _draw_3d_generic(G, pos, "Torik Layout")
+
+    def _element_info():
+        sym = input("Element sembolü girin (örn: Fe): ").strip()
+        try:
+            info = get_element_info(sym)
+            for k,v in info.items():
+                print(f"{k}: {v}")
+        except Exception as e:
+            print(f"Hata: {e}")
+
+    def _layout_comparison():
+        G = _test_graph_nx(12, 0.3)
+        pos_k = kececi_layout_2d(G, primary_direction='left-to-right', secondary_start='up', expanding=True)
+        pos_kk = nx.kamada_kawai_layout(G)
+        fig, (ax1, ax2) = plt.subplots(1,2, figsize=(14,6))
+        nx.draw(G, pos_k, ax=ax1, with_labels=True, node_color='lightblue')
+        ax1.set_title("Keçeci 2D")
+        nx.draw(G, pos_kk, ax=ax2, with_labels=True, node_color='salmon')
+        ax2.set_title("Kamada‑Kawai")
+        plt.show()
+
+    def _igraph_test():
+        if ig is None:
+            print("igraph kütüphanesi yüklü değil. pip install igraph")
+            return
+        g = ig.Graph.Erdos_Renyi(n=12, p=0.3)
+        pos_list = kececi_layout_ig(g, primary_direction='left-to-right', secondary_start='up')
+        layout = {i: (x,y) for i,(x,y) in enumerate(pos_list)}
+        nx_g = nx.Graph()
+        nx_g.add_nodes_from(range(g.vcount()))
+        nx_g.add_edges_from(g.get_edgelist())
+        plt.figure(figsize=(8,6))
+        nx.draw(nx_g, pos=layout, with_labels=True, node_color='lightblue')
+        plt.title("igraph Graph (Keçeci Layout)")
+        plt.show()
+
+    def _rustworkx_test():
+        if rx is None:
+            print("rustworkx kütüphanesi yüklü değil. pip install rustworkx")
+            return
+        g = generate_random_rx_graph(8, 12, 0.2, 0.4)
+        nx_g = to_networkx(g)
+        draw_kececi(nx_g, layout='2d')
+        plt.show()   # <-- EKLENDİ
+
+    def _networkit_test():
+        if nk is None:
+            print("networkit kütüphanesi yüklü değil. pip install networkit")
+            return
+        G = nk.generators.ErdosRenyiGenerator(12, 0.3, directed=False).generate()
+        nx_g = to_networkx(G)
+        draw_kececi(nx_g, layout='2d')
+        plt.show()   # <-- EKLENDİ
+
+    def _graphillion_test():
+        if gg is None:
+            print("graphillion kütüphanesi yüklü değil.")
+            return
+        universe = [(1, 2), (2, 3), (3, 1), (2, 4)]
+        gg.GraphSet.set_universe(universe)
+        gs = gg.GraphSet()
+        pos = kececi_layout_gg(gs)
+        G_nx = nx.Graph()
+        G_nx.add_edges_from(universe)
+        for u, v in universe:
+            G_nx.add_node(u)
+            G_nx.add_node(v)
+        plt.figure(figsize=(6,6))
+        nx.draw(G_nx, pos, with_labels=True, node_color='lightblue')
+        plt.title("Graphillion Universe (Keçeci Layout)")
+        plt.show()
+
+    def _graphtool_test():
+        if gt is None:
+            print("graph‑tool kütüphanesi yüklü değil veya bu platformda desteklenmiyor.")
+            return
+        g = gt.collection.data["karate"]
+        pos = kececi_layout_gt(g)
+        nx_g = to_networkx(g)
+        plt.figure(figsize=(8,6))
+        nx.draw(nx_g, pos, with_labels=True, node_color='lightblue')
+        plt.title("graph‑tool Graph (Keçeci Layout)")
+        plt.show()
+
+    def _pure_node_demo():
+        nodes = list(range(7))
+        pos = kececi_layout_pure(nodes, primary_direction='left-to-right', secondary_start='up', expanding=True)
+        plt.figure(figsize=(8,6))
+        G = nx.path_graph(7)
+        nx.draw(G, pos, with_labels=True, node_color='lightblue')
+        plt.title("Pure Node List Layout")
+        plt.show()
+
+    def _zz_score_demo():
+        G = _test_graph_nx(20, 0.15)
+        pos = kececi_layout(G, primary_direction='left-to-right', secondary_start='up', expanding=True)
+        res = KececiZigzagValidator().champion_zz_score(G, pos)
+        print("ZZ Score Metrics:")
+        for k,v in res.items():
+            if isinstance(v, float):
+                print(f"  {k}: {v:.4f}")
+            else:
+                print(f"  {k}: {v}")
+        plt.figure(figsize=(8,6))
+        nx.draw(G, pos, with_labels=True, node_color='lightblue')
+        plt.title(f"ZZ Score = {res['zz_score']:.3f}")
+        plt.show()
+
+    def _edge_crossing_demo():
+        G = nx.complete_bipartite_graph(3,3)
+        pos = kececi_layout_edge(G, edge=True)
+        crossings = count_edge_crossings(pos, G.edges())
+        print(f"K(33) edge crossings (edge‑aware): {crossings}")
+        plt.figure(figsize=(6,6))
+        nx.draw(G, pos, with_labels=True, node_color='lightgreen')
+        plt.title(f"Edge crossings = {crossings}")
+        plt.show()
+
+    def _style_gallery():
+        G = _test_graph_nx(10, 0.3)
+        tasks = [
+            lambda: _draw_curved(G),
+            lambda: _draw_transparent(G),
+            lambda: (draw_kececi(G, style='default', layout='2d'), plt.show()),
+            lambda: (draw_kececi(G, style='weighted', layout='2d'), plt.show()),
+            lambda: (draw_kececi(G, style='colored', layout='2d'), plt.show()),
+            lambda: _draw_3d_helix(G),
+        ]
+        for fn in tasks:
+            fn()
+            input("Devam etmek için Enter...")
+
+    # -------------------------------------------------------------------------
+    # Menü tanımları (1‑38) – draw_kececi kullananlara plt.show() eklendi
+    # -------------------------------------------------------------------------
+    def _show_after_draw(fn, *args, **kwargs):
+        fn(*args, **kwargs)
+        plt.show()
+
+    menu = {
+        "1": ("Curved Style", lambda: _draw_curved(_test_graph_nx(10, 0.3))),
+        "2": ("Standart 2D Layout", lambda: (draw_kececi(_test_graph_nx(12, 0.25), style='default', layout='2d'), plt.show())),
+        "3": ("Transparent Kenarlar", lambda: _draw_transparent(_test_graph_nx(15, 0.2))),
+        "4": ("Ağırlıklı Keçeci (Weighted)", lambda: (draw_kececi(_test_graph_nx(8, 0.5), style='weighted', layout='2d'), plt.show())),
+        "5": ("Renkli Düğümler (Colored)", lambda: (draw_kececi(_test_graph_nx(14, 0.3), style='colored', layout='2d'), plt.show())),
+        "6": ("3D Heliks Görünümü", lambda: _draw_3d_helix(_test_graph_nx(12, 0.25))),
+        "7": ("Edge‑Aware vs Basic Karşılaştırması", _edge_aware_demo),
+        "8": ("ZZ Şampiyon Testi", lambda: KececiZigzagValidator().final_champion_test()),
+        "9": ("Bayesian Optimizasyon Demosu", _bayesian_demo),
+        "10": ("expanding=True vs False", _expanding_demo),
+        "11": ("primary_direction Çeşitleri", _direction_demo),
+        "12": ("secondary_start & Aralık Etkisi", _secondary_start_demo),
+        "13": ("Hızlı 3D Periyodik Tablo", lambda: quick_periodic_table_3d()),
+        "14": ("4'lü Karşılaştırma Figürü", lambda: generate_comparison_figure()),
+        "15": ("Demo Serisi (Otomatik)", lambda: demo_periodic_table_visualizations()),
+        "16": ("Özelleştirilmiş Tablo", lambda: custom_visualization()),
+        "17": ("Element Vurgulama (Fe, Au, Hg)", lambda: highlight_elements(["Fe","Au","Hg"])),
+        "18": ("Periyodik Tablo PNG Kaydet", lambda: save_periodic_table_visualization(dpi=150)),
+        "19": ("Element Bilgisi (sembol ile)", _element_info),
+        "20": ("Barbell Layout", _barbell_demo),
+        "21": ("Silindirik Layout (3D)", _cylindrical_demo),
+        "22": ("Kübik Layout (3D)", _cubic_demo),
+        "23": ("Küresel Layout (3D)", _spherical_demo),
+        "24": ("Eliptik Layout (2D)", _elliptical_demo),
+        "25": ("Torik Layout (3D)", _toric_demo),
+        "26": ("igraph Graf Çizimi", _igraph_test),
+        "27": ("Keçeci vs Kamada‑Kawai", _layout_comparison),
+        "28": ("Rastgele Graf Oluştur ve Çiz (NetworkX)", lambda: (draw_kececi(generate_random_graph(8,15,0.2,0.4), layout='2d'), plt.show())),
+        "29": ("Rustworkx Graf Testi", _rustworkx_test),
+        "30": ("NetworKit Graf Testi", _networkit_test),
+        "31": ("Tek Graf ZZ Skoru Hesapla", _zz_score_demo),
+        "32": ("Edge Crossing Analizi (K3,3)", _edge_crossing_demo),
+        "33": ("Graphillion Graf Denemesi", _graphillion_test),
+        "34": ("graph‑tool Desteği (Linux)", _graphtool_test),
+        "35": ("Pure Node Listesi Layout", _pure_node_demo),
+        "36": ("Spacing Parametreleri Geçişi", _spacing_demo),
+        "37": ("3D Heliks Parametre Taraması", _helix_param_demo),
+        "38": ("Tüm Stilleri Sırayla Göster", _style_gallery),
+        "39": ("GNN‑GRU Renkli Karşılaştırma (Tüm Layout'lar)", gnn_gru_colored_comparison),
+        "40": ("Keçeci Labirent (Maze Generator)", lambda: kececi_maze_demo(10, 10)),
+        "41": ("Oyun Ağacı (Satranç/Go) Görselleştirme", lambda: kececi_game_tree_demo(depth=3, branching=2)),
+        "42": ("Satranç Kısa Matlar – 2B Keçeci Layout (Zigzag)", draw_chess_shortest_kececi),
+        "43": ("Satranç Kısa Matlar – 3B Keçeci Layout (Silindirik)", draw_chess_3d_cylindrical),
+        "44": ("Satranç Kısa Matlar – 3B Keçeci Layout (Küresel)", draw_chess_3d_spherical),
+        "45": ("Satranç Kısa Matlar – 3B Keçeci Layout (Torik)", draw_chess_3d_toric),
+        "46": ("python‑chess Oyun Ağacı – 2D Zigzag", chess_engine_2d_demo),
+        "47": ("python‑chess Oyun Ağacı – 3D Silindirik", chess_engine_3d_cyl_demo),
+        "48": ("python‑chess Oyun Ağacı – 3D Küresel", chess_engine_3d_sph_demo),
+        "49": ("python‑chess Oyun Ağacı – 3D Torik", chess_engine_3d_tor_demo),
+        "50": ("Rastgele Satranç Açılış Hamle Sırası", random_chess_opening_moves),
+        "51": ("Termodinamik Kavram Haritası (Keçeci)", thermodynamics_concept_map),
+        "52": ("Kuantum Mekaniği Kavram Haritası (Keçeci)", quantum_mechanics_concept_map),
+        "53": ("Kuantum Alan Teorisi Kavram Haritası (Keçeci)", quantum_field_theory_concept_map),
+    }
+
+    # -------------------------------------------------------------------------
+    # Grup başlıkları
+    # -------------------------------------------------------------------------
+    groups = [
+        ("TEMEL STİLLER",             range(1, 7)),
+        ("KENAR & PARAMETRE ANALİZ", range(7, 13)),
+        ("PERİYODİK TABLO",           range(13, 20)),
+        ("ALTERNATİF YERLEŞİMLER",    range(20, 26)),
+        ("KÜTÜPHANE DESTEĞİ & KARŞILAŞTIRMALAR", range(26, 31)),
+        ("GELİŞMİŞ ANALİZ & DİĞER",  range(31, 40)),
+        ("SATRANÇ & OYUN AĞAÇLARI", range(41, 51)),  # 41 genel ağaç, 42-45 kısa matlar, 46-51 python-chess
+        ("FİZİKSEL MODELLER", range(51, 54)),   # 51: Termo, 52: Kuantum Mekaniği, 53: QFT
+    ]
+
+    # -------------------------------------------------------------------------
+    # Ana döngü
+    # -------------------------------------------------------------------------
+    while True:
+        print("\n" + "="*70)
+        print(" "*15 + "KEÇECİ Layout GÖRSELLEŞTİRME MENÜSÜ")
+        print("="*70)
+        for grup_adi, aralik in groups:
+            print(f"\n  {grup_adi}")
+            print("  " + "-"*68)
+            for num in aralik:
+                key = str(num)
+                if key in menu:
+                    desc, _ = menu[key]
+                    print(f"  {num:>2}. {desc}")
+        print("\n  " + "-"*68)
+        print("   0. Çıkış")
+        print("="*70)
+
+        secim = input("Seçiminiz (0‑53): ").strip()
+        if secim == '0':
+            print("Program sonlandırılıyor...")
+            break
+        elif secim in menu:
+            desc, func = menu[secim]
+            print(f"\n{desc} çalıştırılıyor...")
+            try:
+                func()
+            except Exception as e:
+                print(f"Hata oluştu: {e}")
+            input("\nDevam için Enter...")
+        else:
+            print("Geçersiz seçim! Lütfen listeden bir sayı girin.")
 
 # =============================================================================
 # MODULE TEST CODE
