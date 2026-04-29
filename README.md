@@ -97,6 +97,90 @@ styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 
 ---
 
+KEÇECİ Layout GÖRSELLEŞTİRME MENÜSÜ
+======================================================================
+
+  TEMEL STİLLER
+  --------------------------------------------------------------------
+   1. Curved Style
+   2. Standart 2D Layout
+   3. Transparent Kenarlar
+   4. Ağırlıklı Keçeci (Weighted)
+   5. Renkli Düğümler (Colored)
+   6. 3D Heliks Görünümü
+
+  KENAR & PARAMETRE ANALİZ
+  --------------------------------------------------------------------
+   7. Edge‑Aware vs Basic Karşılaştırması
+   8. ZZ Şampiyon Testi
+   9. Bayesian Optimizasyon Demosu
+  10. expanding=True vs False
+  11. primary_direction Çeşitleri
+  12. secondary_start & Aralık Etkisi
+
+  PERİYODİK TABLO
+  --------------------------------------------------------------------
+  13. Hızlı 3D Periyodik Tablo
+  14. 4'lü Karşılaştırma Figürü
+  15. Demo Serisi (Otomatik)
+  16. Özelleştirilmiş Tablo
+  17. Element Vurgulama (Fe, Au, Hg)
+  18. Periyodik Tablo PNG Kaydet
+  19. Element Bilgisi (sembol ile)
+
+  ALTERNATİF YERLEŞİMLER
+  --------------------------------------------------------------------
+  20. Barbell Layout
+  21. Silindirik Layout (3D)
+  22. Kübik Layout (3D)
+  23. Küresel Layout (3D)
+  24. Eliptik Layout (2D)
+  25. Torik Layout (3D)
+
+  KÜTÜPHANE DESTEĞİ & KARŞILAŞTIRMALAR
+  --------------------------------------------------------------------
+  26. igraph Graf Çizimi
+  27. Keçeci vs Kamada‑Kawai
+  28. Rastgele Graf Oluştur ve Çiz (NetworkX)
+  29. Rustworkx Graf Testi
+  30. NetworKit Graf Testi
+
+  GELİŞMİŞ ANALİZ & DİĞER
+  --------------------------------------------------------------------
+  31. Tek Graf ZZ Skoru Hesapla
+  32. Edge Crossing Analizi (K3,3)
+  33. Graphillion Graf Denemesi
+  34. graph‑tool Desteği (Linux)
+  35. Pure Node Listesi Layout
+  36. Spacing Parametreleri Geçişi
+  37. 3D Heliks Parametre Taraması
+  38. Tüm Stilleri Sırayla Göster
+  39. GNN‑GRU Renkli Karşılaştırma (Tüm Layout'lar)
+
+  SATRANÇ & OYUN AĞAÇLARI
+  --------------------------------------------------------------------
+  41. Oyun Ağacı (Satranç/Go) Görselleştirme
+  42. Satranç Kısa Matlar – 2B Keçeci Layout (Zigzag)
+  43. Satranç Kısa Matlar – 3B Keçeci Layout (Silindirik)
+  44. Satranç Kısa Matlar – 3B Keçeci Layout (Küresel)
+  45. Satranç Kısa Matlar – 3B Keçeci Layout (Torik)
+  46. python‑chess Oyun Ağacı – 2D Zigzag
+  47. python‑chess Oyun Ağacı – 3D Silindirik
+  48. python‑chess Oyun Ağacı – 3D Küresel
+  49. python‑chess Oyun Ağacı – 3D Torik
+  50. Rastgele Satranç Açılış Hamle Sırası
+
+  FİZİKSEL MODELLER
+  --------------------------------------------------------------------
+  51. Termodinamik Kavram Haritası (Keçeci)
+  52. Kuantum Mekaniği Kavram Haritası (Keçeci)
+  53. Kuantum Alan Teorisi Kavram Haritası (Keçeci)
+
+  --------------------------------------------------------------------
+   0. Çıkış
+
+---
+
 ### Installation
 
 ```bash
