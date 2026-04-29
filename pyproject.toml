@@ -1,12 +1,12 @@
 # pyproject.toml
 
 [build-system]
-requires = ["setuptools>=82.0.0"]
+requires = ["setuptools>=82.0.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "kececilayout"
-version = "0.6.4"
+version = "0.6.5"
 
 # Diğer proje bilgileri (isteğe bağlı ama tavsiye edilir)
 authors = [
@@ -44,6 +44,7 @@ test = [
     "graphillion",
     "graph-tool",
     "numba",
+    "chess",
 ]
 
 [tool.setuptools.packages.find]
