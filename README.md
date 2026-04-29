@@ -93,6 +93,8 @@ styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 
 **v0.6.3:** KececiBayesianOptimizer, kececi_barbell_layout
 
+**v0.6.5:** show_menu()
+
 ---
 
 ### Installation
