@@ -40,7 +40,7 @@ setup(
         "cairocffi"
     ],
     extras_require={
-        "all": ["cairo", "python-louvain", "python-igraph", "networkit", "rustworkx", "graphillion", "graph-tool", "numba"],
+        "all": ["cairo", "python-louvain", "python-igraph", "networkit", "rustworkx", "graphillion", "graph-tool", "numba", "chess"],
     },
     classifiers=[
         "Programming Language :: Python :: 3",
