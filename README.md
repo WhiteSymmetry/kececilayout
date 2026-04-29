@@ -97,6 +97,16 @@ styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 
 ---
 
+```python
+import kececilayout as kl
+from kececilayout import show_menu, draw_kececi
+
+# Menüyü başlat
+show_menu()
+```
+
+---
+
 KEÇECİ Layout GÖRSELLEŞTİRME MENÜSÜ
 ======================================================================
 
