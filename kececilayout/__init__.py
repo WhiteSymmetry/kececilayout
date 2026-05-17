@@ -3,6 +3,8 @@
 """
 kececilayout - A Python package for sequential-zigzag graph layouts
 and advanced visualizations compatible with multiple graph libraries.
+
+0.6.6: DAG & Transitive redused DAG
 """
 
 from __future__ import annotations
@@ -10,7 +12,7 @@ import inspect
 import warnings
 
 # Paket sürüm numarası
-__version__ = "0.6.5"
+__version__ = "0.6.6"
 
 # =============================================================================
 # OTOMATİK İÇE AKTARMA VE __all__ OLUŞTURMA
@@ -26,6 +28,7 @@ from .kececi_layout import (  # Veya fonksiyonların bulunduğu asıl modül
     draw_kececi,
     _draw_internal,  # Private fonksiyonu açıkça import edin
     _kececi_layout_3d_helix,
+    kececi_layout_3d_helix,
     kececi_layout_3d_helix_parametric,
     kececi_layout_v4,
     
@@ -131,9 +134,27 @@ from .kececi_layout import (  # Veya fonksiyonların bulunduğu asıl modül
     thermodynamics_concept_map,
     quantum_mechanics_concept_map,
     quantum_field_theory_concept_map,
+    kececi_layout_3d,
+    kececi_layout_curved,
+    _draw_curved,
+    _draw_transparent,
+    _draw_3d_generic,
+    generate_flat_spacetime_2d,
+    generate_flat_spacetime_3d,
+    causal_dag_2d,
+    causal_dag_3d,
+    transitive_reduced_dag,
+    transitive_reduction_approximate,
+    get_kececi_layout,
+    draw_networkx_with_style,
+    generate_causal_dag,
+    plot_3d_and_projections,
+    kececi_layout_3d_simple,
+    _dag_2d_comparison,
+    _dag_3d_comparison,
 
     # Menü
-    show_menu,
+    show_menu, # _draw_curved, _draw_transparent, _draw_3d_helix, _draw_3d_generic
 
     # Drawing functions
     draw_kececi,
@@ -256,6 +277,25 @@ __all__ = [
     'thermodynamics_concept_map',
     'quantum_mechanics_concept_map',
     'quantum_field_theory_concept_map',
+    'kececi_layout_3d',
+    'kececi_layout_curved',
+    '_draw_curved',
+    '_draw_transparent',
+    '_draw_3d_generic',
+    'generate_flat_spacetime_2d',
+    'generate_flat_spacetime_3d',
+    'causal_dag_2d',
+    'causal_dag_3d',
+    'transitive_reduced_dag',
+    'transitive_reduction_approximate',
+    'get_kececi_layout',
+    'draw_networkx_with_style',
+    'generate_causal_dag',
+    'plot_3d_and_projections',
+    'kececi_layout_3d_simple',
+    '_dag_2d_comparison',
+    '_dag_3d_comparison',
+
 
     # Menü
     'show_menu',
@@ -264,6 +304,7 @@ __all__ = [
     'draw_kececi',
     '_draw_internal',  # <- TESTLER İÇİN GEREKLİ
     '_kececi_layout_3d_helix',
+    'kececi_layout_3d_helix',
     'kececi_layout_3d_helix_parametric',
     
     # Utility functions
