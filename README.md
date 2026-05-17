@@ -95,6 +95,8 @@ styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 
 **v0.6.5:** show_menu()
 
+**v0.6.6:** DAG & Transitive redused DAG
+
 ---
 
 ```python
