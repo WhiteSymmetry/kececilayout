@@ -24,10 +24,7 @@ styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 
 **v0.6.0:** periodic table
 
-**v0.6.3:** KececiBayesianOptimizer, kececi_barbell_layout
-
 **v0.6.5:** show_menu()
-
 """
 
 import chess # pip install -U chess
@@ -36,9 +33,11 @@ import graphillion as gg
 import igraph as ig
 import itertools # Graphillion için eklendi
 import math
-import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
 from matplotlib.colors import hsv_to_rgb
 from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.patches import FancyArrowPatch, Circle
+import matplotlib.pyplot as plt
 import networkit as nk
 import networkx as nx
 import numpy as np # rustworkx
@@ -52,7 +51,7 @@ import rustworkx as rx
 import seaborn as sns
 from scipy import stats
 from scipy.optimize import minimize
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List,  Literal, Optional, Tuple, Union
 import warnings
 
 
@@ -1983,6 +1982,19 @@ def kececi_layout_3d_helix_parametric(nx_graph, z_spacing=2.0, radius=5.0, turns
         pos_3d[node_id] = (x, y, z)
     
     return pos_3d
+
+def kececi_layout_3d_helix(G, radius=1.0, pitch=0.5, start_angle=0):
+    pos = {}
+    nodes = list(G.nodes())
+    n = len(nodes)
+    for i, node in enumerate(nodes):
+        t = i / max(1, n-1)  # 0..1
+        angle = start_angle + 2 * np.pi * t * 2  # 2 tam tur
+        x = radius * np.cos(angle)
+        y = radius * np.sin(angle)
+        z = pitch * n * t
+        pos[node] = (x, y, z)
+    return pos
 
 def load_element_data_from_python_dict(filename):
     """Loads element data from a Python dictionary format file."""
@@ -6085,6 +6097,472 @@ def quantum_field_theory_concept_map():
     plt.tight_layout()
     plt.show()
 
+def kececi_layout_3d(G, primary_spacing=1.0, secondary_spacing=0.5, tertiary_spacing=0.3, expanding=True):
+    """
+    3D Keçeci Layout: x = sıra, y = zigzag (ikincil), z = katlanmış (üçüncül)
+    expanding=True ile her seviyede hafif açılma.
+    """
+    pos = {}
+    nodes = list(G.nodes())
+    for i, node in enumerate(nodes):
+        x = i * primary_spacing
+        if expanding:
+            y = (i % 2) * secondary_spacing * (1 + 0.1 * i)
+            z = ((i // 2) % 2) * tertiary_spacing * (1 + 0.05 * i)
+        else:
+            y = (i % 2) * secondary_spacing
+            z = ((i // 2) % 2) * tertiary_spacing
+        pos[node] = (x, y, z)
+    return pos
+
+def kececi_layout_curved(G, **kwargs):
+    """
+    Curved stil için layout değil, sadece uyumluluk taklidi.
+    Aslında curved stil çizim aşamasında belirlenir.
+    Bu fonksiyon normal 2D layout'u döndürür.
+    """
+    # Normal 2D layout'u döndür (curved sadece çizim stilidir)
+    from kececilayout import kececi_layout_2d
+    return kececi_layout_2d(G, **kwargs)
+
+# -------------------------------------------------------------------------
+# 2. Yardımcı çizim fonksiyonları (eksik olanlar)
+# -------------------------------------------------------------------------
+def _draw_curved(G, primary_direction='left-to-right', secondary_start='up', expanding=True):
+    """Eğri kenarlı Keçeci Layout çizimi."""
+    try:
+        from kececilayout import kececi_layout
+        pos = kececi_layout(G, primary_direction=primary_direction,
+                            secondary_start=secondary_start, expanding=expanding)
+    except ImportError:
+        pos = kececi_layout_3d(G)  # fallback
+    plt.figure(figsize=(10, 8))
+    nx.draw(G, pos, with_labels=True, node_color='#1f78b4', node_size=700,
+            font_color='white', connectionstyle='arc3,rad=0.2', arrows=True)
+    plt.title("Keçeci Curved Style")
+    plt.show()
+
+def _draw_transparent(G, primary_direction='top_down', secondary_start='right', expanding=True):
+    """Şeffaf kenarlı Keçeci Layout."""
+    try:
+        from kececilayout import kececi_layout
+        pos = kececi_layout(G, primary_direction=primary_direction,
+                            secondary_start=secondary_start, expanding=expanding)
+    except ImportError:
+        pos = kececi_layout_3d(G)
+    plt.figure(figsize=(10, 8))
+    nx.draw_networkx_nodes(G, pos, node_color='#2ca02c', node_size=700)
+    nx.draw_networkx_labels(G, pos, font_color='white')
+    edge_lengths = {e: np.linalg.norm(np.array(pos[e[0]]) - np.array(pos[e[1]]))
+                    for e in G.edges()}
+    max_len = max(edge_lengths.values()) if edge_lengths else 1.0
+    for edge, length in edge_lengths.items():
+        alpha = 0.15 + 0.85 * (1 - length / max_len)
+        nx.draw_networkx_edges(G, pos, edgelist=[edge], width=1.5,
+                               edge_color='black', alpha=alpha)
+    plt.title("Keçeci Transparent Style")
+    plt.show()
+
+def _draw_3d_generic(G, pos, title):
+    """3D grafik çizimi (yardımcı)."""
+    fig = plt.figure(figsize=(10,8))
+    ax = fig.add_subplot(111, projection='3d')
+    for node, (x,y,z) in pos.items():
+        ax.scatter(x,y,z, s=100, c='orange')
+        ax.text(x,y,z, str(node), size=8)
+    for u,v in G.edges():
+        ax.plot([pos[u][0],pos[v][0]], [pos[u][1],pos[v][1]], [pos[u][2],pos[v][2]],
+                color='gray', alpha=0.5)
+    ax.set_title(title)
+    ax.set_axis_off()
+    plt.show()
+
+# --------------------------------------------------------------------------
+# 1. Flat spacetime koordinat üreteçleri (2D/3D)
+# --------------------------------------------------------------------------
+def generate_flat_spacetime_2d(num_elements: int = 100, seed: Optional[int] = None) -> pd.DataFrame:
+    """2D flat spacetime (x, t) with causal order."""
+    if seed is not None:
+        np.random.seed(seed)
+    u = np.random.rand(num_elements)
+    v = np.random.rand(num_elements)
+    t = (u + v) / np.sqrt(2)
+    x = (u - v) / np.sqrt(2)
+    df = pd.DataFrame({"x": x, "t": t})
+    return df.sort_values("t").reset_index(drop=True)
+
+def generate_flat_spacetime_3d(num_elements: int = 100, seed: Optional[int] = None) -> pd.DataFrame:
+    """3D flat spacetime (x, y, t) with causal order."""
+    if seed is not None:
+        np.random.seed(seed)
+    u = np.random.rand(num_elements) ** (1.0/3)
+    v = u - np.sqrt(u*u * (1 - np.random.rand(num_elements)))
+    theta = 2 * np.pi * np.random.rand(num_elements)
+    t = (u + v) / np.sqrt(2)
+    r = (u - v) / np.sqrt(2)
+    x = r * np.cos(theta)
+    y = r * np.sin(theta)
+    df = pd.DataFrame({"x": x, "y": y, "t": t})
+    return df.sort_values("t").reset_index(drop=True)
+
+# --------------------------------------------------------------------------
+# 2. Causal DAG oluşturma (2D / 3D)
+# --------------------------------------------------------------------------
+def causal_dag_2d(coords: pd.DataFrame) -> nx.DiGraph:
+    """2D'de t ≥ |Δx| koşulu ile kenar ekler."""
+    G = nx.DiGraph()
+    for i, row in coords.iterrows():
+        G.add_node(i, **row.to_dict())
+    n = len(coords)
+    for i in range(n):
+        for j in range(i+1, n):
+            dt = coords.loc[j, 't'] - coords.loc[i, 't']
+            if dt <= 0:
+                continue
+            dx = coords.loc[j, 'x'] - coords.loc[i, 'x']
+            if dt >= abs(dx):
+                G.add_edge(i, j)
+    return G
+
+def causal_dag_3d(coords: pd.DataFrame) -> nx.DiGraph:
+    """3D'de t ≥ sqrt(Δx²+Δy²) koşulu ile kenar ekler."""
+    G = nx.DiGraph()
+    for i, row in coords.iterrows():
+        G.add_node(i, **row.to_dict())
+    n = len(coords)
+    for i in range(n):
+        for j in range(i+1, n):
+            dt = coords.loc[j, 't'] - coords.loc[i, 't']
+            if dt <= 0:
+                continue
+            dx = coords.loc[j, 'x'] - coords.loc[i, 'x']
+            dy = coords.loc[j, 'y'] - coords.loc[i, 'y']
+            if dt >= np.hypot(dx, dy):
+                G.add_edge(i, j)
+    return G
+
+# --------------------------------------------------------------------------
+# 3. Transitive reduction (kesin ve yaklaşık)
+# --------------------------------------------------------------------------
+def transitive_reduced_dag(G: nx.DiGraph) -> nx.DiGraph:
+    """Ağın transitive reduction'ını hesaplar. DAG olmalıdır."""
+    if not nx.is_directed_acyclic_graph(G):
+        raise ValueError("Graf DAG değil, transitive reduction uygulanamaz.")
+    # nx.transitive_reduction bazen hafıza sorunu çıkarır, küçük-orta grafikler için uygun
+    return nx.transitive_reduction(G)
+
+def transitive_reduction_approximate(G: nx.DiGraph, sample_ratio: float = 0.3) -> nx.DiGraph:
+    """
+    Büyük DAG'ler için yaklaşık transitive reduction.
+    Rastgele düğüm altkümesi kullanarak kenarları kısar.
+    Not: Kesin değildir, ancak O(N²) yerine O(kN) çalışır.
+    """
+    nodes = list(G.nodes())
+    n = len(nodes)
+    k = max(10, int(n * sample_ratio))
+    sampled = set(np.random.choice(nodes, size=k, replace=False))
+    G_red = G.copy()
+    # Sadece örneklenen düğümler için transitive kontrolleri yap
+    for u in sampled:
+        for v in G.successors(u):
+            for w in G.successors(v):
+                if G.has_edge(u, w):
+                    G_red.remove_edge(u, w)
+    return G_red
+
+# --------------------------------------------------------------------------
+# 4. Keçeci Layout sarmalayıcı (layout tipine göre)
+# --------------------------------------------------------------------------
+LayoutType = Literal["2d", "cylindrical", "cubic", "spherical", "elliptical", "toric"]
+StyleType = Literal["standard", "default", "curved", "helix", "3d", "weighted", "colored"]
+
+def get_kececi_layout(
+    G: nx.Graph,
+    layout: LayoutType = "2d",
+    primary_spacing: float = 1.0,
+    secondary_spacing: float = 0.5,
+    primary_direction: str = "top_down",
+    secondary_start: str = "left",
+    expanding: bool = True,
+    **kwargs
+) -> Dict[int, Tuple[float, float]]:
+    """İstenen layout tipine göre Keçeci Layout'u çağırır."""
+    #if not HAS_kececi:
+        #print("Uyarı: kececilayout modülü yüklü değil, basit zigzag kullanılıyor.")
+        #return kececi_layout_2d(G, primary_spacing, secondary_spacing, primary_direction, secondary_start, expanding)
+    if layout == "2d":
+        return kececi_layout_2d(G, primary_spacing, secondary_spacing,
+                                primary_direction, secondary_start, expanding)
+    elif layout == "cylindrical":
+        return kececi_layout_cylindrical(G, **kwargs)
+    elif layout == "cubic":
+        return kececi_layout_3d(G, **kwargs)   # 3D için (x,y,z)
+    elif layout == "spherical":
+        return kececi_layout_spherical(G, **kwargs)
+    elif layout == "elliptical":
+        return kececi_layout_elliptical(G, **kwargs)
+    elif layout == "toric":
+        return kececi_layout_toric(G, **kwargs)
+    else:
+        return kececi_layout_2d(G, primary_spacing, secondary_spacing,
+                                primary_direction, secondary_start, expanding)
+
+# --------------------------------------------------------------------------
+# 5. Gelişmiş çizim (eğriler / weighted / colored)
+# --------------------------------------------------------------------------
+def draw_networkx_with_style(
+    G: nx.Graph,
+    pos: Dict,
+    style: StyleType = "standard",
+    ax: plt.Axes = None,
+    node_kw: Dict = None,
+    edge_kw: Dict = None,
+):
+    """Keçeci stillerini destekleyen gelişmiş çizim."""
+    if ax is None:
+        ax = plt.gca()
+    if node_kw is None:
+        node_kw = {}
+    if edge_kw is None:
+        edge_kw = {}
+
+    # Düğüm çizimi
+    default_node_kw = {"node_size": 100, "node_color": "lightblue", "alpha": 0.8}
+    default_node_kw.update(node_kw)
+    nx.draw_networkx_nodes(G, pos, ax=ax, **default_node_kw)
+    nx.draw_networkx_labels(G, pos, ax=ax, font_size=8)
+
+    # Kenar çizimi
+    if style == "curved":
+        # Eğri kenarlar için FancyArrowPatch
+        for u, v in G.edges():
+            rad = 0.1
+            arrow = FancyArrowPatch(
+                pos[u], pos[v],
+                connectionstyle=f"arc3,rad={rad}",
+                arrowstyle='-|>',
+                color='gray',
+                alpha=0.6,
+                linewidth=1.0
+            )
+            ax.add_patch(arrow)
+    elif style == "weighted":
+        # Kenar ağırlıklarını çizgi kalınlığına yansıt
+        weights = [G[u][v].get('weight', 1.0) for u,v in G.edges()]
+        nx.draw_networkx_edges(G, pos, ax=ax, width=np.array(weights)*0.5,
+                               edge_color='blue', alpha=0.6)
+    elif style == "colored":
+        # Düğümleri renkli, kenarları da renk skalası
+        node_colors = [plt.cm.tab10(i % 10) for i in range(len(G.nodes))]
+        nx.draw_networkx_nodes(G, pos, ax=ax, node_color=node_colors, **node_kw)
+        nx.draw_networkx_edges(G, pos, ax=ax, edge_color='gray', alpha=0.5)
+    else:  # default / standard / helix / 3d (basit)
+        nx.draw_networkx_edges(G, pos, ax=ax, edge_color='black', alpha=0.5, **edge_kw)
+
+# --------------------------------------------------------------------------
+# 6. Ana üretici fonksiyon (causal DAG + Keçeci Layout + çizim)
+# --------------------------------------------------------------------------
+def generate_causal_dag(
+    dim: int = 2,
+    num_elements: int = 80,
+    seed: Optional[int] = 42,
+    use_transitive_reduction: bool = True,
+    approximate_reduction: bool = False,
+    layout: LayoutType = "2d",
+    style: StyleType = "standard",
+    primary_spacing: float = 1.0,
+    secondary_spacing: float = 0.5,
+    primary_direction: str = "top_down",
+    secondary_start: str = "left",
+    expanding: bool = True,
+    draw_full: bool = True,
+    draw_reduced: bool = True,
+    layout_kwargs: Dict = None,
+) -> Tuple[nx.DiGraph, nx.DiGraph, Dict]:
+    """
+    2D/3D causal DAG oluşturur, transitive reduction uygular,
+    Keçeci Layout ile konumlandırır ve isteğe bağlı çizer.
+    """
+    if dim == 2:
+        coords = generate_flat_spacetime_2d(num_elements, seed)
+        G_full = causal_dag_2d(coords)
+    else:
+        coords = generate_flat_spacetime_3d(num_elements, seed)
+        G_full = causal_dag_3d(coords)
+
+    if use_transitive_reduction:
+        if approximate_reduction and len(G_full) > 500:
+            G_red = transitive_reduction_approximate(G_full)
+        else:
+            G_red = transitive_reduced_dag(G_full)
+    else:
+        G_red = G_full.copy()
+
+    if layout_kwargs is None:
+        layout_kwargs = {}
+    pos = get_kececi_layout(
+        G_full, layout=layout,
+        primary_spacing=primary_spacing,
+        secondary_spacing=secondary_spacing,
+        primary_direction=primary_direction,
+        secondary_start=secondary_start,
+        expanding=expanding,
+        **layout_kwargs
+    )
+
+    if draw_full or draw_reduced:
+        fig, axes = plt.subplots(1, 2 if draw_full and draw_reduced else 1,
+                                 figsize=(14, 6))
+        if draw_full and draw_reduced:
+            ax1, ax2 = axes
+        else:
+            ax1 = axes
+            ax2 = None
+
+        if draw_full:
+            ax1.set_facecolor('#f9f9f9')
+            draw_networkx_with_style(G_full, pos, style=style, ax=ax1)
+            ax1.set_title(f"Full causal DAG ({len(G_full)} nodes, {G_full.number_of_edges()} edges)")
+            ax1.set_aspect('equal')
+
+        if draw_reduced and ax2 is not None:
+            ax2.set_facecolor('#f9f9f9')
+            draw_networkx_with_style(G_red, pos, style=style, ax=ax2)
+            ax2.set_title(f"Transitive reduced ({len(G_red)} nodes, {G_red.number_of_edges()} edges)")
+            ax2.set_aspect('equal')
+
+        plt.tight_layout()
+        plt.show()
+
+    return G_full, G_red, pos
+
+# --------------------------------------------------------------------------
+# 7. 3D projeksiyon ve görselleştirme (orijinal kodunuzdaki gibi)
+# --------------------------------------------------------------------------
+def plot_3d_and_projections(coords: pd.DataFrame, G_full: nx.DiGraph, G_red: nx.DiGraph):
+    """3D koordinatlar için tam ve indirgenmiş DAG'leri 3D ve projeksiyonlarda çizer."""
+    pos_3d = {i: (coords.loc[i, "x"], coords.loc[i, "y"], coords.loc[i, "t"]) for i in coords.index}
+    pos_xt = {i: (coords.loc[i, "x"], coords.loc[i, "t"]) for i in coords.index}
+    pos_xy = {i: (coords.loc[i, "x"], coords.loc[i, "y"]) for i in coords.index}
+
+    fig = plt.figure(figsize=(16, 10))
+
+    # 3D tam
+    ax1 = fig.add_subplot(2, 3, 1, projection="3d")
+    xc, yc, tc = coords["x"], coords["y"], coords["t"]
+    ax1.scatter(xc, yc, tc, c='blue', s=20, alpha=0.7)
+    for u, v in G_full.edges():
+        ax1.plot(*zip(pos_3d[u], pos_3d[v]), c='black', lw=0.5, alpha=0.3)
+    ax1.set_title(f"3D full causal DAG (edges: {G_full.number_of_edges()})")
+
+    # 3D indirgenmiş
+    ax2 = fig.add_subplot(2, 3, 2, projection="3d")
+    ax2.scatter(xc, yc, tc, c='blue', s=20, alpha=0.7)
+    for u, v in G_red.edges():
+        ax2.plot(*zip(pos_3d[u], pos_3d[v]), c='red', lw=0.8, alpha=0.6)
+    ax2.set_title(f"3D reduced DAG (edges: {G_red.number_of_edges()})")
+
+    # x–t projeksiyon full
+    ax3 = fig.add_subplot(2, 3, 3)
+    nx.draw(G_full, pos_xt, ax=ax3, node_size=30, with_labels=False, edge_color='gray', alpha=0.7)
+    ax3.set_title("x–t projection (full)")
+
+    # x–t projeksiyon indirgenmiş
+    ax4 = fig.add_subplot(2, 3, 4)
+    nx.draw(G_red, pos_xt, ax=ax4, node_size=30, with_labels=False, edge_color='red', alpha=0.8)
+    ax4.set_title("x–t projection (reduced)")
+
+    # x–y projeksiyon full
+    ax5 = fig.add_subplot(2, 3, 5)
+    nx.draw(G_full, pos_xy, ax=ax5, node_size=30, with_labels=False, edge_color='gray', alpha=0.7)
+    ax5.set_title("x–y projection (full)")
+
+    # x–y projeksiyon indirgenmiş
+    ax6 = fig.add_subplot(2, 3, 6)
+    nx.draw(G_red, pos_xy, ax=ax6, node_size=30, with_labels=False, edge_color='red', alpha=0.8)
+    ax6.set_title("x–y projection (reduced)")
+
+    plt.tight_layout()
+    plt.show()
+
+def kececi_layout_3d_simple(G):
+    pos = {}
+    for i,node in enumerate(G.nodes()):
+        angle = i * np.pi/4
+        pos[node] = (np.cos(angle), np.sin(angle), i*0.5)
+    return pos
+
+# =============================================================================
+# DAG ve Transitive Reduction Karşılaştırma Demoları (show_menu için)
+# =============================================================================
+
+def _dag_2d_comparison():
+    """2B Keçeci Layout ile DAG vs transitive reduced DAG karşılaştırması."""
+    import networkx as nx
+    import matplotlib.pyplot as plt
+
+    # Örnek DAG oluştur (zincir + fazladan kenarlar)
+    G = nx.DiGraph()
+    edges = [(0,1),(0,2),(1,3),(2,3),(3,4),(2,5),(5,6),(3,6),(4,6)]
+    G.add_edges_from(edges)
+    G_red = nx.transitive_reduction(G)
+
+    # Keçeci 2D layout (order‑preserving)
+    pos_full = kececi_layout_2d(G, expanding=True)
+    pos_red = kececi_layout_2d(G_red, expanding=True)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+    nx.draw(G, pos_full, ax=ax1, with_labels=True, node_color='lightblue',
+            edge_color='gray', arrows=True, node_size=600)
+    ax1.set_title(f"Orijinal DAG\n{G.number_of_edges()} kenar")
+
+    nx.draw(G_red, pos_red, ax=ax2, with_labels=True, node_color='lightgreen',
+            edge_color='darkgreen', arrows=True, node_size=600)
+    ax2.set_title(f"Transitive Reduced\n{G_red.number_of_edges()} kenar")
+
+    plt.suptitle("2B Keçeci Layout: DAG vs Transitive Reduction")
+    plt.tight_layout()
+    plt.show()
+
+def _dag_3d_comparison():
+    """3B silindirik (helix) Keçeci Layout ile DAG vs transitive reduced DAG."""
+    import networkx as nx
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+
+    G = nx.DiGraph()
+    edges = [(0,1),(0,2),(1,3),(2,3),(3,4),(2,5),(5,6),(3,6),(4,6)]
+    G.add_edges_from(edges)
+    G_red = nx.transitive_reduction(G)
+
+    # 3B layout (silindirik / helix)
+    pos_full = kececi_layout_cylindrical(G, radius=3, height=8)
+    pos_red = kececi_layout_cylindrical(G_red, radius=3, height=8)
+
+    fig = plt.figure(figsize=(14, 6))
+    ax1 = fig.add_subplot(121, projection='3d')
+    for node, (x,y,z) in pos_full.items():
+        ax1.scatter(x, y, z, s=100, c='blue')
+        ax1.text(x, y, z, f'  {node}', size=9)
+    for u,v in G.edges():
+        ax1.plot(*zip(pos_full[u], pos_full[v]), color='gray', alpha=0.6)
+    ax1.set_title(f"3D Orijinal DAG\n{G.number_of_edges()} kenar")
+    ax1.axis('off')
+
+    ax2 = fig.add_subplot(122, projection='3d')
+    for node, (x,y,z) in pos_red.items():
+        ax2.scatter(x, y, z, s=100, c='green')
+        ax2.text(x, y, z, f'  {node}', size=9)
+    for u,v in G_red.edges():
+        ax2.plot(*zip(pos_red[u], pos_red[v]), color='darkgreen', alpha=0.8)
+    ax2.set_title(f"3D Transitive Reduced\n{G_red.number_of_edges()} kenar")
+    ax2.axis('off')
+
+    plt.suptitle("3B Keçeci Layout (Silindirik): DAG vs Transitive Reduction")
+    plt.tight_layout()
+    plt.show()
+
+
 def show_menu():
     """
     KEÇECİ Layout Menüsü – Tüm fonksiyonlar eksiksiz, ardışık numaralar, 
@@ -6411,6 +6889,76 @@ def show_menu():
             fn()
             input("Devam etmek için Enter...")
 
+    # =============================================================================
+    # DAG ve Transitive Reduction Karşılaştırma Demoları (show_menu için)
+    # =============================================================================
+
+    def _dag_2d_comparison():
+        """2B Keçeci Layout ile DAG vs transitive reduced DAG karşılaştırması."""
+        import networkx as nx
+        import matplotlib.pyplot as plt
+
+        # Örnek DAG oluştur (zincir + fazladan kenarlar)
+        G = nx.DiGraph()
+        edges = [(0,1),(0,2),(1,3),(2,3),(3,4),(2,5),(5,6),(3,6),(4,6)]
+        G.add_edges_from(edges)
+        G_red = nx.transitive_reduction(G)
+
+        # Keçeci 2D layout (order‑preserving)
+        pos_full = kececi_layout_2d(G, expanding=True)
+        pos_red = kececi_layout_2d(G_red, expanding=True)
+
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+        nx.draw(G, pos_full, ax=ax1, with_labels=True, node_color='lightblue',
+                edge_color='gray', arrows=True, node_size=600)
+        ax1.set_title(f"Orijinal DAG\n{G.number_of_edges()} kenar")
+
+        nx.draw(G_red, pos_red, ax=ax2, with_labels=True, node_color='lightgreen',
+                edge_color='darkgreen', arrows=True, node_size=600)
+        ax2.set_title(f"Transitive Reduced\n{G_red.number_of_edges()} kenar")
+
+        plt.suptitle("2B Keçeci Layout: DAG vs Transitive Reduction")
+        plt.tight_layout()
+        plt.show()
+
+    def _dag_3d_comparison():
+        """3B silindirik (helix) Keçeci Layout ile DAG vs transitive reduced DAG."""
+        import networkx as nx
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d import Axes3D
+
+        G = nx.DiGraph()
+        edges = [(0,1),(0,2),(1,3),(2,3),(3,4),(2,5),(5,6),(3,6),(4,6)]
+        G.add_edges_from(edges)
+        G_red = nx.transitive_reduction(G)
+
+        # 3B layout (silindirik / helix)
+        pos_full = kececi_layout_cylindrical(G, radius=3, height=8)
+        pos_red = kececi_layout_cylindrical(G_red, radius=3, height=8)
+
+        fig = plt.figure(figsize=(14, 6))
+        ax1 = fig.add_subplot(121, projection='3d')
+        for node, (x,y,z) in pos_full.items():
+            ax1.scatter(x, y, z, s=100, c='blue')
+            ax1.text(x, y, z, f'  {node}', size=9)
+        for u,v in G.edges():
+            ax1.plot(*zip(pos_full[u], pos_full[v]), color='gray', alpha=0.6)
+        ax1.set_title(f"3D Orijinal DAG\n{G.number_of_edges()} kenar")
+        ax1.axis('off')
+
+        ax2 = fig.add_subplot(122, projection='3d')
+        for node, (x,y,z) in pos_red.items():
+            ax2.scatter(x, y, z, s=100, c='green')
+            ax2.text(x, y, z, f'  {node}', size=9)
+        for u,v in G_red.edges():
+            ax2.plot(*zip(pos_red[u], pos_red[v]), color='darkgreen', alpha=0.8)
+        ax2.set_title(f"3D Transitive Reduced\n{G_red.number_of_edges()} kenar")
+        ax2.axis('off')
+
+        plt.suptitle("3B Keçeci Layout (Silindirik): DAG vs Transitive Reduction")
+        plt.tight_layout()
+        plt.show()
+
     # -------------------------------------------------------------------------
     # Menü tanımları (1‑38) – draw_kececi kullananlara plt.show() eklendi
     # -------------------------------------------------------------------------
@@ -6472,6 +7020,8 @@ def show_menu():
         "51": ("Termodinamik Kavram Haritası (Keçeci)", thermodynamics_concept_map),
         "52": ("Kuantum Mekaniği Kavram Haritası (Keçeci)", quantum_mechanics_concept_map),
         "53": ("Kuantum Alan Teorisi Kavram Haritası (Keçeci)", quantum_field_theory_concept_map),
+        "54": ("2B DAG vs Transitive Reduction (Keçeci)", _dag_2d_comparison),
+        "55": ("3B DAG vs Transitive Reduction (Silindirik)", _dag_3d_comparison),
     }
 
     # -------------------------------------------------------------------------
@@ -6486,6 +7036,7 @@ def show_menu():
         ("GELİŞMİŞ ANALİZ & DİĞER",  range(31, 40)),
         ("SATRANÇ & OYUN AĞAÇLARI", range(41, 51)),  # 41 genel ağaç, 42-45 kısa matlar, 46-51 python-chess
         ("FİZİKSEL MODELLER", range(51, 54)),   # 51: Termo, 52: Kuantum Mekaniği, 53: QFT
+        ("DAG ANALİZLERİ", range(54, 56)),
     ]
 
     # -------------------------------------------------------------------------
@@ -6493,7 +7044,7 @@ def show_menu():
     # -------------------------------------------------------------------------
     while True:
         print("\n" + "="*70)
-        print(" "*15 + "KEÇECİ Layout GÖRSELLEŞTİRME MENÜSÜ")
+        print(" "*15 + "Keçeci Layout Visulation Munu (Görselleştirme Menüsü)")
         print("="*70)
         for grup_adi, aralik in groups:
             print(f"\n  {grup_adi}")
@@ -6507,7 +7058,7 @@ def show_menu():
         print("   0. Çıkış")
         print("="*70)
 
-        secim = input("Seçiminiz (0‑53): ").strip()
+        secim = input("Seçiminiz (0‑55): ").strip()
         if secim == '0':
             print("Program sonlandırılıyor...")
             break
