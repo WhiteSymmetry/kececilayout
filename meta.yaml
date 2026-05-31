@@ -1,4 +1,4 @@
-{% set version = "0.6.6" %}
+{% set version = "0.6.7" %}
 
 package:
   name: kececilayout
@@ -19,11 +19,13 @@ requirements:
     - python >=3.11
     - pip
     - setuptools
+    - numpy
   run:
     # Bu, paketin çalışması için GEREKLİ olan CONDA bağımlılıklarıdır.
     - python >=3.11
     - numpy
     - networkx
+    - matplotlib
     - matplotlib-base
     - pycairo
     - cairocffi
@@ -34,6 +36,41 @@ requirements:
     - python-louvain
     - graph-tool
     - numba
+    - qiskit
+    - scipy
+    - pandas
+    - chess
+  build:
+    - python >=3.11
+    - pip
+    - setuptools
+    - numpy
+    - matplotlib
+    - scipy
+
+test:
+  requires:
+    - matplotlib
+    - scipy
+    - numpy
+  imports:
+    - numpy
+    - networkx
+    - matplotlib
+    - matplotlib-base
+    - pycairo
+    - cairocffi
+    - cairo
+    - python-igraph
+    - rustworkx
+    - networkit
+    - python-louvain
+    - graph-tool
+    - numba
+    - qiskit
+    - scipy
+    - pandas
+    - chess
 
 # DİKKAT: 'test:' bölümü bilinçli olarak kaldırılmıştır.
 
