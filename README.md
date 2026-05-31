@@ -190,6 +190,18 @@ KEÇECİ Layout GÖRSELLEŞTİRME MENÜSÜ
   52. Kuantum Mekaniği Kavram Haritası (Keçeci)
   53. Kuantum Alan Teorisi Kavram Haritası (Keçeci)
 
+  DAG ANALİZLERİ
+  --------------------------------------------------------------------
+  54. 2B DAG vs Transitive Reduction (Keçeci)
+  55. 3B DAG vs Transitive Reduction (Silindirik)
+
+  Kuantum Devre Analizleri ve Temsilleri
+  --------------------------------------------------------------------
+  56. OR3 Gate Circuit – VEYA(3) Kapısı Devresi, 3D Helix Sanatsal Temsili
+  57. OR3 Gate Circuit – VEYA(3) Kapısı Devresi (DAG)
+  58. OR3 Gate Circuit – VEYA(3) Kapısı Devresi, 3D Helix Sanatsal Temsili
+  59. Quantum Circuit – Kuantum Devresi
+
   --------------------------------------------------------------------
    0. Çıkış
 
