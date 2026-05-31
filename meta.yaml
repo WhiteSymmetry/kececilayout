@@ -71,6 +71,8 @@ test:
     - scipy
     - pandas
     - chess
+    - seaborn
+    - igraph
 
 # DİKKAT: 'test:' bölümü bilinçli olarak kaldırılmıştır.
 
