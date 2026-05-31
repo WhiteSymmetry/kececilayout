@@ -2111,8 +2111,11 @@ doğrusal olarak artar:
 ===========================================
 
 ✅   50 node | KececiLayout:    11.8±1.7 μs | NetworkX:    4.59±0.49 ms | Hızlanma:    390x
+
 ✅  250 node | KececiLayout:    53.0±4.4 μs | NetworkX:   81.22±1.07 ms | Hızlanma:   1531x
+
 ✅ 1000 node | KececiLayout:   232.1±43.9 μs | NetworkX: 1527.10±15.87 ms | Hızlanma:   6578x
+
 ✅ 5000 node | KececiLayout:  2440.5±11446.5 μs | NetworkX: 35510.39±228.89 ms | Hızlanma:  14550x
 
 ============================================
