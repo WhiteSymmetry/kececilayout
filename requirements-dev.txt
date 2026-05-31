@@ -16,6 +16,9 @@ qiskit
 scipy
 pandas
 chess
+rustworkx
+seaborn
+igraph
 pytest
 flake8
 pytest-cov
