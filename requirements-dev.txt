@@ -1,0 +1,21 @@
+# requirements-dev.txt
+numpy
+networkx
+matplotlib
+matplotlib-base
+pycairo
+cairocffi
+cairo
+python-igraph
+rustworkx
+networkit
+python-louvain
+graph-tool
+numba
+qiskit
+scipy
+pandas
+chess
+pytest
+flake8
+pytest-cov
