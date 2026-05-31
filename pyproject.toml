@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kececilayout"
-version = "0.6.6"
+version = "0.6.7"
 
 # Diğer proje bilgileri (isteğe bağlı ama tavsiye edilir)
 authors = [
@@ -45,6 +45,15 @@ test = [
     "graph-tool",
     "numba",
     "chess",
+    "qiskit",
+    "scipy",
+    "networkx",
+    "rustworkx",
+    "matplotlib",
+    "numpy",
+    "cairocffi",
+    "seaborn",
+    "igraph",
 ]
 
 [tool.setuptools.packages.find]
