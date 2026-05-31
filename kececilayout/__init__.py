@@ -4,7 +4,24 @@
 kececilayout - A Python package for sequential-zigzag graph layouts
 and advanced visualizations compatible with multiple graph libraries.
 
-0.6.6: DAG & Transitive redused DAG
+v0.2.7: Curved, transparent, 3D, and `expanding=True` styles supported.
+
+v0.5.0: 
+
+layouts = ['2d', 'cylindrical', 'cubic', 'spherical', 'elliptical', 'toric']
+
+styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
+
+v0.5.1: edge (kececi_layout_edge)
+
+v0.6.0: periodic table
+
+v0.6.5: show_menu()
+
+v0.6.6: DAG & Transitive redused DAG
+
+v0.6.7: Quantum Circuit: Kuantum Devresi
+
 """
 
 from __future__ import annotations
@@ -12,7 +29,7 @@ import inspect
 import warnings
 
 # Paket sürüm numarası
-__version__ = "0.6.6"
+__version__ = "0.6.7"
 
 # =============================================================================
 # OTOMATİK İÇE AKTARMA VE __all__ OLUŞTURMA
