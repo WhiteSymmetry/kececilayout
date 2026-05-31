@@ -97,6 +97,8 @@ styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 
 **v0.6.6:** DAG & Transitive redused DAG
 
+**v0.6.7:** Quantum Circuit: Kuantum Devresi
+
 ---
 
 ```python
