@@ -12,21 +12,23 @@ Bu modül, çeşitli Python graf kütüphaneleri için sıralı-zigzag ("Keçeci
 *   **Overlap Reduction:** Prevents node collisions by spreading them across axes.
 *   **Parametric:** Fully customizable with parameters like `primary_spacing`, `secondary_spacing`, `primary_direction`, and `secondary_start`.
 
-**v0.2.7**: Curved, transparent, 3D, and `expanding=True` styles supported.
+v0.2.7: Curved, transparent, 3D, and `expanding=True` styles supported.
 
-**v0.5.0:** 
+v0.5.0: 
 
 layouts = ['2d', 'cylindrical', 'cubic', 'spherical', 'elliptical', 'toric']
 
 styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 
-**v0.5.1:** edge (kececi_layout_edge)
+v0.5.1: edge (kececi_layout_edge)
 
-**v0.6.0:** periodic table
+v0.6.0: periodic table
 
-**v0.6.5:** show_menu()
+v0.6.5: show_menu()
 
-**v0.6.7:** Quantum Circuit: Kuantum Devresi
+v0.6.6: DAG & Transitive redused DAG
+
+v0.6.7: Quantum Circuit: Kuantum Devresi
 
 """
 
