@@ -25,10 +25,14 @@ styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 **v0.6.0:** periodic table
 
 **v0.6.5:** show_menu()
+
+**v0.6.7:** Quantum Circuit: Kuantum Devresi
+
 """
 
 import chess # pip install -U chess
 from collections import defaultdict, deque
+import datetime
 import graphillion as gg
 import igraph as ig
 import itertools # Graphillion için eklendi
@@ -45,13 +49,23 @@ from numba import jit
 import os
 import pandas as pd
 import platform # graph_tool için
+from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
+from qiskit.circuit import (
+    CircuitInstruction,
+    ControlFlowOp,
+    ForLoopOp,
+    IfElseOp,
+    SwitchCaseOp,
+    WhileLoopOp,
+)
 import random
 import re
 import rustworkx as rx
 import seaborn as sns
 from scipy import stats
 from scipy.optimize import minimize
-from typing import Any, Dict, List,  Literal, Optional, Tuple, Union
+import sys
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 import warnings
 
 
@@ -6563,6 +6577,76 @@ def _dag_3d_comparison():
     plt.show()
 
 
+def circuit_to_digraph(circuit: QuantumCircuit) -> nx.DiGraph:
+    G = nx.DiGraph()
+    qubit_count = circuit.num_qubits
+
+    # Giriş qubit düğümleri
+    current_nodes = [f"q{i}_in" for i in range(qubit_count)]
+    for node in current_nodes:
+        G.add_node(node, type='qubit')
+
+    gate_counter = 0
+    for inst in circuit.data:
+        gate_name = inst.operation.name
+        gate_node = f"{gate_name}_{gate_counter}"
+        G.add_node(gate_node, type='gate', label=gate_name)
+        gate_counter += 1
+
+        # Qubit argümanları (inst.qubits)
+        for qubit in inst.qubits:
+            idx = circuit.find_bit(qubit).index
+            prev = current_nodes[idx]
+            G.add_edge(prev, gate_node)
+
+        # Yeni qubit düğümleri oluştur
+        for qubit in inst.qubits:
+            idx = circuit.find_bit(qubit).index
+            new_node = f"q{idx}_{gate_counter}"
+            G.add_node(new_node, type='qubit')
+            G.add_edge(gate_node, new_node)
+            current_nodes[idx] = new_node
+
+    for i, node in enumerate(current_nodes):
+        G.nodes[node]['type'] = 'qubit_out'
+
+    return G
+
+def circuit_to_digraph_robust(circuit: QuantumCircuit) -> nx.DiGraph:
+    G = nx.DiGraph()
+    qubit_count = circuit.num_qubits
+    # Başlangıç düğümleri
+    current = {i: f"q{i}" for i in range(qubit_count)}
+    for i in range(qubit_count):
+        G.add_node(current[i], type='qubit')
+
+    gate_idx = 0
+    for inst in circuit.data:
+        op = inst.operation
+        # Ölçüm, bariyer gibi görmezden gelinecek işlemler
+        if op.name in ('measure', 'barrier', 'reset'):
+            continue
+
+        qubits = inst.qubits
+        # Eğer qubits boşsa (örn. snapshot) atla
+        if not qubits:
+            continue
+
+        gate_node = f"{op.name}_{gate_idx}"
+        G.add_node(gate_node, type='gate', label=op.name)
+        gate_idx += 1
+
+        for q in qubits:
+            idx = circuit.find_bit(q).index
+            G.add_edge(current[idx], gate_node)
+            new_node = f"q{idx}_{gate_idx}"
+            G.add_node(new_node, type='qubit')
+            G.add_edge(gate_node, new_node)
+            current[idx] = new_node
+
+    return G
+
+
 def show_menu():
     """
     KEÇECİ Layout Menüsü – Tüm fonksiyonlar eksiksiz, ardışık numaralar, 
@@ -6631,6 +6715,172 @@ def show_menu():
         ax.set_title(title)
         ax.set_axis_off()
         plt.show()
+
+    def circuit_to_digraph_full(circuit: QuantumCircuit) -> nx.DiGraph:
+        """
+        Qiskit QuantumCircuit → NetworkX DiGraph (tüm bileşenler).
+        Qiskit 1.2+ uyumlu, hiçbir deprecation uyarısı içermez.
+        """
+        G = nx.DiGraph()
+        qubit_count = circuit.num_qubits
+        clbit_count = circuit.num_clbits
+
+        # Başlangıç düğümleri
+        qubit_nodes = {i: f"q{i}" for i in range(qubit_count)}
+        clbit_nodes = {i: f"c{i}" for i in range(clbit_count)}
+        for i in range(qubit_count):
+            G.add_node(qubit_nodes[i], type='qubit')
+        for i in range(clbit_count):
+            G.add_node(clbit_nodes[i], type='clbit')
+
+        current_q = dict(qubit_nodes)
+        current_c = dict(clbit_nodes)
+        gate_idx = 0
+
+        def _add_standard_gate(op, qubits, label=None):
+            nonlocal gate_idx
+            name = op.name
+            if label is None:
+                label = name
+                if op.params:
+                    p_str = ','.join(
+                        f'{p:.2f}' if isinstance(p, float) else str(p)
+                        for p in op.params
+                    )
+                    label += f"({p_str})"
+            node = f"{name}_{gate_idx}"
+            G.add_node(node, type='gate', label=label)
+            gate_idx += 1
+            for q in qubits:
+                q_idx = circuit.find_bit(q).index
+                G.add_edge(current_q[q_idx], node)
+            for q in qubits:
+                q_idx = circuit.find_bit(q).index
+                new_q = f"q{q_idx}_{gate_idx}"
+                G.add_node(new_q, type='qubit')
+                G.add_edge(node, new_q)
+                current_q[q_idx] = new_q
+
+        def _add_measure(qubit, clbit):
+            nonlocal gate_idx
+            q_idx = circuit.find_bit(qubit).index
+            c_idx = circuit.find_bit(clbit).index
+            meas_node = f"meas_{gate_idx}"
+            G.add_node(meas_node, type='measure', label='M')
+            gate_idx += 1
+            G.add_edge(current_q[q_idx], meas_node)
+            new_c = f"c{c_idx}_{gate_idx}"
+            G.add_node(new_c, type='clbit')
+            G.add_edge(meas_node, new_c)
+            current_c[c_idx] = new_c
+
+        def _add_reset(qubit):
+            nonlocal gate_idx
+            q_idx = circuit.find_bit(qubit).index
+            reset_node = f"reset_{gate_idx}"
+            G.add_node(reset_node, type='reset', label='|0⟩')
+            gate_idx += 1
+            G.add_edge(current_q[q_idx], reset_node)
+            new_q = f"q{q_idx}_{gate_idx}"
+            G.add_node(new_q, type='qubit')
+            G.add_edge(reset_node, new_q)
+            current_q[q_idx] = new_q
+
+        def _process_block(block, parent_node=None):
+            nonlocal gate_idx
+            for inst in block:
+                op = inst.operation
+                name = op.name
+                qubits = inst.qubits
+                clbits = inst.clbits
+
+                if name == 'barrier':
+                    continue
+                if name == 'measure':
+                    if qubits and clbits:
+                        _add_measure(qubits[0], clbits[0])
+                    continue
+                if name == 'reset':
+                    for q in qubits:
+                        _add_reset(q)
+                    continue
+                if name == 'initialize':
+                    _add_standard_gate(op, qubits, label=f"init({op.params[0]})")
+                    continue
+
+                # --- IfElseOp ---
+                if isinstance(op, IfElseOp):
+                    cond = op.condition
+                    reg, val = cond
+                    cond_node = f"if_{gate_idx}"
+                    lbl = f"if({reg.name}=={val})"
+                    G.add_node(cond_node, type='condition', label=lbl)
+                    gate_idx += 1
+                    for idx_in_reg in range(reg.size):
+                        clbit = reg[idx_in_reg]
+                        c_idx = circuit.find_bit(clbit).index
+                        G.add_edge(current_c[c_idx], cond_node)
+                    if parent_node:
+                        G.add_edge(parent_node, cond_node)
+                    _process_block(op.blocks[0], parent_node=cond_node)
+                    if len(op.blocks) > 1:
+                        _process_block(op.blocks[1], parent_node=cond_node)
+                    continue
+
+                # --- SwitchCaseOp ---
+                if isinstance(op, SwitchCaseOp):
+                    target = op.target
+                    if hasattr(target, 'name'):
+                        lbl = f"switch({target.name})"
+                    else:
+                        lbl = f"switch(c{circuit.find_bit(target).index})"
+                    switch_node = f"switch_{gate_idx}"
+                    G.add_node(switch_node, type='switch', label=lbl)
+                    gate_idx += 1
+                    if parent_node:
+                        G.add_edge(parent_node, switch_node)
+
+                    case_values = op.cases()
+                    for case_val, case_block in zip(case_values, op.blocks):
+                        case_node = f"case_{case_val}_{gate_idx}"
+                        G.add_node(case_node, type='case', label=f"case {case_val}")
+                        G.add_edge(switch_node, case_node)
+                        gate_idx += 1
+                        _process_block(case_block, parent_node=case_node)
+                    continue
+
+                # --- ForLoopOp (güvenli, sadece tür düğümü) ---
+                if isinstance(op, ForLoopOp):
+                    loop_node = f"for_{gate_idx}"
+                    # Fazla detaya girmeden sadece "for" yazalım
+                    G.add_node(loop_node, type='loop', label='for')
+                    gate_idx += 1
+                    if parent_node:
+                        G.add_edge(parent_node, loop_node)
+                    # İç bloğu işle
+                    for inner_block in op.blocks:
+                        _process_block(inner_block, parent_node=loop_node)
+                    continue
+
+                # --- WhileLoopOp (güvenli, koşul bilgisiyle) ---
+                if isinstance(op, WhileLoopOp):
+                    cond = op.condition
+                    reg, val = cond
+                    loop_node = f"while_{gate_idx}"
+                    lbl = f"while({reg.name}=={val})"
+                    G.add_node(loop_node, type='loop', label=lbl)
+                    gate_idx += 1
+                    if parent_node:
+                        G.add_edge(parent_node, loop_node)
+                    for inner_block in op.blocks:
+                        _process_block(inner_block, parent_node=loop_node)
+                    continue
+
+                # --- Standart kapı ---
+                _add_standard_gate(op, qubits)
+
+        _process_block(circuit.data)
+        return G
 
     # -------------------------------------------------------------------------
     # Demo fonksiyonları (menü içinde kullanılan)
@@ -6959,6 +7209,205 @@ def show_menu():
         plt.tight_layout()
         plt.show()
 
+    def or3_kl():
+        import sys
+        import datetime
+        import matplotlib.pyplot as plt
+        import kececilayout as kl
+        from kececilayout import _kececi_layout_3d_helix, to_networkx, circuit_to_digraph
+        import numpy as np
+        import networkx as nx
+        from qiskit import QuantumCircuit
+        
+        py_version = sys.version.split()[0]
+        run_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        def OR3():
+            devre = QuantumCircuit(4)
+            devre.x(0)
+            devre.x(1)
+            devre.x(2)
+            devre.mcx([0, 1, 2], 3)
+            devre.x(0)
+            devre.x(1)
+            devre.x(2)
+            devre.x(3)
+            return devre
+        
+        # Grafı oluştur
+        G = circuit_to_digraph(OR3())
+        
+        # 3B Helix pozisyonlarını al
+        nx_graph = to_networkx(G)
+        pos_3d = _kececi_layout_3d_helix(nx_graph)  # dict: node -> (x, y, z)
+        
+        # 3B çizim
+        fig = plt.figure(figsize=(12, 10))
+        ax = fig.add_subplot(111, projection='3d')
+        ax.set_facecolor('#0a0a0a')
+        fig.patch.set_facecolor('#0a0a0a')
+        
+        # Düğümleri çiz
+        for node, (x, y, z) in pos_3d.items():
+            ax.scatter(x, y, z, s=200, c='gold', depthshade=True)
+            # Etiketleri manuel ekle
+            ax.text(x, y, z, f'  {node}', color='white', fontsize=14)
+        
+        # Kenarları çiz
+        for u, v in nx_graph.edges():
+            coords = np.array([pos_3d[u], pos_3d[v]])
+            ax.plot(coords[:, 0], coords[:, 1], coords[:, 2],
+                    color='cyan', alpha=0.6, linewidth=0.8)
+        
+        title = (f"OR3 Gate – 3D Helix Sanatsal Temsil\n"
+                 f"Python: {py_version}  Date/Tarih: {run_date}")
+        ax.set_title(title, color='white', fontsize=12, pad=20)
+        ax.set_axis_off()
+        ax.view_init(elev=20, azim=-60)
+        plt.show()
+
+    def or3_kl2():
+        import sys, datetime
+        import matplotlib.pyplot as plt
+        import kececilayout as kl
+
+        py_version = sys.version.split()[0]
+        run_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        def OR3():
+            devre = QuantumCircuit(4)
+            devre.x(0); devre.x(1); devre.x(2)
+            devre.mcx([0, 1, 2], 3)
+            devre.x(0); devre.x(1); devre.x(2)
+            devre.x(3)
+            return devre
+
+        G = circuit_to_digraph(OR3())
+
+        fig, ax = plt.subplots(figsize=(14, 7))
+        draw_kececi(
+            G,
+            style='standard',       # düz kenarlar, temiz görünüm
+            node_size=700,
+            font_size=10,
+            node_color='lightblue',
+            edge_color='gray',
+            edge_width=1.2,
+            with_labels=True,
+            ax=ax
+        )
+
+        title = (f"OR3 Gate – VEYA(3) Kapısı\n"
+                 f"Keçeci Layout (DAG)\n"
+                 f"Python: {py_version}  Date/Tarih: {run_date}")
+        ax.set_title(title, fontsize=11, pad=18)
+        plt.tight_layout()
+        plt.show()
+
+    def or3_klr1():
+        import sys
+        import datetime
+        import matplotlib.pyplot as plt
+        import kececilayout as kl
+        from kececilayout import _kececi_layout_3d_helix, to_networkx, circuit_to_digraph
+        import numpy as np
+        import networkx as nx
+        from qiskit import QuantumCircuit
+        
+        py_version = sys.version.split()[0]
+        run_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        def OR3():
+            devre = QuantumCircuit(4)
+            devre.x(0)
+            devre.x(1)
+            devre.x(2)
+            devre.mcx([0, 1, 2], 3)
+            devre.x(0)
+            devre.x(1)
+            devre.x(2)
+            devre.x(3)
+            return devre
+        
+        # Grafı oluştur
+        G = circuit_to_digraph_robust(OR3())
+        
+        # 3B Helix pozisyonlarını al
+        nx_graph = to_networkx(G)
+        pos_3d = _kececi_layout_3d_helix(nx_graph)  # dict: node -> (x, y, z)
+        
+        # 3B çizim
+        fig = plt.figure(figsize=(12, 10))
+        ax = fig.add_subplot(111, projection='3d')
+        ax.set_facecolor('#0a0a0a')
+        fig.patch.set_facecolor('#0a0a0a')
+        
+        # Düğümleri çiz
+        for node, (x, y, z) in pos_3d.items():
+            ax.scatter(x, y, z, s=200, c='gold', depthshade=True)
+            # Etiketleri manuel ekle
+            ax.text(x, y, z, f'  {node}', color='white', fontsize=14)
+        
+        # Kenarları çiz
+        for u, v in nx_graph.edges():
+            coords = np.array([pos_3d[u], pos_3d[v]])
+            ax.plot(coords[:, 0], coords[:, 1], coords[:, 2],
+                    color='cyan', alpha=0.6, linewidth=0.8)
+        
+        title = (f"OR3 Gate – 3D Helix Sanatsal Temsil\n"
+                 f"Python: {py_version}  Date/Tarih: {run_date}")
+        ax.set_title(title, color='white', fontsize=12, pad=20)
+        ax.set_axis_off()
+        ax.view_init(elev=20, azim=-60)
+        plt.show()
+
+    def or3_klr2():
+        from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
+        from qiskit.circuit import Parameter
+        import kececilayout as kl
+        import matplotlib.pyplot as plt
+        import sys, datetime
+
+        py_version = sys.version.split()[0]
+        run_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        qr = QuantumRegister(3, 'q')
+        cr = ClassicalRegister(3, 'c')
+        qc = QuantumCircuit(qr, cr)
+
+        theta = Parameter('θ')
+        qc.rz(theta, qr[0])
+        qc.cx(qr[0], qr[1])
+        qc.measure(qr[0], cr[0])
+
+        with qc.if_test((cr, 1)):
+            qc.x(qr[2])
+
+        with qc.switch(cr[1]) as case:
+            with case(0):
+                qc.z(qr[0])
+            with case(1):
+                qc.y(qr[1])
+
+        with qc.for_loop(range(2)):
+            qc.h(qr[0])
+
+        with qc.while_loop((cr, 0)):
+            qc.reset(qr[1])
+
+        qc.measure(qr[2], cr[2])
+
+        G = circuit_to_digraph_full(qc)
+        fig, ax = plt.subplots(figsize=(18, 10))
+        draw_kececi(G, style='standard', node_size=600, font_size=8, ax=ax)
+        ax.set_title(
+            f"Kuantum Devresi – Tüm Kontrol Yapıları\n"
+            f"Python: {py_version}  Date/Tarih: {run_date}",
+            fontsize=12, pad=18
+        )
+        plt.tight_layout()
+        plt.show()
+
     # -------------------------------------------------------------------------
     # Menü tanımları (1‑38) – draw_kececi kullananlara plt.show() eklendi
     # -------------------------------------------------------------------------
@@ -7022,6 +7471,10 @@ def show_menu():
         "53": ("Kuantum Alan Teorisi Kavram Haritası (Keçeci)", quantum_field_theory_concept_map),
         "54": ("2B DAG vs Transitive Reduction (Keçeci)", _dag_2d_comparison),
         "55": ("3B DAG vs Transitive Reduction (Silindirik)", _dag_3d_comparison),
+        "56": ("OR3 Gate Circuit – VEYA(3) Kapısı Devresi, 3D Helix Sanatsal Temsili", or3_kl),
+        "57": ("OR3 Gate Circuit – VEYA(3) Kapısı Devresi (DAG)", or3_kl2),
+        "58": ("OR3 Gate Circuit – VEYA(3) Kapısı Devresi, 3D Helix Sanatsal Temsili", or3_klr1),
+        "59": ("Quantum Circuit – Kuantum Devresi", or3_klr2),
     }
 
     # -------------------------------------------------------------------------
@@ -7037,6 +7490,7 @@ def show_menu():
         ("SATRANÇ & OYUN AĞAÇLARI", range(41, 51)),  # 41 genel ağaç, 42-45 kısa matlar, 46-51 python-chess
         ("FİZİKSEL MODELLER", range(51, 54)),   # 51: Termo, 52: Kuantum Mekaniği, 53: QFT
         ("DAG ANALİZLERİ", range(54, 56)),
+        ("Kuantum Devre Analizleri ve Temsilleri", range(56, 61)),
     ]
 
     # -------------------------------------------------------------------------
@@ -7058,7 +7512,7 @@ def show_menu():
         print("   0. Çıkış")
         print("="*70)
 
-        secim = input("Seçiminiz (0‑55): ").strip()
+        secim = input("Seçiminiz (0‑59): ").strip()
         if secim == '0':
             print("Program sonlandırılıyor...")
             break
