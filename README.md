@@ -99,6 +99,8 @@ styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 
 **v0.6.7:** Quantum Circuit: Kuantum Devresi
 
+**v0.6.8:** Min_Max Cut Problem & Quantum Approximate Optimization Algorithm (QAOA)
+
 ---
 
 ```python
@@ -201,6 +203,18 @@ KEÇECİ Layout GÖRSELLEŞTİRME MENÜSÜ
   57. OR3 Gate Circuit – VEYA(3) Kapısı Devresi (DAG)
   58. OR3 Gate Circuit – VEYA(3) Kapısı Devresi, 3D Helix Sanatsal Temsili
   59. Quantum Circuit – Kuantum Devresi
+
+  Min_Max_Cut Problemi
+  --------------------------------------------------------------------
+  60. Min_Max Cut Problemi, Tekrarlı, Simetrik
+  61. Min_Max Cut Problemi, Tekrarsız, Simetrik
+  62. Min_Max Cut Problemi, Tekrarlı, Simetrik
+  63. Min_Max Cut Problemi/Genişletilmiş, Tekrarsız, Simetrik
+  64. Min_Max Cut Problemi/Genişletilmiş, Tekrarlı, Simetrik, Complementleri de göster
+  65. Min_Max Cut Problemi/Genişletilmiş, Tekrarlı, Simetrik, Complementleri de göster
+  66. Quantum Approximate Optimization Algorithm (QAOA), optimisation
+  67. Quantum Approximate Optimization Algorithm (QAOA), visualitasion
+  68. Quantum Approximate Optimization Algorithm (QAOA), benchmark
 
   --------------------------------------------------------------------
    0. Çıkış
