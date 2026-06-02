@@ -30,6 +30,8 @@ v0.6.6: DAG & Transitive redused DAG
 
 v0.6.7: Quantum Circuit: Kuantum Devresi
 
+v0.6.8: Min_Max Cut Problem & Quantum Approximate Optimization Algorithm (QAOA)
+
 """
 
 import chess # pip install -U chess
@@ -52,6 +54,9 @@ import os
 import pandas as pd
 import platform # graph_tool için
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
+from qiskit.quantum_info import SparsePauliOp
+from qiskit.circuit import Parameter
+from qiskit.circuit.library import QAOAAnsatz
 from qiskit.circuit import (
     CircuitInstruction,
     ControlFlowOp,
@@ -60,6 +65,7 @@ from qiskit.circuit import (
     SwitchCaseOp,
     WhileLoopOp,
 )
+from qiskit.primitives import StatevectorEstimator, BackendEstimatorV2, StatevectorSampler
 import random
 import re
 import rustworkx as rx
@@ -67,7 +73,7 @@ import seaborn as sns
 from scipy import stats
 from scipy.optimize import minimize
 import sys
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Sequence, Tuple, Union
 import warnings
 
 
@@ -6648,6 +6654,975 @@ def circuit_to_digraph_robust(circuit: QuantumCircuit) -> nx.DiGraph:
 
     return G
 
+def min_max_cut(graph, show_plot=True):
+    """
+    Brute‑force yöntemiyle verilen çizgenin tüm ikili bölmelerini
+    (bipartisyon) dener, her biri için kesen kenar sayısını hesaplar,
+    minimum ve maksimum cut değerlerini ve ilgili bölmeleri döndürür.
+
+    Parametreler:
+        graph : NetworkX graph (ya da .edges() ve .nodes() veren bir çizge)
+        show_plot : True ise histogram ve tüm bölmelerin subplot görselini çizer.
+
+    Dönüş:
+        dict: {
+            'min_cut': int,
+            'max_cut': int,
+            'min_partitions': list of tuples (binary vektör),
+            'max_partitions': list of tuples,
+            'all_partitions': list of (binary_vectör, cut_size)
+        }
+    """
+    # Düğüm sayısı
+    nodes = list(graph.nodes())
+    n = len(nodes)
+    edges = list(graph.edges())
+
+    # Tüm anlamlı bölmeleri tara
+    partitions = []
+    for bits in itertools.product([0, 1], repeat=n):
+        if sum(bits) == 0 or sum(bits) == n:  # boş kümeleri atla
+            continue
+        cut = sum(1 for u, v in edges if bits[nodes.index(u)] != bits[nodes.index(v)])
+        partitions.append((bits, cut))
+
+    cuts = [c for _, c in partitions]
+    min_cut = min(cuts)
+    max_cut = max(cuts)
+    min_parts = [p for p, c in partitions if c == min_cut]
+    max_parts = [p for p, c in partitions if c == max_cut]
+
+    if show_plot:
+        # ----- Histogram -----
+        fig_hist, ax_hist = plt.subplots(figsize=(7, 4))
+        bins = np.arange(min_cut - 0.5, max_cut + 1.5, 1)
+        ax_hist.hist(cuts, bins=bins, edgecolor='black', color='steelblue', alpha=0.8)
+        ax_hist.set_xlabel('Cut Size (Kesen Kenar)')
+        ax_hist.set_ylabel('Bölme Sayısı')
+        ax_hist.set_title(f'Cut Değerleri Dağılımı (Min={min_cut}, Maks={max_cut})')
+        ax_hist.set_xticks(range(min_cut, max_cut + 1))
+        ax_hist.axvline(x=min_cut, color='green', linestyle='--', linewidth=2, label=f'Min ({min_cut})')
+        ax_hist.axvline(x=max_cut, color='red', linestyle='--', linewidth=2, label=f'Maks ({max_cut})')
+        ax_hist.legend()
+        plt.tight_layout()
+        plt.show()
+        plt.close(fig_hist)
+
+        # ----- Subplot paneli (tüm bölmeler) -----
+        # Sabit bir layout kullan (kececi_layout_edge varsa onu, yoksa spring_layout)
+        try:
+            from kececilayout import kececi_layout_edge
+            layout = kececi_layout_edge(graph, edge=True)
+        except ImportError:
+            layout = nx.spring_layout(graph, seed=42)
+
+        n_total = len(partitions)
+        n_cols = 4
+        n_rows = int(np.ceil(n_total / n_cols))
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(14, 3.5 * n_rows))
+        axes = axes.flatten()
+
+        color_0 = "#e41a1c"  # kırmızı
+        color_1 = "#377eb8"  # mavi
+
+        for idx, (bits, cut) in enumerate(partitions):
+            ax = axes[idx]
+            for node in graph.nodes():
+                x, y = layout[node]
+                col = color_0 if bits[nodes.index(node)] == 0 else color_1
+                ax.scatter(x, y, c=col, s=300, edgecolors='black', linewidth=0.8, zorder=3)
+            for u, v in edges:
+                x_vals = [layout[u][0], layout[v][0]]
+                y_vals = [layout[u][1], layout[v][1]]
+                if bits[nodes.index(u)] != bits[nodes.index(v)]:
+                    ax.plot(x_vals, y_vals, color='#e41a1c', linewidth=2, alpha=0.8, zorder=2)
+                else:
+                    ax.plot(x_vals, y_vals, color='gray', linewidth=1.2, alpha=0.6, zorder=1)
+            title = f"{bits}\ncut = {cut}"
+            if cut == min_cut:
+                title += "  🟢 MİN"
+            if cut == max_cut:
+                title += "  🔴 MAKS"
+            ax.set_title(title, fontsize=9)
+            ax.set_aspect('equal')
+            ax.axis('off')
+
+        for j in range(n_total, len(axes)):
+            axes[j].axis('off')
+
+        plt.suptitle('Tüm Bölmeler (Kırmızı = Küme 0, Mavi = Küme 1; Kırmızı kenar = kesen)\n🟢 Minimum Cut, 🔴 Maksimum Cut',
+                     fontsize=14)
+        plt.tight_layout()
+        plt.subplots_adjust(top=0.93)
+        plt.show()
+        plt.close(fig)
+
+    return {
+        'min_cut': min_cut,
+        'max_cut': max_cut,
+        'min_partitions': min_parts,
+        'max_partitions': max_parts,
+        'all_partitions': partitions
+    }
+
+def min_max_cut_u(graph, show_plot=True, unique_partitions=True):
+    """
+    Brute‑force tüm ikili bölmeleri dener, min / max cut değerlerini bulur.
+
+    Parametreler:
+        graph           : NetworkX grafi
+        show_plot       : True → histogram + tüm bölmeler subplot olarak çizilir
+        unique_partitions: True → (A,B) ile (B,A) aynı sayılır, tekrarlar atılır
+    Dönüş:
+        dict: min_cut, max_cut, min_partitions, max_partitions, all_partitions
+    """
+    nodes = list(graph.nodes())
+    n = len(nodes)
+    edges = list(graph.edges())
+
+    # Tüm anlamlı bölmeleri tara
+    raw_partitions = []
+    for bits in itertools.product([0, 1], repeat=n):
+        if sum(bits) == 0 or sum(bits) == n:
+            continue
+        cut = sum(1 for u, v in edges if bits[nodes.index(u)] != bits[nodes.index(v)])
+        raw_partitions.append((bits, cut))
+
+    # Tekrarları temizle (isteğe bağlı)
+    if unique_partitions:
+        seen = set()
+        partitions = []
+        for bits, cut in raw_partitions:
+            # İlk düğüm 0 olacak şekilde normalize et
+            if bits[0] == 1:
+                bits_norm = tuple(1 - b for b in bits)
+            else:
+                bits_norm = bits
+            if bits_norm not in seen:
+                seen.add(bits_norm)
+                partitions.append((bits_norm, cut))
+    else:
+        partitions = raw_partitions
+
+    cuts = [c for _, c in partitions]
+    min_cut = min(cuts)
+    max_cut = max(cuts)
+    min_parts = [p for p, c in partitions if c == min_cut]
+    max_parts = [p for p, c in partitions if c == max_cut]
+
+    if show_plot:
+        # ----- Histogram -----
+        fig_hist, ax_hist = plt.subplots(figsize=(7, 4))
+        bins = np.arange(min_cut - 0.5, max_cut + 1.5, 1)
+        ax_hist.hist(cuts, bins=bins, edgecolor='black', color='steelblue', alpha=0.8)
+        ax_hist.set_xlabel('Cut Size (Kesen Kenar)')
+        ax_hist.set_ylabel('Bölme Sayısı')
+        ax_hist.set_title(f'Cut Değerleri Dağılımı (Min={min_cut}, Maks={max_cut})')
+        ax_hist.set_xticks(range(min_cut, max_cut + 1))
+        ax_hist.axvline(x=min_cut, color='green', linestyle='--', linewidth=2, label=f'Min ({min_cut})')
+        ax_hist.axvline(x=max_cut, color='red', linestyle='--', linewidth=2, label=f'Maks ({max_cut})')
+        ax_hist.legend()
+        plt.tight_layout()
+        plt.show()
+        plt.close(fig_hist)
+
+        # ----- Subplot paneli -----
+        try:
+            from kececilayout import kececi_layout_edge
+            layout = kececi_layout_edge(graph, edge=True)
+        except ImportError:
+            layout = nx.spring_layout(graph, seed=42)
+
+        n_total = len(partitions)
+        n_cols = 4
+        n_rows = int(np.ceil(n_total / n_cols))
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(14, 3.5 * n_rows))
+        axes = axes.flatten()
+
+        color_0 = "#e41a1c"
+        color_1 = "#377eb8"
+
+        for idx, (bits, cut) in enumerate(partitions):
+            ax = axes[idx]
+            for node in graph.nodes():
+                x, y = layout[node]
+                col = color_0 if bits[nodes.index(node)] == 0 else color_1
+                ax.scatter(x, y, c=col, s=300, edgecolors='black', linewidth=0.8, zorder=3)
+            for u, v in edges:
+                x_vals = [layout[u][0], layout[v][0]]
+                y_vals = [layout[u][1], layout[v][1]]
+                if bits[nodes.index(u)] != bits[nodes.index(v)]:
+                    ax.plot(x_vals, y_vals, color='#e41a1c', linewidth=2, alpha=0.8, zorder=2)
+                else:
+                    ax.plot(x_vals, y_vals, color='gray', linewidth=1.2, alpha=0.6, zorder=1)
+            title = f"{bits}\ncut = {cut}"
+            if cut == min_cut:
+                title += "  🟢 MİN"
+            if cut == max_cut:
+                title += "  🔴 MAKS"
+            ax.set_title(title, fontsize=9)
+            ax.set_aspect('equal')
+            ax.axis('off')
+
+        for j in range(n_total, len(axes)):
+            axes[j].axis('off')
+
+        plt.suptitle('Tüm Tekil (Unique) Bölmeler\n🟢 Minimum Cut, 🔴 Maksimum Cut', fontsize=14)
+        plt.tight_layout()
+        plt.subplots_adjust(top=0.93)
+        plt.show()
+        plt.close(fig)
+
+    return {
+        'min_cut': min_cut,
+        'max_cut': max_cut,
+        'min_partitions': min_parts,
+        'max_partitions': max_parts,
+        'all_partitions': partitions
+    }
+
+# ------------------------------------------------------------
+# min_max_cut_extended
+# ------------------------------------------------------------
+def min_max_cut_extended(graph, show_plot=True, unique_partitions=True, show_complement=True):
+    """
+    Brute‑force tüm ikili bölmeleri bulur, min / max cut değerlerini hesaplar.
+    Genişletilmiş kececi layout stilleriyle (2d, cylindrical, spherical, toric vb.)
+    seçilen min‑cut ve max‑cut bölmelerini görselleştirir.
+    show_complement=True ise her bölmenin tümleyeni de ayrı bir panelde çizilir.
+    """
+
+    nodes = list(graph.nodes())
+    n = len(nodes)
+    edges = list(graph.edges())
+
+    # ---------- 1. BRUTE‑FORCE ----------
+    raw = []
+    for bits in itertools.product([0, 1], repeat=n):
+        if sum(bits) == 0 or sum(bits) == n:
+            continue
+        cut = sum(1 for u, v in edges if bits[nodes.index(u)] != bits[nodes.index(v)])
+        raw.append((bits, cut))
+
+    if unique_partitions:
+        seen = set()
+        partitions = []
+        for bits, cut in raw:
+            if bits[0] == 1:
+                bits_norm = tuple(1 - b for b in bits)
+            else:
+                bits_norm = bits
+            if bits_norm not in seen:
+                seen.add(bits_norm)
+                partitions.append((bits_norm, cut))
+    else:
+        partitions = raw
+
+    cuts = [c for _, c in partitions]
+    min_cut = min(cuts)
+    max_cut = max(cuts)
+    min_parts = [p for p, c in partitions if c == min_cut]
+    max_parts = [p for p, c in partitions if c == max_cut]
+
+    print("=" * 60)
+    print("  MIN‑MAX CUT EXTENDED (Brute‑Force + Genişletilmiş Layout)")
+    print("=" * 60)
+    print(f"Minimum cut: {min_cut}")
+    print("Bölmeler (benzersiz):")
+    for p in min_parts:
+        print(f"  {p}")
+    print(f"\nMaksimum cut: {max_cut}")
+    print("Bölmeler (benzersiz):")
+    for p in max_parts:
+        print(f"  {p}")
+    print("-" * 60)
+
+    if not show_plot:
+        return {
+            'min_cut': min_cut, 'max_cut': max_cut,
+            'min_partitions': min_parts, 'max_partitions': max_parts,
+            'all_partitions': partitions
+        }
+
+    # ---------- 2. ÖRNEK BÖLME SEÇ ----------
+    example_min_bits = min_parts[0]
+    example_max_bits = max_parts[0]
+
+    # ---------- 3. YARDIMCI FONKSİYONLAR ----------
+    def map_to_cylinder(pos_2d, radius=1, height=1):
+        pos_3d = {}
+        for node, (x, y) in pos_2d.items():
+            theta = 2 * np.pi * x
+            pos_3d[node] = (radius * np.cos(theta),
+                            radius * np.sin(theta),
+                            height * (y - 0.5) * 2)
+        return pos_3d
+
+    def map_to_sphere(pos_2d, radius=1):
+        pos_3d = {}
+        for node, (x, y) in pos_2d.items():
+            theta = 2 * np.pi * x
+            phi = np.pi * y
+            pos_3d[node] = (radius * np.sin(phi) * np.cos(theta),
+                            radius * np.sin(phi) * np.sin(theta),
+                            radius * np.cos(phi))
+        return pos_3d
+
+    def map_to_ellipsoid(pos_2d, a=2, b=1, c=0.5):
+        pos_3d = {}
+        for node, (x, y) in pos_2d.items():
+            theta = 2 * np.pi * x
+            phi = np.pi * y
+            pos_3d[node] = (a * np.sin(phi) * np.cos(theta),
+                            b * np.sin(phi) * np.sin(theta),
+                            c * np.cos(phi))
+        return pos_3d
+
+    def map_to_torus(pos_2d, R=2, r=0.5):
+        pos_3d = {}
+        for node, (x, y) in pos_2d.items():
+            theta = 2 * np.pi * x
+            phi = 2 * np.pi * y
+            pos_3d[node] = ((R + r * np.cos(phi)) * np.cos(theta),
+                            (R + r * np.cos(phi)) * np.sin(theta),
+                            r * np.sin(phi))
+        return pos_3d
+
+    def kececi_layout_extended(G, layout='2d', style='standard', edge_aware=True,
+                               expanding=True, primary_spacing=1.0, secondary_spacing=1.0,
+                               primary_direction='top_down', secondary_start='right'):
+        if edge_aware:
+            base = kececi_layout_edge(
+                G, primary_spacing=primary_spacing, secondary_spacing=secondary_spacing,
+                primary_direction=primary_direction, secondary_start=secondary_start,
+                expanding=expanding, edge=True
+            )
+        else:
+            base = kececi_layout(
+                G, primary_spacing=primary_spacing, secondary_spacing=secondary_spacing,
+                primary_direction=primary_direction, secondary_start=secondary_start,
+                expanding=expanding
+            )
+        if layout == '2d':
+            return base, False
+        elif layout == 'cylindrical':
+            return map_to_cylinder(base), True
+        elif layout == 'cubic':
+            sorted_nodes = sorted(G.nodes())
+            pos3 = {}
+            for i, node in enumerate(sorted_nodes):
+                x, y = base[node]
+                z = i * primary_spacing - (len(sorted_nodes)-1)*primary_spacing/2
+                pos3[node] = (x, y, z)
+            return pos3, True
+        elif layout == 'spherical':
+            return map_to_sphere(base), True
+        elif layout == 'elliptical':
+            return map_to_ellipsoid(base), True
+        elif layout == 'toric':
+            return map_to_torus(base), True
+        else:
+            raise ValueError(f"Geçersiz layout: {layout}")
+
+    # ---------- 4. ÇİZİM FONKSİYONU (DÜZELTİLMİŞ) ----------
+    def draw_partition(ax, G, pos, bits, title, is_3d=False):
+        color_0 = "#e41a1c"
+        color_1 = "#377eb8"
+        for node in G.nodes():
+            if is_3d:
+                x, y, z = pos[node]
+                col = color_0 if bits[nodes.index(node)] == 0 else color_1
+                ax.scatter(x, y, z, c=col, s=200, edgecolors='black', linewidth=0.8)
+            else:
+                x, y = pos[node]
+                col = color_0 if bits[nodes.index(node)] == 0 else color_1
+                ax.scatter(x, y, c=col, s=200, edgecolors='black', linewidth=0.8)
+        for u, v in edges:
+            if bits[nodes.index(u)] != bits[nodes.index(v)]:
+                edge_color = '#e41a1c'
+            else:
+                edge_color = 'gray'
+            if is_3d:
+                xu, yu, zu = pos[u]
+                xv, yv, zv = pos[v]
+                ax.plot([xu, xv], [yu, yv], [zu, zv], color=edge_color, linewidth=2, alpha=0.8)
+            else:
+                xu, yu = pos[u]
+                xv, yv = pos[v]
+                ax.plot([xu, xv], [yu, yv], color=edge_color, linewidth=2, alpha=0.8)
+        ax.set_title(title, fontsize=9)
+        if not is_3d:
+            ax.set_aspect('equal')
+        ax.axis('off')
+
+    # ---------- 5. HİSTOGRAM ----------
+    fig_hist, ax_hist = plt.subplots(figsize=(7, 4))
+    bins = np.arange(min_cut - 0.5, max_cut + 1.5, 1)
+    ax_hist.hist(cuts, bins=bins, edgecolor='black', color='steelblue', alpha=0.8)
+    ax_hist.set_xlabel('Cut Size')
+    ax_hist.set_ylabel('Bölme Sayısı')
+    ax_hist.set_title(f'Cut Dağılımı (Min={min_cut}, Maks={max_cut})')
+    ax_hist.set_xticks(range(min_cut, max_cut+1))
+    ax_hist.axvline(min_cut, color='green', linestyle='--', linewidth=2, label=f'Min ({min_cut})')
+    ax_hist.axvline(max_cut, color='red', linestyle='--', linewidth=2, label=f'Maks ({max_cut})')
+    ax_hist.legend()
+    plt.tight_layout()
+    plt.show()
+    plt.close(fig_hist)
+
+    # ---------- 6. ÇİZİM ANA DÖNGÜSÜ (complement destekli) ----------
+    layouts = ['2d', 'cylindrical', 'spherical', 'elliptical', 'toric']
+
+    for layout_name in layouts:
+        pos_min, is3d_min = kececi_layout_extended(
+            graph, layout=layout_name, style='standard', edge_aware=True
+        )
+        pos_max, is3d_max = kececi_layout_extended(
+            graph, layout=layout_name, style='standard', edge_aware=True
+        )
+
+        if show_complement:
+            bits_list = [
+                (example_min_bits, f"Min Cut = {min_cut}\n{example_min_bits}"),
+                (tuple(1 - b for b in example_min_bits), f"Min Complement\n{tuple(1 - b for b in example_min_bits)}"),
+                (example_max_bits, f"Maks Cut = {max_cut}\n{example_max_bits}"),
+                (tuple(1 - b for b in example_max_bits), f"Maks Complement\n{tuple(1 - b for b in example_max_bits)}")
+            ]
+            ncols = 4
+        else:
+            bits_list = [
+                (example_min_bits, f"Min Cut = {min_cut}\n{example_min_bits}"),
+                (example_max_bits, f"Maks Cut = {max_cut}\n{example_max_bits}")
+            ]
+            ncols = 2
+
+        if is3d_min or is3d_max:
+            # 3D: hepsi aynı figürde yan yana
+            fig = plt.figure(figsize=(4 * ncols, 4))
+            for idx, (bits, title) in enumerate(bits_list, start=1):
+                ax = fig.add_subplot(1, ncols, idx, projection='3d')
+                pos = pos_min if "Min" in title else pos_max
+                draw_partition(ax, graph, pos, bits, title, is_3d=True)
+            fig.suptitle(f"Layout: {layout_name}", fontsize=14)
+            plt.tight_layout()
+            plt.show()
+            plt.close(fig)
+        else:
+            # 2D: yan yana subplot
+            fig, axes = plt.subplots(1, ncols, figsize=(5 * ncols, 5))
+            if ncols == 2:
+                ax1, ax2 = axes
+                draw_partition(ax1, graph, pos_min, example_min_bits,
+                               f"Min Cut = {min_cut}\n{example_min_bits}")
+                draw_partition(ax2, graph, pos_max, example_max_bits,
+                               f"Maks Cut = {max_cut}\n{example_max_bits}")
+            else:
+                for idx, (bits, title) in enumerate(bits_list):
+                    pos = pos_min if "Min" in title else pos_max
+                    draw_partition(axes[idx], graph, pos, bits, title)
+            fig.suptitle(f"Layout: {layout_name}", fontsize=14)
+            plt.tight_layout()
+            plt.show()
+            plt.close(fig)
+
+    return {
+        'min_cut': min_cut, 'max_cut': max_cut,
+        'min_partitions': min_parts, 'max_partitions': max_parts,
+        'all_partitions': partitions
+    }
+
+def max_cut_qaoa_optimization(
+    graph: Union[rx.PyGraph, rx.PyDiGraph, nx.Graph, nx.DiGraph],
+    reps: int = 2,
+    backend = None,
+    optimizer: str = "COBYLA",
+    tol: float = 1e-2,
+    maxiter: int = 100,
+    plot_convergence: bool = True,
+    draw_final_circuit: bool = True
+):
+    """
+    Max‑Cut QAOA optimizasyonu (Qiskit 2.0 uyumlu) + devre çizimi.
+
+    Parametreler:
+        graph    : Çizge (rustworkx / NetworkX)
+        reps     : QAOA katman sayısı
+        backend  : None → ideal simülasyon (StatevectorEstimator)
+                   Backend → gürültülü simülasyon (BackendEstimatorV2)
+        optimizer: Klasik optimizasyon yöntemi
+        tol      : Tolerans
+        maxiter  : Maksimum iterasyon
+        plot_convergence : Maliyet grafiğini çiz
+        draw_final_circuit : True → optimize edilmiş devreyi çizdir
+
+    Dönüş:
+        result, optimized_circuit
+    """
+    from qiskit.quantum_info import SparsePauliOp
+    from qiskit.circuit.library import QAOAAnsatz
+    from scipy.optimize import minimize
+
+    # ---------- 1. Pauli terimleri ----------
+    if isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):
+        edges = list(graph.edge_list())
+        num_nodes = graph.num_nodes()
+        def get_weight(u, v):
+            return graph.get_edge_data(u, v)
+    elif isinstance(graph, (nx.Graph, nx.DiGraph)):
+        edges = list(graph.edges())
+        num_nodes = graph.number_of_nodes()
+        def get_weight(u, v):
+            return graph[u][v].get('weight', 1.0)
+    else:
+        raise TypeError("Graf rustworkx ya da NetworkX türünde olmalıdır.")
+
+    pauli_list = []
+    for u, v in edges:
+        w = get_weight(u, v)
+        if w is None:
+            w = 1.0
+        pauli_list.append(("ZZ", [int(u), int(v)], float(w)))
+
+    cost_hamiltonian = SparsePauliOp.from_sparse_list(pauli_list, num_qubits=num_nodes)
+
+    # ---------- 2. QAOA devresi (measurement YOK) ----------
+    circuit = QAOAAnsatz(cost_operator=cost_hamiltonian, reps=reps)
+
+    # ---------- 3. Estimator seçimi ----------
+    if backend is None:
+        from qiskit.primitives import StatevectorEstimator
+        estimator = StatevectorEstimator()
+    else:
+        from qiskit.primitives import BackendEstimatorV2
+        estimator = BackendEstimatorV2(backend)
+
+    # ---------- 4. Maliyet fonksiyonu ----------
+    objective_values = []
+
+    def cost_func(params):
+        job = estimator.run([(circuit, cost_hamiltonian, list(params))])
+        result = job.result()[0]
+        evs = result.data.evs
+        objective_values.append(evs)
+        return evs
+
+    # ---------- 5. Başlangıç parametreleri ----------
+    init_params = np.array(
+        [np.pi/2] * reps + [np.pi] * reps  # betalar sonra gammalar
+    )
+
+    # ---------- 6. Optimizasyon ----------
+    result = minimize(
+        cost_func,
+        init_params,
+        method=optimizer,
+        tol=tol,
+        options={'maxiter': maxiter}
+    )
+
+    # ---------- 7. Konsol çıktısı ----------
+    print("=" * 60)
+    print("  MAX‑CUT QAOA OPTİMİZASYONU (Qiskit 2.0)")
+    print("=" * 60)
+    print(f"Hamiltonyen boyutu : {cost_hamiltonian.num_qubits} qubit")
+    print(f"QAOA katman sayısı : {reps}")
+    print(f"Optimizasyon       : {optimizer}")
+    print(f"Başarı durumu      : {result.success}")
+    print(f"Bulunan maliyet    : {result.fun:.4f}")
+    print(f"Optimal parametreler:\n{result.x}")
+    print("-" * 60)
+
+    # ---------- 8. Yakınsama grafiği ----------
+    if plot_convergence:
+        plt.figure(figsize=(7, 4))
+        plt.plot(objective_values, 'o-', color='teal')
+        plt.xlabel('İterasyon')
+        plt.ylabel('Beklenen Değer (Maliyet)')
+        plt.title(f'QAOA Yakınsama (Max‑Cut, {reps} katman)')
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.show()
+
+    # ---------- 9. Optimize edilmiş devreyi çiz ----------
+    optimized_circuit = None
+    if draw_final_circuit:
+        # Optimal parametreleri devreye ata
+        optimized_circuit = circuit.assign_parameters(result.x)
+        # Çizim için ölçüm ekle
+        optimized_circuit.measure_all()
+
+        # Jupyter not defterinde miyiz?
+        try:
+            get_ipython()
+            in_notebook = True
+        except NameError:
+            in_notebook = False
+
+        if in_notebook:
+            from IPython.display import display
+            display(optimized_circuit.draw("mpl", fold=False, idle_wires=False))
+        else:
+            fig = optimized_circuit.draw("mpl", fold=False, idle_wires=False)
+            if fig is not None:
+                plt.figure(fig.number)
+                plt.show()
+            else:
+                plt.show()
+
+    return result, optimized_circuit
+
+def max_cut_qaoa_visualize(
+    graph,
+    reps: int = 2,
+    backend = None,
+    optimizer: str = "COBYLA",
+    tol: float = 1e-2,
+    maxiter: int = 100,
+    plot_convergence: bool = True,
+    draw_final_circuit: bool = False
+):
+    """
+    Max‑Cut QAOA sonucunu histogram ve graf üzerinde görselleştirir.
+
+    Parametreler:
+        graph    : rustworkx ya da NetworkX çizgesi
+        reps     : QAOA katman sayısı
+        backend  : None → ideal simülasyon
+        optimizer: Klasik optimizasyon yöntemi
+        tol      : Tolerans
+        maxiter  : Maksimum iterasyon
+        plot_convergence : Maliyet yakınsama grafiği
+        draw_final_circuit : Optimize edilmiş devreyi çiz
+
+    Dönüş:
+        optimal_bitstring, cut_value
+    """
+    from qiskit.quantum_info import SparsePauliOp
+    from qiskit.circuit.library import QAOAAnsatz
+    from scipy.optimize import minimize
+    from qiskit.primitives import StatevectorEstimator, StatevectorSampler
+
+    # ---------- 1. Pauli terimleri ----------
+    if isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):
+        edges = list(graph.edge_list())
+        num_nodes = graph.num_nodes()
+        def get_weight(u, v):
+            return graph.get_edge_data(u, v)
+    elif isinstance(graph, (nx.Graph, nx.DiGraph)):
+        edges = list(graph.edges())
+        num_nodes = graph.number_of_nodes()
+        def get_weight(u, v):
+            return graph[u][v].get('weight', 1.0)
+    else:
+        raise TypeError("Graf rustworkx ya da NetworkX türünde olmalıdır.")
+
+    pauli_list = []
+    for u, v in edges:
+        w = get_weight(u, v)
+        if w is None:
+            w = 1.0
+        pauli_list.append(("ZZ", [int(u), int(v)], float(w)))
+
+    cost_hamiltonian = SparsePauliOp.from_sparse_list(pauli_list, num_qubits=num_nodes)
+
+    # ---------- 2. QAOA devresi ----------
+    circuit = QAOAAnsatz(cost_operator=cost_hamiltonian, reps=reps)
+
+    # ---------- 3. Estimator ----------
+    if backend is None:
+        estimator = StatevectorEstimator()
+    else:
+        from qiskit.primitives import BackendEstimatorV2
+        estimator = BackendEstimatorV2(backend)
+
+    # ---------- 4. Maliyet fonksiyonu ----------
+    objective_values = []
+
+    def cost_func(params):
+        job = estimator.run([(circuit, cost_hamiltonian, list(params))])
+        result = job.result()[0]
+        evs = result.data.evs
+        objective_values.append(evs)
+        return evs
+
+    # ---------- 5. Optimizasyon ----------
+    init_params = np.array([np.pi/2]*reps + [np.pi]*reps)
+    result = minimize(cost_func, init_params, method=optimizer,
+                      tol=tol, options={'maxiter': maxiter})
+
+    if plot_convergence:
+        plt.figure(figsize=(7,4))
+        plt.plot(objective_values, 'o-', color='teal')
+        plt.xlabel('İterasyon'), plt.ylabel('Beklenen Değer')
+        plt.title(f'QAOA Yakınsama (Max‑Cut, {reps} katman)')
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.show()
+
+    # ---------- 6. Optimize edilmiş devreyi örnekle ----------
+    optimized_circuit = circuit.assign_parameters(result.x)
+    # Örnekleme için ölçüm ekle (Sampler kullanacağız)
+    sampler_circuit = optimized_circuit.copy()
+    sampler_circuit.measure_all()
+
+    sampler = StatevectorSampler() if backend is None else BackendSamplerV2(backend)
+    job_sampler = sampler.run([sampler_circuit], shots=1024)
+    counts = job_sampler.result()[0].data.meas.get_counts()
+
+    # Bitstringleri ve olasılıkları hazırla
+    bitstrings = sorted(counts.keys())
+    probabilities = [counts[bs] / 1024 for bs in bitstrings]
+
+    # Qiskit bit sıralaması: q_{n-1} ... q_0
+    # "reversed" istendiği için ters çeviriyoruz
+    bitstrings_rev = [bs[::-1] for bs in bitstrings]
+
+    # ---------- 7. Histogram ----------
+    plt.figure(figsize=(10, 5))
+    plt.bar(bitstrings_rev, probabilities, color='skyblue', edgecolor='black')
+    plt.title("Result Distribution")
+    plt.xlabel("Bitstrings (reversed)")
+    plt.ylabel("Probability")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
+    # ---------- 8. En yüksek olasılıklı bitstring'i bul ----------
+    optimal_bs = max(counts, key=counts.get)
+    optimal_bs_rev = optimal_bs[::-1]
+    print(f"Optimal bitstring: {optimal_bs_rev}")
+
+    # ---------- 9. Cut değerini hesapla ----------
+    # Bitstring'i partition olarak yorumla: '0' -> küme 0, '1' -> küme 1
+    # Partition (0,1) listesi
+    partition = [int(bit) for bit in optimal_bs]
+    cut_value = 0
+    for u, v in edges:
+        w = get_weight(u, v) or 1.0
+        if partition[u] != partition[v]:
+            cut_value += w
+    print(f"The value of the cut is: {cut_value}")
+
+    # ---------- 10. Grafı çiz ----------
+    G_nx = nx.Graph()
+    G_nx.add_nodes_from(range(num_nodes))
+    for u, v in edges:
+        w = get_weight(u, v) or 1.0
+        G_nx.add_edge(u, v, weight=w)
+
+    # kececi layout
+    pos = kececi_layout_edge(G_nx, edge=True)
+
+    plt.figure(figsize=(6,5))
+    # Düğüm renkleri
+    color_0 = "#e41a1c"
+    color_1 = "#377eb8"
+    node_colors = [color_0 if partition[node] == 0 else color_1 for node in G_nx.nodes()]
+
+    # Kenarları çiz
+    for u, v in G_nx.edges():
+        x_vals = [pos[u][0], pos[v][0]]
+        y_vals = [pos[u][1], pos[v][1]]
+        if partition[u] != partition[v]:
+            # kesen kenar: kırmızı ve kalın
+            plt.plot(x_vals, y_vals, color='red', linewidth=2.5, alpha=0.8, zorder=2)
+        else:
+            plt.plot(x_vals, y_vals, color='gray', linewidth=1.2, alpha=0.6, zorder=1)
+
+    # Düğümler
+    nx.draw_networkx_nodes(G_nx, pos, node_color=node_colors, node_size=600,
+                           edgecolors='black', linewidths=1.2)
+    # Etiketler
+    nx.draw_networkx_labels(G_nx, pos, font_weight='bold')
+    # Kenar ağırlıkları
+    edge_labels = {(u,v): G_nx[u][v]['weight'] for u,v in G_nx.edges()}
+    nx.draw_networkx_edge_labels(G_nx, pos, edge_labels=edge_labels)
+
+    plt.title(f"Max‑Cut = {cut_value}\nBitstring: {optimal_bs_rev}")
+    plt.axis('off')
+    plt.tight_layout()
+    plt.show()
+
+    return optimal_bs_rev, cut_value
+
+# ---------- Uyarıları tamamen bastır ----------
+warnings.filterwarnings("ignore", category=UserWarning)          # Qiskit ve diğer UserWarning'ler
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+# Seyrek matris uyarılarını özel olarak yakala
+try:
+    from scipy.sparse import SparseEfficiencyWarning
+    warnings.filterwarnings("ignore", category=SparseEfficiencyWarning)
+except ImportError:
+    pass
+# scipy.optimize uyarıları
+from scipy.optimize import OptimizeWarning
+warnings.filterwarnings("ignore", category=OptimizeWarning)
+
+def max_cut_qaoa_benchmark(
+    graph: Union[rx.PyGraph, rx.PyDiGraph, nx.Graph, nx.DiGraph],
+    reps: int = 2,
+    methods: Optional[List[str]] = None,
+    n_starts: int = 3,
+    shots: int = 1024,
+    plot: bool = False
+):
+    """
+    QAOA Max‑Cut için türev gerektirmeyen optimizasyon yöntemlerini karşılaştırır.
+    Çoklu başlangıçla başarı oranını artırır.
+
+    Parametreler:
+        graph    : Çizge (rustworkx / NetworkX)
+        reps     : QAOA katman sayısı
+        methods  : Denenecek yöntemler (None → türevsiz liste)
+        n_starts : Her yöntem için başlangıç sayısı
+        shots    : Örnekleme sayısı
+        plot     : Her başlangıç için yakınsama grafiği çizer
+
+    Dönüş:
+        pd.DataFrame
+    """
+    from qiskit.quantum_info import SparsePauliOp
+    from qiskit.circuit.library import QAOAAnsatz
+    from qiskit.primitives import StatevectorEstimator, StatevectorSampler
+    from scipy.optimize import minimize
+
+    # ---------- 1. Graf bilgileri ----------
+    if isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):
+        edges = list(graph.edge_list())
+        num_nodes = graph.num_nodes()
+        def get_weight(u, v):
+            return graph.get_edge_data(u, v)
+    else:
+        edges = list(graph.edges())
+        num_nodes = graph.number_of_nodes()
+        def get_weight(u, v):
+            return graph[u][v].get('weight', 1.0)
+
+    # Brute‑force optimal cut
+    best_cut = 0
+    for bits in itertools.product([0, 1], repeat=num_nodes):
+        if sum(bits) == 0 or sum(bits) == num_nodes:
+            continue
+        cut = 0
+        for u, v in edges:
+            w = get_weight(u, v) or 1.0
+            if bits[u] != bits[v]:
+                cut += w
+        if cut > best_cut:
+            best_cut = cut
+    print(f"Optimal cut (brute‑force): {best_cut}")
+
+    # ---------- 2. Hamiltonian (işaret ters: beklenti = -cut) ----------
+    pauli_list = []
+    for u, v in edges:
+        w = get_weight(u, v) or 1.0
+        pauli_list.append(("ZZ", [int(u), int(v)], 0.5 * w))   # +0.5 w ZᵢZⱼ
+    cost_hamiltonian = SparsePauliOp.from_sparse_list(pauli_list, num_qubits=num_nodes)
+
+    circuit = QAOAAnsatz(cost_operator=cost_hamiltonian, reps=reps)
+
+    # Türevsiz yöntemler
+    derivative_free_methods = [
+        'Nelder-Mead', 'Powell', 'COBYLA', 'COBYQA', 'SLSQP'
+    ]
+    if methods is None:
+        methods = derivative_free_methods
+    else:
+        methods = [m for m in methods if m in derivative_free_methods]
+
+    results = []
+
+    for method in methods:
+        print(f"\n=== {method} ===")
+        best_cut_found = 0
+        best_expectation = None
+        best_bs = None
+        best_nit = None
+
+        for start_idx in range(n_starts):
+            rng = np.random.default_rng(start_idx)
+            init_params = rng.uniform(0, 2 * np.pi, size=2 * reps)
+
+            options = {'maxiter': 200}
+            if method == 'COBYLA':
+                options = {'maxiter': 200, 'rhobeg': 0.5}
+            elif method == 'COBYQA':
+                options = {'maxiter': 200}
+
+            try:
+                estimator = StatevectorEstimator()
+                values = []
+
+                def cost_func(params):
+                    job = estimator.run([(circuit, cost_hamiltonian, list(params))])
+                    res = job.result()[0]
+                    evs = res.data.evs          # = -cut
+                    values.append(-evs)
+                    return evs
+
+                res = minimize(cost_func, init_params, method=method,
+                               tol=1e-4, options=options)
+
+                # Örnekle
+                opt_circuit = circuit.assign_parameters(res.x)
+                samp_circ = opt_circuit.copy()
+                samp_circ.measure_all()
+                sampler = StatevectorSampler()
+                job_samp = sampler.run([samp_circ], shots=shots)
+                counts = job_samp.result()[0].data.meas.get_counts()
+                best_bs_local = max(counts, key=counts.get)
+                partition = [int(b) for b in best_bs_local]
+                cut_val = 0
+                for u, v in edges:
+                    w = get_weight(u, v) or 1.0
+                    if partition[u] != partition[v]:
+                        cut_val += w
+
+                if cut_val > best_cut_found:
+                    best_cut_found = cut_val
+                    best_expectation = res.fun
+                    best_bs = best_bs_local[::-1]
+                    best_nit = getattr(res, 'nit', None)   # Güvenli erişim
+
+                if plot:
+                    plt.figure()
+                    plt.plot(values, 'o-')
+                    plt.title(f'{method} start {start_idx+1}')
+                    plt.xlabel('İterasyon')
+                    plt.ylabel('Cut (negatif maliyet)')
+                    plt.grid(True, alpha=0.3)
+                    plt.show()
+
+            except Exception as e:
+                # Hata mesajını yazdırmak yerine sadece geç (veya kısa bir uyarı)
+                # print(f"  Başlangıç {start_idx+1} hata: {e}")   # istenirse aktif edilebilir
+                pass
+
+        results.append({
+            'Method': method,
+            'Best Cut': best_cut_found,
+            'Best Expectation': best_expectation,
+            'Iterations': best_nit,
+            'Best Bitstring': best_bs,
+            'Approx. Ratio': best_cut_found / best_cut if best_cut else 0.0
+        })
+
+    df = pd.DataFrame(results).sort_values(by='Approx. Ratio', ascending=False, na_position='last')
+
+    print("\n" + "="*80)
+    print("  QAOA MAX‑CUT BENCHMARK (Türevsiz Yöntemler)")
+    print("="*80)
+    print(f"Optimal cut (brute‑force): {best_cut}")
+    print(df.to_string(index=False))
+    print("-"*80)
+    best_rows = df[df['Approx. Ratio'] == df['Approx. Ratio'].max()]
+    print("En yüksek başarı oranına sahip yöntemler:")
+    for _, row in best_rows.iterrows():
+        print(f"  {row['Method']}: Approx. Ratio = {row['Approx. Ratio']:.4f} (Cut = {row['Best Cut']})")
+
+    return df
+
 
 def show_menu():
     """
@@ -7417,6 +8392,155 @@ def show_menu():
         fn(*args, **kwargs)
         plt.show()
 
+    def min_max_cut1():
+        # Örnek graf
+        w = np.array([[0,1,1,0],
+                      [1,0,1,1],
+                      [1,1,0,1],
+                      [0,1,1,0]])
+        G = nx.from_numpy_array(w)
+
+        # Analizi çalıştır
+        sonuc = min_max_cut(G, show_plot=True)
+        print("Minimum cut (Tekrarlı, Simetrik):", sonuc['min_cut'])
+        print("Minimum bölmeler:", sonuc['min_partitions'])
+        print("Maksimum cut:", sonuc['max_cut'])
+        print("Maksimum bölmeler (Tekrarlı, Simetrik):", sonuc['max_partitions'])
+
+    def min_max_cut2():
+        # Örnek graf
+        w = np.array([[0,1,1,0],
+                      [1,0,1,1],
+                      [1,1,0,1],
+                      [0,1,1,0]])
+        G = nx.from_numpy_array(w)
+
+        # Analizi çalıştır
+        sonuc = min_max_cut_u(G, show_plot=True, unique_partitions=True)
+        print("Minimum cut (Tekrarsız, Simetrik):", sonuc['min_cut'])
+        print("Minimum bölmeler:", sonuc['min_partitions'])
+        print("Maksimum cut:", sonuc['max_cut'])
+        print("Maksimum bölmeler (Tekrarsız, Simetrik):", sonuc['max_partitions'])
+
+    def min_max_cut3():
+        # Örnek graf
+        w = np.array([[0,1,1,0],
+                      [1,0,1,1],
+                      [1,1,0,1],
+                      [0,1,1,0]])
+        G = nx.from_numpy_array(w)
+
+        # Analizi çalıştır
+        sonuc = min_max_cut_u(G, show_plot=True, unique_partitions=False)
+        print("Minimum cut (Tekrarlı, Simetrik):", sonuc['min_cut'])
+        print("Minimum bölmeler:", sonuc['min_partitions'])
+        print("Maksimum cut:", sonuc['max_cut'])
+        print("Maksimum bölmeler (Tekrarlı, Simetrik):", sonuc['max_partitions'])
+
+    def min_max_cute1():
+        # Örnek graf
+        w = np.array([[0,1,1,0],
+                      [1,0,1,1],
+                      [1,1,0,1],
+                      [0,1,1,0]])
+        G = nx.from_numpy_array(w)
+
+        # Analizi çalıştır
+        sonuc = min_max_cut_extended(G, show_plot=True, unique_partitions=True, show_complement=False)
+        print("Minimum cut (Tekrarsız, Simetrik):", sonuc['min_cut'])
+        print("Minimum bölmeler:", sonuc['min_partitions'])
+        print("Maksimum cut:", sonuc['max_cut'])
+        print("Maksimum bölmeler (Tekrarsız, Simetrik):", sonuc['max_partitions'])
+
+    def min_max_cute2():
+        # Örnek graf
+        w = np.array([[0,1,1,0],
+                      [1,0,1,1],
+                      [1,1,0,1],
+                      [0,1,1,0]])
+        G = nx.from_numpy_array(w)
+
+        # Analizi çalıştır
+        # Complement’leri de göstermek için:
+        sonuc = min_max_cut_extended(G, show_plot=True, unique_partitions=False, show_complement=True)
+        print("Minimum cut (Tekrarlı, Simetrik):", sonuc['min_cut'])
+        print("Minimum bölmeler:", sonuc['min_partitions'])
+        print("Maksimum cut:", sonuc['max_cut'])
+        print("Maksimum bölmeler (Tekrarlı, Simetrik):", sonuc['max_partitions'])
+
+    def min_max_cute3():
+        # Örnek graf
+        w = np.array([[0,1,1,0],
+                      [1,0,1,1],
+                      [1,1,0,1],
+                      [0,1,1,0]])
+        G = nx.from_numpy_array(w)
+
+        # Analizi çalıştır
+        # Complement’leri de göstermek için:
+        sonuc = min_max_cut_extended(G, show_plot=True, unique_partitions=True, show_complement=True)
+        print("Minimum cut (Tekrarsız, Simetrik):", sonuc['min_cut'])
+        print("Minimum bölmeler:", sonuc['min_partitions'])
+        print("Maksimum cut:", sonuc['max_cut'])
+        print("Maksimum bölmeler (Tekrarsız, Simetrik):", sonuc['max_partitions'])
+
+    def max_cut_qaoa_opt():
+        n_small = 5
+        graph = rx.PyGraph()
+        graph.add_nodes_from(range(n_small))
+        edge_list = [
+            (0, 1, 1.0),
+            (0, 2, 1.0),
+            (0, 4, 1.0),
+            (1, 2, 1.0),
+            (2, 3, 1.0),
+            (3, 4, 1.0),
+        ]
+        graph.add_edges_from(edge_list)
+
+        result, opt_circuit = max_cut_qaoa_optimization(
+            graph,
+            reps=2,
+            optimizer='COBYLA',
+            tol=1e-2,
+            maxiter=100,
+            plot_convergence=True,
+            draw_final_circuit=True
+        )
+
+    def max_cut_qaoa_vis():
+        # Örnek graf
+        n_small = 5
+        graph = rx.PyGraph()
+        graph.add_nodes_from(range(n_small))
+        edge_list = [
+            (0, 1, 1.0),
+            (0, 2, 1.0),
+            (0, 4, 1.0),
+            (1, 2, 1.0),
+            (2, 3, 1.0),
+            (3, 4, 1.0),
+        ]
+        graph.add_edges_from(edge_list)
+
+        bitstring, cut_val = max_cut_qaoa_visualize(graph, reps=2, plot_convergence=True)
+
+    def max_cut_qaoa_benc():
+        n_small = 5
+        graph = rx.PyGraph()
+        graph.add_nodes_from(range(n_small))
+        edge_list = [
+            (0, 1, 1.0),
+            (0, 2, 1.0),
+            (0, 4, 1.0),
+            (1, 2, 1.0),
+            (2, 3, 1.0),
+            (3, 4, 1.0),
+        ]
+        graph.add_edges_from(edge_list)
+
+        df = max_cut_qaoa_benchmark(graph, reps=1, n_starts=1, plot=True)
+
     menu = {
         "1": ("Curved Style", lambda: _draw_curved(_test_graph_nx(10, 0.3))),
         "2": ("Standart 2D Layout", lambda: (draw_kececi(_test_graph_nx(12, 0.25), style='default', layout='2d'), plt.show())),
@@ -7477,6 +8601,16 @@ def show_menu():
         "57": ("OR3 Gate Circuit – VEYA(3) Kapısı Devresi (DAG)", or3_kl2),
         "58": ("OR3 Gate Circuit – VEYA(3) Kapısı Devresi, 3D Helix Sanatsal Temsili", or3_klr1),
         "59": ("Quantum Circuit – Kuantum Devresi", or3_klr2),
+        "60": ("Min_Max Cut Problemi, Tekrarlı, Simetrik", min_max_cut1),
+        "61": ("Min_Max Cut Problemi, Tekrarsız, Simetrik", min_max_cut2),
+        "62": ("Min_Max Cut Problemi, Tekrarlı, Simetrik", min_max_cut3),
+        "63": ("Min_Max Cut Problemi/Genişletilmiş, Tekrarsız, Simetrik", min_max_cute1),
+        "64": ("Min_Max Cut Problemi/Genişletilmiş, Tekrarlı, Simetrik, Complementleri de göster", min_max_cute2),
+        "65": ("Min_Max Cut Problemi/Genişletilmiş, Tekrarlı, Simetrik, Complementleri de göster", min_max_cute3),
+        "66": ("Quantum Approximate Optimization Algorithm (QAOA), optimisation", max_cut_qaoa_opt),
+        "67": ("Quantum Approximate Optimization Algorithm (QAOA), visualitasion", max_cut_qaoa_vis),
+        "68": ("Quantum Approximate Optimization Algorithm (QAOA), benchmark", max_cut_qaoa_benc),
+
     }
 
     # -------------------------------------------------------------------------
@@ -7492,7 +8626,8 @@ def show_menu():
         ("SATRANÇ & OYUN AĞAÇLARI", range(41, 51)),  # 41 genel ağaç, 42-45 kısa matlar, 46-51 python-chess
         ("FİZİKSEL MODELLER", range(51, 54)),   # 51: Termo, 52: Kuantum Mekaniği, 53: QFT
         ("DAG ANALİZLERİ", range(54, 56)),
-        ("Kuantum Devre Analizleri ve Temsilleri", range(56, 61)),
+        ("Kuantum Devre Analizleri ve Temsilleri", range(56, 60)),
+        ("Min_Max_Cut Problemi", range(60, 69)),
     ]
 
     # -------------------------------------------------------------------------
@@ -7514,7 +8649,7 @@ def show_menu():
         print("   0. Çıkış")
         print("="*70)
 
-        secim = input("Seçiminiz (0‑59): ").strip()
+        secim = input("Seçiminiz (0‑68): ").strip()
         if secim == '0':
             print("Program sonlandırılıyor...")
             break
