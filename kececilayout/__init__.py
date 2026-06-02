@@ -22,6 +22,8 @@ v0.6.6: DAG & Transitive redused DAG
 
 v0.6.7: Quantum Circuit: Kuantum Devresi
 
+v0.6.8: Min_Max Cut Problem & Quantum Approximate Optimization Algorithm (QAOA)
+
 """
 
 from __future__ import annotations
@@ -29,7 +31,7 @@ import inspect
 import warnings
 
 # Paket sürüm numarası
-__version__ = "0.6.7"
+__version__ = "0.6.8"
 
 # =============================================================================
 # OTOMATİK İÇE AKTARMA VE __all__ OLUŞTURMA
@@ -169,6 +171,14 @@ from .kececi_layout import (  # Veya fonksiyonların bulunduğu asıl modül
     kececi_layout_3d_simple,
     _dag_2d_comparison,
     _dag_3d_comparison,
+    circuit_to_digraph,
+    circuit_to_digraph_robust,
+    min_max_cut,
+    min_max_cut_u,
+    min_max_cut_extended,
+    max_cut_qaoa_optimization,
+    max_cut_qaoa_visualize,
+    max_cut_qaoa_benchmark,
 
     # Menü
     show_menu, # _draw_curved, _draw_transparent, _draw_3d_helix, _draw_3d_generic
@@ -312,6 +322,15 @@ __all__ = [
     'kececi_layout_3d_simple',
     '_dag_2d_comparison',
     '_dag_3d_comparison',
+    'circuit_to_digraph',
+    'circuit_to_digraph_robust',
+    'min_max_cut',
+    'min_max_cut_u',
+    'min_max_cut_extended',
+    'max_cut_qaoa_optimization',
+    'max_cut_qaoa_visualize',
+    'max_cut_qaoa_benchmark',
+
 
 
     # Menü
