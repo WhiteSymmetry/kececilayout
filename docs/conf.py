@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # Proje Bilgileri
 project = 'kececilayout'
-copyright = '2025, Mehmet Keçeci'
+copyright = '2025-2026, Mehmet Keçeci'
 author = 'Mehmet Keçeci'
 
 # Sürüm Bilgisi (setuptools_scm kullanmıyorsanız sabit olarak tanımlayın)
