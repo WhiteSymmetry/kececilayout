@@ -10,7 +10,6 @@ igraph
 rustworkx
 networkit
 python-louvain
-graph-tool
 numba
 qiskit
 scipy
