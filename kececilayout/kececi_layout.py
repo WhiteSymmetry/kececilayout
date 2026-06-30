@@ -94,7 +94,7 @@ try:
 except ImportError:
     rx = None
 try:
-    import igraph as ig
+    import igraph as ig  # pip install igraph # conda install conda-forge::python-igraph
 except ImportError:
     ig = None
 try:
