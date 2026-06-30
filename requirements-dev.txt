@@ -6,7 +6,7 @@ matplotlib-base
 pycairo
 cairocffi
 cairo
-python-igraph
+igraph
 rustworkx
 networkit
 python-louvain
