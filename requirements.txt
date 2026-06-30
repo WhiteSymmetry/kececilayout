@@ -1,2 +1,13 @@
-
-
+numpy
+matplotlib
+graphillion
+igraph
+networkx
+rustworkx
+chess
+networkit
+seaborn
+scipy
+qiskit
+pandas
+numba
