@@ -105,7 +105,7 @@ try:
     import graphillion as gg
 except ImportError:
     gg = None
-# graph-tool sadece Linux'ta import edilsin
+# graph-tool sadece Linux'ta import edilsin: conda install conda-forge::graph-tool
 if platform.system() == "Linux":
     try:
         import graph_tool.all as gt
