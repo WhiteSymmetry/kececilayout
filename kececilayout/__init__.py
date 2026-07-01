@@ -24,6 +24,8 @@ v0.6.7: Quantum Circuit: Kuantum Devresi
 
 v0.6.8: Min_Max Cut Problem & Quantum Approximate Optimization Algorithm (QAOA)
 
+v0.6.9: Bipartite
+
 """
 
 from __future__ import annotations
@@ -31,7 +33,7 @@ import inspect
 import warnings
 
 # Paket sürüm numarası
-__version__ = "0.6.8"
+__version__ = "0.6.9"
 
 # =============================================================================
 # OTOMATİK İÇE AKTARMA VE __all__ OLUŞTURMA
@@ -179,6 +181,7 @@ from .kececi_layout import (  # Veya fonksiyonların bulunduğu asıl modül
     max_cut_qaoa_optimization,
     max_cut_qaoa_visualize,
     max_cut_qaoa_benchmark,
+    bipartite_kececi_layout,
 
     # Menü
     show_menu, # _draw_curved, _draw_transparent, _draw_3d_helix, _draw_3d_generic
@@ -330,8 +333,7 @@ __all__ = [
     'max_cut_qaoa_optimization',
     'max_cut_qaoa_visualize',
     'max_cut_qaoa_benchmark',
-
-
+    "bipartite_kececi_layout",
 
     # Menü
     'show_menu',
