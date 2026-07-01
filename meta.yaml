@@ -6,8 +6,8 @@ package:
 
 source:
   path: .  # Derlemeyi bu meta.yaml dosyasının bulunduğu dizinden yap
-  url:
-  blake2b-256:
+  url: https://files.pythonhosted.org/packages/a4/99/699662f642ef7743f586a70084190a8c187311710affe94ac17ba1b64218/kececilayout-0.6.9.tar.gz
+  blake2b-256: a499699662f642ef7743f586a70084190a8c187311710affe94ac17ba1b64218
   
 build:
   noarch: python
@@ -21,7 +21,7 @@ requirements:
     - setuptools
     - numpy
   run:
-    # Bu, paketin çalışması için GEREKLİ olan CONDA bağımlılıklarıdır.
+    # Bu, paketin çalışması için GEREKLİ olan CONDA bağımlılıklarıdır: networkit 3.14 conda kurulumunda sorun çıkartıyor
     - python >=3.11
     - numpy
     - networkx
@@ -32,7 +32,6 @@ requirements:
     - cairo
     - python-igraph
     - rustworkx
-    - networkit
     - python-louvain
     - graph-tool
     - numba
