@@ -48,7 +48,7 @@ from matplotlib.colors import hsv_to_rgb
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.patches import FancyArrowPatch, Circle
 import matplotlib.pyplot as plt
-import networkit as nk # pip -U install networkit
+import networkit as nk # pip -U install networkit # networkit 3.14 conda kurulumunda sorun çıkartıyor
 import networkx as nx
 from networkx.algorithms import bipartite
 import numpy as np
