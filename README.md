@@ -101,6 +101,7 @@ styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 
 **v0.6.8:** Min_Max Cut Problem & Quantum Approximate Optimization Algorithm (QAOA)
 
+v0.6.9: Bipartite
 ---
 
 ```python
@@ -215,6 +216,10 @@ KEÇECİ Layout GÖRSELLEŞTİRME MENÜSÜ
   66. Quantum Approximate Optimization Algorithm (QAOA), optimisation
   67. Quantum Approximate Optimization Algorithm (QAOA), visualitasion
   68. Quantum Approximate Optimization Algorithm (QAOA), benchmark
+      
+  bipartite
+  --------------------------------------------------------------------
+  69. Keçeci Layout ile Bipartite MAX-CUT Grafiği Çizimi
 
   --------------------------------------------------------------------
    0. Çıkış
