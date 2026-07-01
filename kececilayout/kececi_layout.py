@@ -32,6 +32,8 @@ v0.6.7: Quantum Circuit: Kuantum Devresi
 
 v0.6.8: Min_Max Cut Problem & Quantum Approximate Optimization Algorithm (QAOA)
 
+v0.6.9: Bipartite
+
 """
 
 import chess # pip install -U chess
@@ -46,9 +48,10 @@ from matplotlib.colors import hsv_to_rgb
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.patches import FancyArrowPatch, Circle
 import matplotlib.pyplot as plt
-import networkit as nk
+import networkit as nk # pip -U install networkit
 import networkx as nx
-import numpy as np # rustworkx
+from networkx.algorithms import bipartite
+import numpy as np
 from numba import jit
 import os
 import pandas as pd
@@ -7624,6 +7627,41 @@ def max_cut_qaoa_benchmark(
     return df
 
 
+def bipartite_kececi_layout(graph, left_nodes=None, right_nodes=None, 
+                        spacing=1.0, left_right_offset=1.5):
+    """
+    Bipartite grafiği Keçeci stilinde sağ-sol ayrımı ile konumlandırır.
+    İlk düğüm ortada kalmaz, soldaki partisyona yerleşir.
+    """
+    # Partisyonları otomatik bul
+    if left_nodes is None or right_nodes is None:
+        try:
+            left_nodes, right_nodes = bipartite.sets(graph)
+        except:
+            raise ValueError("Graf bipartite değil veya partisyonlar verilmedi.")
+
+    left_nodes = sorted(left_nodes)
+    right_nodes = sorted(right_nodes)
+
+    pos = {}
+
+    # Sol taraftaki düğümler (yukarıdan aşağıya)
+    for i, node in enumerate(left_nodes):
+        # x ekseninde sola kaydır, y ekseninde eşit aralıkla sırala
+        x = -left_right_offset
+        # Düğümleri ortadan başlayarak simetrik yerleştir
+        y = (len(left_nodes) - 1) / 2.0 - i
+        pos[node] = (x, y * spacing)
+
+    # Sağ taraftaki düğümler (yukarıdan aşağıya)
+    for i, node in enumerate(right_nodes):
+        x = left_right_offset
+        y = (len(right_nodes) - 1) / 2.0 - i
+        pos[node] = (x, y * spacing)
+
+    return pos
+
+
 def show_menu():
     """
     KEÇECİ Layout Menüsü – Tüm fonksiyonlar eksiksiz, ardışık numaralar, 
@@ -8541,6 +8579,35 @@ def show_menu():
 
         df = max_cut_qaoa_benchmark(graph, reps=1, n_starts=1, plot=True)
 
+    def bipartite(most_likely='01010'):
+        """
+        Bipartite Örnek: Keçeci Layout ile Bipartite MAX-CUT Grafiği Çizimi
+        """
+        # ---- 1. Grafiği oluştur ----
+        G = nx.Graph()
+        G.add_edges_from([[0,3],[0,4],[1,3],[1,4],[2,3],[2,4]])
+
+        # ---- 3. Örnek veri ----
+        most_likely = '01010'   # Gerçek sonucunuzu buraya yazın
+        # Node renklerini oluştur
+        node_colors = ['#6929C4' if most_likely[node] == '0' else '#20306f' for node in G.nodes()]
+
+        # ---- 4. Layout hesapla ve çiz ----
+        pos = bipartite_kececi_layout(G, left_nodes=[0,1,2], right_nodes=[3,4], spacing=1.0)
+        
+        draw_kececi(
+            G,
+            pos=pos,
+            style='default', # curved
+            node_color=node_colors,
+            node_size=1000,
+            font_size=22,
+            edge_color='#D3D3D3',
+            edge_width=1.0,
+            with_labels=True
+        )
+        plt.show()
+
     menu = {
         "1": ("Curved Style", lambda: _draw_curved(_test_graph_nx(10, 0.3))),
         "2": ("Standart 2D Layout", lambda: (draw_kececi(_test_graph_nx(12, 0.25), style='default', layout='2d'), plt.show())),
@@ -8610,6 +8677,7 @@ def show_menu():
         "66": ("Quantum Approximate Optimization Algorithm (QAOA), optimisation", max_cut_qaoa_opt),
         "67": ("Quantum Approximate Optimization Algorithm (QAOA), visualitasion", max_cut_qaoa_vis),
         "68": ("Quantum Approximate Optimization Algorithm (QAOA), benchmark", max_cut_qaoa_benc),
+        "69": ("Keçeci Layout ile Bipartite MAX-CUT Grafiği Çizimi", bipartite),
 
     }
 
@@ -8628,6 +8696,7 @@ def show_menu():
         ("DAG ANALİZLERİ", range(54, 56)),
         ("Kuantum Devre Analizleri ve Temsilleri", range(56, 60)),
         ("Min_Max_Cut Problemi", range(60, 69)),
+        ("bipartite", range(69, 70)),
     ]
 
     # -------------------------------------------------------------------------
@@ -8649,7 +8718,7 @@ def show_menu():
         print("   0. Çıkış")
         print("="*70)
 
-        secim = input("Seçiminiz (0‑68): ").strip()
+        secim = input("Seçiminiz (0‑69): ").strip()
         if secim == '0':
             print("Program sonlandırılıyor...")
             break
@@ -8707,5 +8776,8 @@ if __name__ == '__main__':
     draw_kececi(G_test, style='transparent', ax=fig_styles.add_subplot(2, 2, 2),
                 primary_direction='top_down', secondary_start='left', expanding=True, node_color='purple')
     draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.show()
+
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
