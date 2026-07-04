@@ -1,8783 +1,3769 @@
-# -*- coding: utf-8 -*-
-# ruff: noqa: N806, N815
+# kececifractals.py
 """
-kececilayout.py
+Keçeci Fractals: Keçeci Fraktalları (Keçeci Circle Fractal (KCF): Keçeci Dairesel Fraktalı (KDF), Keçeci-style circle fractal)
+This module provides three primary functionalities for generating Keçeci Fractals:
+1.  kececifractals_circle(): Generates general-purpose, aesthetic, and randomly
+    colored circular fractals.
+2.  visualize_qec_fractal(): Generates fractals customized for modeling the
+    concept of Quantum Error Correction (QEC) codes.
+3.  kececifractals_3d(): Generates 3D versions of Keçeci fractals.
 
-This module provides sequential-zigzag ("Keçeci Layout") and advanced visualization styles for various Python graph libraries.
-Bu modül, çeşitli Python graf kütüphaneleri için sıralı-zigzag ("Keçeci Layout") ve gelişmiş görselleştirme stilleri sağlar.
+pip install -U kececilayout matplotlib networkx numpy PyOpenGL pyopencl vulkan
 
-**Key Features:**
-*   **Linear Focus:** Ideal for visualizing paths, chains, or ordered processes.
-*   **Deterministic:** Produces identical results for the same input.
-*   **Overlap Reduction:** Prevents node collisions by spreading them across axes.
-*   **Parametric:** Fully customizable with parameters like `primary_spacing`, `secondary_spacing`, `primary_direction`, and `secondary_start`.
-
-v0.2.7: Curved, transparent, 3D, and `expanding=True` styles supported.
-
-v0.5.0: 
-
-layouts = ['2d', 'cylindrical', 'cubic', 'spherical', 'elliptical', 'toric']
-
-styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
-
-v0.5.1: edge (kececi_layout_edge)
-
-v0.6.0: periodic table
-
-v0.6.5: show_menu()
-
-v0.6.6: DAG & Transitive redused DAG
-
-v0.6.7: Quantum Circuit: Kuantum Devresi
-
-v0.6.8: Min_Max Cut Problem & Quantum Approximate Optimization Algorithm (QAOA)
-
-v0.6.9: Bipartite
+* 0.2.5: GPU/OpenCL/OpenGL/Vulkan/Auto support
+* 0.2.4: GPU/OpenCL support
 
 """
 
-import chess # pip install -U chess
-from collections import defaultdict, deque
-import datetime
-import graphillion as gg
-import igraph as ig
-import itertools # Graphillion için eklendi
+import ctypes
 import math
-from matplotlib.collections import LineCollection
-from matplotlib.colors import hsv_to_rgb
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib.patches import FancyArrowPatch, Circle
 import matplotlib.pyplot as plt
-import networkit as nk # pip -U install networkit # networkit 3.14 conda kurulumunda sorun çıkartıyor
-import networkx as nx
-from networkx.algorithms import bipartite
+from matplotlib.colors import to_rgb
+from matplotlib.patches import Circle
+from mpl_toolkits.mplot3d import Axes3D, art3d
+import networkx as nx  # STRATUM MODEL VISUALIZATION
 import numpy as np
-from numba import jit
+from OpenGL.EGL import * # pip install -U PyOpenGL
+from OpenGL import GL
+from OpenGL.GL import shaders
 import os
-import pandas as pd
-import platform # graph_tool için
-from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
-from qiskit.quantum_info import SparsePauliOp
-from qiskit.circuit import Parameter
-from qiskit.circuit.library import QAOAAnsatz
-from qiskit.circuit import (
-    CircuitInstruction,
-    ControlFlowOp,
-    ForLoopOp,
-    IfElseOp,
-    SwitchCaseOp,
-    WhileLoopOp,
-)
-from qiskit.primitives import StatevectorEstimator, BackendEstimatorV2, StatevectorSampler
+# Linux için gerekirse bunları açabilirsin
+# os.environ["RUSTICL_ENABLE"] = "radeonsi"
+# os.environ["OCL_ICD_VENDORS"] = "/etc/OpenCL/vendors"
+import pyopencl as cl # pip install -U pyopencl
 import random
-import re
-import rustworkx as rx
-import seaborn as sns
-from scipy import stats
-from scipy.optimize import minimize
+import subprocess
 import sys
-from typing import Any, Dict, List, Literal, Optional, Sequence, Tuple, Union
+import vulkan as vk # pip install -U vulkan
+from vulkan._vulkan import ffi
+import tempfile
 import warnings
+from typing import Callable, List, Optional, Tuple, Union
 
 
-
-# Ana bağımlılıklar (çizim için gerekli)
+# Import kececilayout if available, otherwise use a fallback
 try:
-    import networkx as nx
-    #from mpl_toolkits.mplot3d import Axes3D
-except ImportError as e:
-    raise ImportError(
-        "Bu modülün çalışması için 'networkx' ve 'matplotlib' gereklidir. "
-        "Lütfen `pip install networkx matplotlib` ile kurun."
-    ) from e
-
-# Opsiyonel graf kütüphaneleri
-try:
-    import rustworkx as rx
+    import kececilayout as kl  # STRATUM MODEL VISUALIZATION
 except ImportError:
-    rx = None
-try:
-    import igraph as ig  # pip install igraph # conda install conda-forge::python-igraph
-except ImportError:
-    ig = None
-try:
-    import networkit as nk
-except ImportError:
-    nk = None
-try:
-    import graphillion as gg
-except ImportError:
-    gg = None
-# graph-tool sadece Linux'ta import edilsin: conda install conda-forge::graph-tool
-if platform.system() == "Linux":
-    try:
-        import graph_tool.all as gt
-    except ImportError:
-        gt = None
-else:
-    gt = None
+    # Fallback layout function if kececilayout is not available
+    class kl:
+        @staticmethod
+        def kececi_layout(
+            G, primary_direction="top_down", primary_spacing=1.5, secondary_spacing=1.0
+        ):
+            pos = {}
+            for i, node in enumerate(G.nodes()):
+                if primary_direction == "top_down":
+                    pos[node] = (i * secondary_spacing, -i * primary_spacing)
+                else:
+                    pos[node] = (i * primary_spacing, i * secondary_spacing)
+            return pos
 
-"""
-@jit(nopython=True)
-def calculate_coordinates(nodes, primary_spacing, secondary_spacing, primary_direction, secondary_start, expanding):
-    #Numba ile hızlandırılmış koordinat hesaplama.
-    pos = {}
-    for i, node_id in enumerate(nodes):
-        # Koordinat hesaplama mantığı...
-        pos[node_id] = (x, y)
-    return pos
-"""
-class KececiZigzagValidator:
-    def __init__(self):
-        self.kececi_standard = {
-            'x_spacing': 0.85,
-            'sin_freq': 0.714,  # π/2.2
-            'y_amp': 1.4
-        }
-    
-    def perfect_kececi(self, G):
-        """🦙 MÜKEMMEL KEÇECİ"""
-        nodes = sorted(G.nodes())
-        pos = {}
-        for i, node in enumerate(nodes):
-            x = i * self.kececi_standard['x_spacing']
-            y = np.sin(i * self.kececi_standard['sin_freq']) * self.kececi_standard['y_amp']
-            pos[node] = (x, y)
-        return pos
-    
-    def champion_zz_score(self, G, pos):
-        """🏆 KececiZigzagValidator"""
-        nodes_x = sorted(G.nodes(), key=lambda n: pos[n][0])
-        xs = np.array([pos[n][0] for n in nodes_x])
-        ys = np.array([pos[n][1] for n in nodes_x])
-        
-        # 1. X-LINEARITY (100%)
-        x_linear = np.corrcoef(xs, np.arange(len(xs)))[0,1]
-        x_score = max(0, x_linear) ** 0.5  # Non-linear boost
-        
-        # 2. 🦙 SİNÜS CHAMPION (70% ağırlık!)
-        n = len(ys)
-        freqs = np.linspace(0.65, 0.75, 15)  # Geniş pencere
-        
-        best_corr = 0
-        for freq in freqs:
-            sin_model = np.sin(np.arange(n) * freq)
-            sin_amp = np.ptp(sin_model)
-            model_y = sin_model * (np.ptp(ys) / sin_amp)
-            
-            # Demean + Correlation
-            corr = np.corrcoef(ys - ys.mean(), model_y - model_y.mean())[0,1]
-            if not np.isnan(corr):
-                best_corr = max(best_corr, corr)
-        
-        sin_champion = max(0, best_corr) ** 0.3  # Sinüs boost!
-        
-        # 3. AMPLITUDE RATIO (Keçeci 1.4/0.85)
-        ratio_actual = np.ptp(ys) / np.ptp(xs)
-        ratio_ideal = self.kececi_standard['y_amp'] / self.kececi_standard['x_spacing']
-        amp_perfect = 1.0 - abs(ratio_actual - ratio_ideal) / ratio_ideal
-        amp_score = max(0, amp_perfect)
-        
-        # 🦙 ŞAMPİYON FORMÜL: sinüs %70!
-        zz_champion = (
-            0.70 * sin_champion +
-            0.20 * x_score +
-            0.10 * amp_score
-        )
-        
-        return {
-            'zz_score': zz_champion,
-            'sinus_perfect': best_corr,
-            'x_perfect': x_linear,
-            'amp_ratio': ratio_actual,
-            'is_champion': zz_champion > 0.90,
-            'rank': '🥇🦙' if zz_champion > 0.90 else '🥈'
-        }
-    
-    def final_champion_test(self):
-        """FINAL KEÇECİ ŞAMPİYONLARI"""
-        graphs = {
-            'path_50': nx.path_graph(50),
-            'sawtooth_45': self._sawtooth_extreme(45),
-            'ladder_40': self._ladder_extreme(40),
-            'snake_42': self._snake_extreme(42)
-        }
-        
-        layouts = {
-            'kececi': self.perfect_kececi,
-            'kamada': nx.kamada_kawai_layout,
-            'spring': lambda G: nx.spring_layout(G, seed=42, iterations=50)
-        }
-        
-        print("KEÇECİ ZZ SKORU")
-        print("="*60)
-        
-        results = {}
-        total_wins = {}
-        
-        for name, G in graphs.items():
-            print(f"\n🧪 {name:12} ({G.number_of_nodes()}n)")
-            scores = {}
-            
-            for lname, func in layouts.items():
-                pos = func(G)
-                metrics = self.champion_zz_score(G, pos)
-                zz = metrics['zz_score']
-                
-                rank = metrics['rank']
-                print(f"  {lname:8}: ZZ={zz:.3f} sinüs={metrics['sinus_perfect']:.3f} {rank}")
-                scores[lname] = zz
-            
-            best = max(scores, key=scores.get)
-            results[name] = {'best': best, 'metrics': scores}
-            total_wins[best] = total_wins.get(best, 0) + 1
-            print(f"  🏆 WINNER: {best:<8} ({scores[best]:.3f})\n")
-        
-        print("KececiZigzagValidator TABLOSU:")
-        print("Layout    Galibiyet Medal")
-        print("-"*30)
-        for layout, wins in sorted(total_wins.items(), key=lambda x: x[1], reverse=True):
-            medal = "🥇🦙🦙🦙" if layout == 'kececi' else "🥈"
-            print(f"{layout:<8} {wins}/4 {medal}")
-        
-        return results
-    
-    def _sawtooth_extreme(self, n):
-        G = nx.path_graph(n)
-        for i in range(1, n, 2): 
-            if i+1 < n: G.add_edge(i-1, i+1)
-        return G
-    
-    def _ladder_extreme(self, n):
-        G = nx.grid_2d_graph(2, n//2)
-        return nx.relabel_nodes(G, {(i,j): i*(n//2)+j for i in range(2) for j in range(n//2)})
-    
-    def _snake_extreme(self, n):
-        G = nx.path_graph(n)
-        for i in range(2, n, 4): 
-            if i+2 < n: G.add_edge(i, i+2)
-        return G
+def select_opencl_platform(prefer_rusticl=True):
+    platforms = cl.get_platforms()
+    if not platforms:
+        raise RuntimeError("Hiçbir OpenCL platformu bulunamadı.")
+    if prefer_rusticl:
+        for plat in platforms:
+            if "rusticl" in plat.name.lower():
+                return plat
+    return platforms[0]
 
-class KececiBayesianOptimizer:
-    def __init__(self):
-        self.zz_history = []
-        self.posterior = {}
-        self.best_params = None
-        
-        # 🦙 KEÇECİ ZZ SCORING
-        self.kececi_spec = {
-            'x_spacing': 0.85,
-            'sin_freq': 0.714,  # π/2.2
-            'y_amp': 1.4
-        }
-    
-    def generate_test_suite(self, n_graphs: int = 20) -> List[nx.Graph]:
-        """🧪 Çeşitli zigzag graf seti"""
-        graphs = []
-        
-        for i in range(n_graphs):
-            n_nodes = np.random.randint(15, 55)
-            
-            if i % 5 == 0:
-                G = nx.path_graph(n_nodes)  # Pure path
-            elif i % 5 == 1:
-                G = self._sawtooth(n_nodes)  # Sawtooth
-            elif i % 5 == 2:
-                G = self._ladder(n_nodes)    # Ladder
-            elif i % 5 == 3:
-                G = self._snake(n_nodes)     # Snake
-            else:
-                G = self._fractal_zigzag(n_nodes)  # Fractal
-            
-            graphs.append((f'graph_{i+1}_{n_nodes}n', G))
-        
-        return graphs
-    
-    def champion_zz_score(self, G: nx.Graph, pos: Dict) -> Dict:
-        """🏆 KEÇECİ ZZ"""
-        nodes_x = sorted(G.nodes(), key=lambda n: pos[n][0])
-        xs = np.array([pos[n][0] for n in nodes_x])
-        ys = np.array([pos[n][1] for n in nodes_x])
-        
-        # X Linear
-        x_linear = np.corrcoef(xs, np.arange(len(xs)))[0,1]
-        x_score = max(0, x_linear) ** 0.5
-        
-        # 🦙 Sinüs Champion (70%)
-        n = len(ys)
-        freqs = np.linspace(0.65, 0.75, 15)
-        best_corr = 0
-        
-        for freq in freqs:
-            sin_model = np.sin(np.arange(n) * freq)
-            sin_amp = np.ptp(sin_model)
-            model_y = sin_model * (np.ptp(ys) / sin_amp)
-            corr = np.corrcoef(ys - ys.mean(), model_y - model_y.mean())[0,1]
-            if not np.isnan(corr):
-                best_corr = max(best_corr, corr)
-        
-        sin_score = max(0, best_corr) ** 0.3
-        
-        # Amplitude ratio
-        ratio_actual = np.ptp(ys) / np.ptp(xs)
-        ratio_ideal = self.kececi_spec['y_amp'] / self.kececi_spec['x_spacing']
-        amp_score = max(0, 1.0 - abs(ratio_actual - ratio_ideal) / ratio_ideal)
-        
-        zz_score = 0.70 * sin_score + 0.20 * x_score + 0.10 * amp_score
-        
-        return {
-            'zz_score': zz_score,
-            'sinus_corr': best_corr,
-            'x_linearity': x_linear,
-            'is_kececi': zz_score > 0.90
-        }
-    
-    def kececi_layout(self, G, params: Dict) -> Dict:
-        """🦙 KEÇECİ BAYESÇİ LAYOUT"""
-        x_spacing = params.get('x_spacing', 0.85)
-        sin_freq = params.get('sin_freq', 0.714)
-        y_amp = params.get('y_amp', 1.4)
-        
-        nodes = sorted(G.nodes())
-        pos = {}
-        for i, node in enumerate(nodes):
-            x = i * x_spacing
-            y = np.sin(i * sin_freq) * y_amp
-            pos[node] = (x, y)
-        return pos
-    
-    def bayesian_acquisition(self, zz_history: List[float], n_samples: int = 100) -> float:
-        """🧮 Expected Improvement (EI)"""
-        if len(zz_history) == 0:
-            return 0.5
-        
-        mu = np.mean(zz_history)
-        sigma = np.std(zz_history) + 1e-6
-        best = max(zz_history)
-        
-        # Sample from posterior
-        samples = np.random.normal(mu, sigma, n_samples)
-        improvement = samples - best
-        ei = np.mean(np.maximum(improvement, 0))
-        return ei
-    
-    def optimize_kececi_bayes(self, graphs: List[Tuple[str, nx.Graph]], n_iters: int = 50):
-        """🔬 BAYESIAN OPTIMIZATION"""
-        print("🦙 KEÇECİ BAYESÇİ ÖĞRENME BAŞLADI")
-        print("="*60)
-        
-        # Initial random search
-        param_bounds = {
-            'x_spacing': (0.7, 1.0),
-            'sin_freq': (0.65, 0.75),
-            'y_amp': (1.2, 1.6)
-        }
-        
-        history = []
-        
-        for iter in range(n_iters):
-            # Sample params
-            params = {
-                'x_spacing': np.random.uniform(*param_bounds['x_spacing']),
-                'sin_freq': np.random.uniform(*param_bounds['sin_freq']),
-                'y_amp': np.random.uniform(*param_bounds['y_amp'])
-            }
-            
-            # Evaluate on all graphs
-            total_zz = 0
-            for name, G in graphs[:5]:  # Sample subset for speed
-                pos = self.kececi_layout(G, params)
-                metrics = self.champion_zz_score(G, pos)
-                total_zz += metrics['zz_score']
-            
-            avg_zz = total_zz / min(5, len(graphs))
-            history.append((params, avg_zz))
-            
-            # Bayesian acquisition
-            if iter > 5:
-                ei = self.bayesian_acquisition([h[1] for h in history])
-                print(f"İter {iter+1:2d}: ZZ={avg_zz:.3f} EI={ei:.3f} "
-                      f"params={params}")
-            
-            # Update best
-            if avg_zz > (self.best_params[1] if self.best_params else -np.inf):
-                self.best_params = (params, avg_zz)
-        
-        return history
-    
-    def visualize_bayesian_learning(self, history: List[Tuple[Dict, float]]):
-        """📊 BAYESÇİ ÖĞRENME GÖRSELLEŞTİRME"""
-        fig, axes = plt.subplots(2, 3, figsize=(18, 12))
-        
-        zz_scores = [h[1] for h in history]
-        iters = range(len(zz_scores))
-        
-        # 1. Learning curve
-        axes[0,0].plot(iters, zz_scores, 'o-', linewidth=3, markersize=8)
-        axes[0,0].axhline(y=max(zz_scores), color='gold', linestyle='--', label=f'Best: {max(zz_scores):.3f}')
-        axes[0,0].set_title('🧠 Bayesian Learning Curve', fontsize=14, fontweight='bold')
-        axes[0,0].set_xlabel('Iteration')
-        axes[0,0].set_ylabel('Average ZZ Score')
-        axes[0,0].legend()
-        axes[0,0].grid(True, alpha=0.3)
-        
-        # 2. Parameter evolution
-        x_spacing = [h[0]['x_spacing'] for h in history]
-        sin_freq = [h[0]['sin_freq'] for h in history]
-        y_amp = [h[0]['y_amp'] for h in history]
-        
-        axes[0,1].plot(iters, x_spacing, 'o-', label='x_spacing')
-        axes[0,1].axhline(y=self.best_params[0]['x_spacing'], color='gold', linestyle='--')
-        axes[0,1].set_title('Parameter Evolution')
-        axes[0,1].legend()
-        axes[0,1].grid(True, alpha=0.3)
-        
-        axes[0,2].plot(iters, sin_freq, 's-', label='sin_freq', color='green')
-        axes[0,2].axhline(y=self.best_params[0]['sin_freq'], color='gold', linestyle='--')
-        axes[0,2].set_title('Sinüs Frekansı')
-        axes[0,2].legend()
-        axes[0,2].grid(True, alpha=0.3)
-        
-        # 3. Parameter heatmap
-        df_params = pd.DataFrame([h[0] for h in history])
-        sns.heatmap(df_params.corr(), annot=True, cmap='RdBu_r', center=0, ax=axes[1,0])
-        axes[1,0].set_title('Parametre Korelasyonları')
-        
-        # 4. ZZ distribution
-        axes[1,1].hist(zz_scores, bins=15, alpha=0.7, color='gold', edgecolor='black')
-        axes[1,1].axvline(self.best_params[1], color='red', linewidth=3, label=f'Best: {self.best_params[1]:.3f}')
-        axes[1,1].set_title('ZZ Skoru Dağılımı')
-        axes[1,1].legend()
-        
-        # 5. Final comparison
-        G_sample = next(G for _, G in self.generate_test_suite(1))
-        layouts = {
-            'Keçeci_Bayes': self.kececi_layout(G_sample, self.best_params[0]),
-            'Keçeci_Fixed': self.perfect_kececi(G_sample),
-            'Spring': nx.spring_layout(G_sample, seed=42)
-        }
-        
-        for idx, (name, pos) in enumerate(layouts.items()):
-            metrics = self.champion_zz_score(G_sample, pos)
-            axes[1,2].bar(idx, metrics['zz_score'], color='gold' if 'Keçeci' in name else 'lightblue')
-            axes[1,2].text(idx, metrics['zz_score']+0.01, f'{metrics["zz_score"]:.3f}', ha='center')
-        axes[1,2].set_title('Final Layout Karşılaştırması')
-        axes[1,2].set_xticks(range(len(layouts)))
-        axes[1,2].set_xticklabels(layouts.keys(), rotation=45)
-        
-        plt.suptitle('🦙 KEÇECİ BAYESÇİ ZİG-ZAG ÖĞRENİCİSİ v1.0', fontsize=16, fontweight='bold')
-        plt.tight_layout()
-        plt.show()
-    
-    # Helper graph generators
-    def _sawtooth(self, n): 
-        G = nx.path_graph(n)
-        for i in range(1, n, 2): 
-            if i+1 < n: G.add_edge(i-1, i+1)
-        return G
-    
-    def _ladder(self, n): 
-        G = nx.grid_2d_graph(2, n//2)
-        return nx.relabel_nodes(G, {(i,j): i*(n//2)+j for i in range(2) for j in range(n//2)})
-    
-    def _snake(self, n): 
-        G = nx.path_graph(n)
-        for i in range(2, n, 4): 
-            if i+2 < n: G.add_edge(i, i+2)
-        return G
-    
-    def _fractal_zigzag(self, n):
-        G = nx.path_graph(n)
-        for level in [3, 5, 8]:
-            for i in range(level, n, level*2): 
-                if i+1 < n: G.add_edge(i-1, i+1)
-        return G
-    
-    def perfect_kececi(self, G):
-        """Fixed mükemmel parametreler"""
-        return self.kececi_layout(G, {
-            'x_spacing': 0.85,
-            'sin_freq': 0.714,
-            'y_amp': 1.4
-        })
+HIGH_CONTRAST_COLORS = [
+    (1.0, 1.0, 1.0),   # Camgöbeği
+    (1.0, 0.0, 1.0),   # Magenta
+    (1.0, 1.0, 0.0),   # Sarı
+    (0.0, 1.0, 0.0),   # Yeşil
+    (1.0, 0.0, 0.0),   # Kırmızı
+    (0.0, 0.0, 1.0),   # Mavi
+    (1.0, 0.5, 0.0),   # Turuncu
+]
+
+class KececiFractalError(Exception):
+    """Keçeci Fractals için temel exception."""
+
+    pass
 
 
-@jit(nopython=True)
-def calculate_coordinates(
-    nodes: list,
-    primary_spacing: float,
-    secondary_spacing: float,
-    primary_direction: str,
-    secondary_start: str,
-    expanding: bool
-) -> dict:
+class FractalParameterError(KececiFractalError):
+    """Fraktal parametre hatası."""
+
+    pass
+
+
+class ColorParseError(KececiFractalError):
+    """Renk parse hatası."""
+
+    pass
+
+
+class ThreeDNotSupportedError(KececiFractalError):
+    """3D desteklenmiyor hatası."""
+
+    pass
+
+
+class InvalidAxisError(KececiFractalError):
+    """Geçersiz eksen hatası."""
+
+    pass
+
+
+# --- GENERAL HELPER FUNCTIONS ---
+def random_soft_color():
+    """Generates a random soft RGB color tuple."""
+    return tuple(random.uniform(0.4, 0.95) for _ in range(3))
+
+
+def _parse_color(
+    color_input: Union[str, Tuple[float, float, float], None],
+) -> Optional[Tuple[float, float, float]]:
     """
-    Numba ile hızlandırılmış koordinat hesaplama fonksiyonu.
+    Parses color input which can be:
+    - None
+    - RGB tuple (0-1 range)
+    - Hex string like '#RRGGBB'
+    - Named color like 'red', 'blue', etc.
 
-    Args:
-        nodes: Düğümlerin listesi.
-        primary_spacing: Birincil eksendeki düğümler arası mesafe.
-        secondary_spacing: İkincil eksendeki zigzag ofseti.
-        primary_direction: Birincil yön ('left-to-right', 'right-to-left', 'top_down', 'bottom_up').
-        secondary_start: Zigzag'ın başlangıç yönü ('up', 'down', 'left', 'right').
-        expanding: Zigzag ofsetinin büyümesi gerekip gerekmediği (True/False).
-
-    Returns:
-        dict: Düğümlerin koordinatlarını içeren sözlük. Örneğin: {0: (x, y), 1: (x, y), ...}.
+    Returns RGB tuple in 0-1 range or None.
     """
-    pos = {}
-    n = len(nodes)
+    if color_input is None:
+        return None
 
-    for i in range(n):
-        node_id = nodes[i]
-        primary_coord = 0.0
-        secondary_axis = ''
+    # If already a tuple, assume it's correct format
+    if isinstance(color_input, tuple):
+        if len(color_input) == 3:
+            return color_input
+        elif len(color_input) == 4:
+            return color_input[:3]  # Drop alpha if present
 
-        # Birincil eksen koordinatını hesapla
-        if primary_direction == 'left-to-right':
-            primary_coord = i * primary_spacing
-            secondary_axis = 'y'
-        elif primary_direction == 'right-to-left':
-            primary_coord = -i * primary_spacing
-            secondary_axis = 'y'
-        elif primary_direction == 'top_down':
-            primary_coord = -i * primary_spacing
-            secondary_axis = 'x'
-        elif primary_direction == 'bottom_up':
-            primary_coord = i * primary_spacing
-            secondary_axis = 'x'
-
-        # İkincil eksen ofsetini hesapla
-        secondary_offset = 0.0
-        if i > 0:
-            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            side = 1 if i % 2 != 0 else -1
-            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
-
-        # Koordinatları ata
-        if secondary_axis == 'x':
-            x, y = (secondary_offset, primary_coord)
-        else:
-            x, y = (primary_coord, secondary_offset)
-
-        pos[node_id] = (x, y)
-
-    return pos
-
-def find_max_node_id(edges):
-    """
-    Finds the highest node ID from a list of edges.
-
-    This function is robust and handles empty lists or malformed edge data
-    gracefully by returning 0.
-
-    Args:
-        edges (iterable): An iterable of edge tuples, e.g., [(1, 2), (3, 2)].
-
-    Returns:
-        int: The highest node ID found, or 0 if the list is empty.
-    """
-    # 1. Handle the most common case first: an empty list of edges.
-    if not edges:
-        return 0
-
-    try:
-        # 2. Efficiently flatten the list of tuples into a single sequence
-        #    and use a set to get unique node IDs.
-        #    e.g., [(1, 2), (3, 2)] -> {1, 2, 3}
-        all_nodes = set(itertools.chain.from_iterable(edges))
-
-        # 3. Return the maximum ID from the set. If the set is somehow empty
-        #    after processing, return 0 as a fallback.
-        return max(all_nodes) if all_nodes else 0
-        
-    except TypeError:
-        # 4. If the edge data is not in the expected format (e.g., not a list
-        #    of tuples), catch the error and return 0 safely.
-        print("Warning: Edge format was unexpected. Assuming max node ID is 0.")
-        return 0
-
-
-def kececi_layout(graph, primary_spacing=1.0, secondary_spacing=1.0,
-                  primary_direction='top_down', secondary_start='right',
-                  expanding=True):
-    """
-    Calculates 2D sequential-zigzag coordinates for the nodes of a graph.
-    This function is compatible with graphs from NetworkX, Rustworkx, igraph,
-    Networkit, Graphillion, and graph-tool.
-
-    Args:
-        graph: A graph object from a supported library.
-        primary_spacing (float): The distance between nodes along the primary axis.
-        secondary_spacing (float): The base unit for the zigzag offset.
-        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
-        secondary_start (str): Initial direction for the zigzag ('up', 'down', 'left', 'right').
-        expanding (bool): If True (default), the zigzag offset grows (the 'v4' style).
-                          If False, the offset is constant (parallel lines).
-
-    Returns:
-        dict: A dictionary of positions formatted as {node_id: (x, y)}.
-    """
-    nodes = None
-
-    # graph-tool desteği
-    if gt and isinstance(graph, gt.Graph):
-        nodes = sorted([int(v) for v in graph.get_vertices()])
-    elif gg and isinstance(graph, gg.GraphSet):
-        edges = graph.universe()
-        max_node_id = max(set(itertools.chain.from_iterable(edges))) if edges else 0
-        nodes = list(range(1, max_node_id + 1)) if max_node_id > 0 else []
-    elif ig and isinstance(graph, ig.Graph):
-        nodes = sorted([v.index for v in graph.vs])
-    elif nk and isinstance(graph, nk.graph.Graph):
-        nodes = sorted(list(graph.iterNodes()))
-    elif rx and isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):
-        nodes = sorted(graph.node_indices())
-    elif isinstance(graph, nx.Graph):
+    # Try to parse as string
+    if isinstance(color_input, str):
         try:
-            nodes = sorted(list(graph.nodes()))
-        except TypeError:
-            nodes = list(graph.nodes())
-    else:
-        supported = ["NetworkX", "Rustworkx", "igraph", "Networkit", "Graphillion"]
-        if gt:
-            supported.append("graph-tool")
-        raise TypeError(f"Unsupported graph type: {type(graph)}. Supported: {', '.join(supported)}")
+            # First try matplotlib's color conversion
+            rgb = to_rgb(color_input)
+            return rgb
+        except (ValueError, AttributeError):
+            # Try hex parsing manually
+            if color_input.startswith("#"):
+                try:
+                    # Remove # and parse
+                    hex_color = color_input.lstrip("#")
+                    if len(hex_color) == 3:
+                        # Expand shorthand #RGB to #RRGGBB
+                        hex_color = "".join([c * 2 for c in hex_color])
+                    elif len(hex_color) != 6:
+                        raise ValueError(f"Invalid hex color: {color_input}")
 
-    pos = {}
-    is_vertical = primary_direction in ['top_down', 'bottom_up']
-    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-    if not (is_vertical or is_horizontal):
-        raise ValueError(f"Invalid primary_direction: '{primary_direction}'")
-    if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start for vertical direction: '{secondary_start}'")
-    if is_horizontal and secondary_start not in ['up', 'down']:
-        raise ValueError(f"Invalid secondary_start for horizontal direction: '{secondary_start}'")
+                    # Convert to RGB 0-255
+                    r = int(hex_color[0:2], 16) / 255.0
+                    g = int(hex_color[2:4], 16) / 255.0
+                    b = int(hex_color[4:6], 16) / 255.0
+                    return (r, g, b)
+                except:
+                    pass
 
-    for i, node_id in enumerate(nodes):
-        primary_coord, secondary_axis = 0.0, ''
-        if primary_direction == 'top_down':
-            primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom_up':
-            primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right':
-            primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else:  # 'right-to-left'
-            primary_coord, secondary_axis = i * -primary_spacing, 'y'
-        secondary_offset = 0.0
-        if i > 0:
-            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            side = 1 if i % 2 != 0 else -1
-            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
-        x, y = ((secondary_offset, primary_coord) if secondary_axis == 'x' else
-                (primary_coord, secondary_offset))
-        pos[node_id] = (x, y)
-    return pos
+    # If we get here, return random color as fallback
+    print(
+        f"Warning: Could not parse color '{color_input}'. Using random color.",
+        file=sys.stderr,
+    )
+    return random_soft_color()
 
-def kececi_layout_edge(graph: Any,
-                  primary_spacing: float = 1.0,
-                  secondary_spacing: float = 1.0,
-                  primary_direction: str = 'top_down',
-                  secondary_start: str = 'right',
-                  expanding: bool = True,
-                  edge: bool = True) -> Dict[Any, Tuple[float, float]]:
-    """Deterministik O(n) layout — edge farkındalıklı mod ile."""
-    nodes, edges = _extract_graph_data(graph)
-    _validate_directions(primary_direction, secondary_start)
-    
-    if edge and edges:
-        degree = defaultdict(int)
-        for u, v in edges:
-            degree[u] += 1
-            degree[v] += 1
-        nodes = sorted(nodes, key=lambda n: (-degree.get(n, 0), str(n)))
-    
-    return _compute_positions(
-        nodes, primary_spacing, secondary_spacing,
-        primary_direction, secondary_start, expanding
+
+def _draw_circle_patch(ax, center, radius, face_color, edge_color="black", lw=0.5):
+    """
+    A robust helper function that adds a circle patch to the Matplotlib axes,
+    using facecolor and edgecolor to avoid the UserWarning.
+    """
+    ax.add_patch(
+        Circle(
+            center,
+            radius,
+            facecolor=face_color,
+            edgecolor=edge_color,
+            linewidth=lw,
+            fill=True,
+        )
     )
 
-def _validate_directions(pd: str, ss: str) -> None:
-    VERTICAL = {'top_down', 'bottom_up'}
-    HORIZONTAL = {'left-to-right', 'right-to-left'}
-    
-    if pd in VERTICAL and ss not in {'left', 'right'}:
-        raise ValueError(
-            f"Invalid secondary_start '{ss}' for vertical direction '{pd}'\n"
-            f"✓ Use: 'left' or 'right' (e.g., secondary_start='right')"
-        )
-    if pd in HORIZONTAL and ss not in {'up', 'down'}:
-        raise ValueError(
-            f"Invalid secondary_start '{ss}' for horizontal direction '{pd}'\n"
-            f"✓ Use: 'up' or 'down' (e.g., secondary_start='up')"
-        )
-    if pd not in VERTICAL and pd not in HORIZONTAL:
-        raise ValueError(f"Invalid primary_direction: '{pd}'")
 
-def _extract_graph_data(graph: Any) -> Tuple[List[Any], List[Tuple[Any, Any]]]:
-    # Rustworkx
-    try:
-        import rustworkx as rx
-        if isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):
-            nodes = sorted(int(u) for u in graph.node_indices())
-            edges = [(int(u), int(v)) for u, v in graph.edge_list()]
-            return nodes, edges
-    except (ImportError, AttributeError, NameError):
-        pass
-    
-    # NetworkX (fallback)
-    try:
-        import networkx as nx
-        if isinstance(graph, (nx.Graph, nx.DiGraph, nx.MultiGraph, nx.MultiDiGraph)):
-            try:
-                nodes = sorted(graph.nodes())
-            except TypeError:
-                nodes = list(graph.nodes())
-            edges = [(u, v) for u, v in graph.edges()]
-            return nodes, edges
-    except (ImportError, AttributeError, NameError):
-        pass
-    
-    raise TypeError(
-        f"Unsupported graph type: {type(graph).__name__}\n"
-        "Supported: NetworkX, Rustworkx"
-    )
-
-def _compute_positions(nodes: List[Any],
-                       ps: float, ss: float,
-                       pd: str, sc: str, exp: bool) -> Dict[Any, Tuple[float, float]]:
-    pos = {}
-    for i, node in enumerate(nodes):
-        if pd == 'top_down':
-            pc, sa = i * -ps, 'x'
-        elif pd == 'bottom_up':
-            pc, sa = i * ps, 'x'
-        elif pd == 'left-to-right':
-            pc, sa = i * ps, 'y'
-        else:  # right-to-left
-            pc, sa = i * -ps, 'y'
-        
-        so = 0.0
-        if i > 0:
-            sm = 1.0 if sc in {'right', 'up'} else -1.0
-            mag = math.ceil(i / 2.0) if exp else 1.0
-            side = 1 if i % 2 else -1
-            so = sm * mag * side * ss
-        
-        pos[node] = (so, pc) if sa == 'x' else (pc, so)
-    return pos
-
-def count_edge_crossings(pos, edges):
-    """Basit ama etkili crossing sayacı: (bounding box kesişimi - yaklaşık) (O(m²))"""
-    crossings = 0
-    segments = []
-    
-    # Tüm edge'leri segment olarak sakla
-    for u, v in edges:
-        x1, y1 = pos[u]
-        x2, y2 = pos[v]
-        segments.append(((x1, y1), (x2, y2)))
-    
-    # Tüm segment çiftlerini kontrol et
-    for i in range(len(segments)):
-        for j in range(i+1, len(segments)):
-            if _segments_intersect(segments[i], segments[j]):
-                crossings += 1
-    return crossings
-
-def _segments_intersect(seg1, seg2):
-    """İki doğru parçasının kesişip kesişmediğini kontrol eder (Cohen-Sutherland değil, basit)"""
-    (x1, y1), (x2, y2) = seg1
-    (x3, y3), (x4, y4) = seg2
-    
-    # Ortak uç noktaları crossing olarak sayma
-    if (x1, y1) in [(x3, y3), (x4, y4)] or (x2, y2) in [(x3, y3), (x4, y4)]:
-        return False
-    
-    # Yönlendirme fonksiyonu
-    def orientation(ax, ay, bx, by, cx, cy):
-        val = (by - ay) * (cx - bx) - (bx - ax) * (cy - by)
-        if abs(val) < 1e-9: return 0  # colinear
-        return 1 if val > 0 else 2     # clockwise / counterclockwise
-    
-    o1 = orientation(x1, y1, x2, y2, x3, y3)
-    o2 = orientation(x1, y1, x2, y2, x4, y4)
-    o3 = orientation(x3, y3, x4, y4, x1, y1)
-    o4 = orientation(x3, y3, x4, y4, x2, y2)
-    
-    # Genel kesişim durumu
-    if o1 != o2 and o3 != o4:
-        return True
-    
-    return False
-
-G_small = nx.complete_bipartite_graph(3, 3)
-# Bağlantısız bileşen ekle (community yapısını test etmek için)
-# Non-planar graf: K_{3,3} + ekstra node'lar (edge crossing farkını net gösterir)
-for i in range(6, 12):
-    G_small.add_node(i)
-    if i % 2 == 0:
-        G_small.add_edge(i, i-1)
-    else:
-        G_small.add_edge(i, i-2)
-
-# Layout'ları hesapla
-pos_basic = kececi_layout_edge(G_small, edge=False)
-pos_edge_aware = kececi_layout_edge(G_small, edge=True)
-
-edges_small = list(G_small.edges())
-cross_basic = count_edge_crossings(pos_basic, edges_small)
-cross_edge_aware = count_edge_crossings(pos_edge_aware, edges_small)
-
-def avg_edge_length(pos, edges):
-    # Ortalama edge uzunluğu
-    total = 0.0
-    for u, v in edges:
-        x1, y1 = pos[u]
-        x2, y2 = pos[v]
-        total += math.hypot(x1 - x2, y1 - y2)
-    return total / len(edges) if edges else 0
-
-avg_len_basic = avg_edge_length(pos_basic, edges_small)
-avg_len_edge_aware = avg_edge_length(pos_edge_aware, edges_small)
-
-# =============================================================================
-# 1. TEMEL LAYOUT HESAPLAMA FONKSİYONU (2D)
-# Bu fonksiyon sadece koordinatları hesaplar, çizim yapmaz.
-# 1. LAYOUT CALCULATION FUNCTION (UNIFIED AND IMPROVED)
-# =============================================================================
-def kececi_layout_v4(graph, primary_spacing=1.0, secondary_spacing=1.0,
-                  primary_direction='top_down', secondary_start='right',
-                  expanding=True):
-    """
-    Calculates 2D sequential-zigzag coordinates for the nodes of a graph.
-    This function is compatible with graphs from NetworkX, Rustworkx, igraph,
-    Networkit, Graphillion, and graph-tool.
-
-    Args:
-        graph: A graph object from a supported library.
-        primary_spacing (float): The distance between nodes along the primary axis.
-        secondary_spacing (float): The base unit for the zigzag offset.
-        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
-        secondary_start (str): Initial direction for the zigzag ('up', 'down', 'left', 'right').
-        expanding (bool): If True (default), the zigzag offset grows, generating the
-                          triangle-like 'v4' style. If False, the offset is constant,
-                          generating parallel lines.
-
-    Returns:
-        dict: A dictionary of positions formatted as {node_id: (x, y)}.
-    """
-    nodes = None
-
-    # graph-tool desteği
-    if gt and isinstance(graph, gt.Graph):
-        nodes = sorted([int(v) for v in graph.get_vertices()])
-    elif gg and isinstance(graph, gg.GraphSet):
-        edges = graph.universe()
-        max_node_id = max(set(itertools.chain.from_iterable(edges))) if edges else 0
-        nodes = list(range(1, max_node_id + 1)) if max_node_id > 0 else []
-    elif ig and isinstance(graph, ig.Graph):
-        nodes = sorted([v.index for v in graph.vs])
-    elif nk and isinstance(graph, nk.graph.Graph):
-        nodes = sorted(list(graph.iterNodes()))
-    elif rx and isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):
-        nodes = sorted(graph.node_indices())
-    elif isinstance(graph, nx.Graph):
-        try:
-            nodes = sorted(list(graph.nodes()))
-        except TypeError:
-            nodes = list(graph.nodes())
-    else:
-        supported = ["NetworkX", "Rustworkx", "igraph", "Networkit", "Graphillion"]
-        if gt:
-            supported.append("graph-tool")
-        raise TypeError(f"Unsupported graph type: {type(graph)}. Supported: {', '.join(supported)}")
-
-    pos = {}
-    is_vertical = primary_direction in ['top_down', 'bottom_up']
-    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-    if not (is_vertical or is_horizontal):
-        raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']:
-        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
-
-    for i, node_id in enumerate(nodes):
-        primary_coord, secondary_axis = 0.0, ''
-        if primary_direction == 'top_down':
-            primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom_up':
-            primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right':
-            primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else:  # 'right-to-left'
-            primary_coord, secondary_axis = i * -primary_spacing, 'y'
-        secondary_offset = 0.0
-        if i > 0:
-            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            side = 1 if i % 2 != 0 else -1
-            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
-        x, y = ((secondary_offset, primary_coord) if secondary_axis == 'x' else
-                (primary_coord, secondary_offset))
-        pos[node_id] = (x, y)
-    return pos
-
-def kececi_layout_nx(graph, primary_spacing=1.0, secondary_spacing=1.0,
-                           primary_direction='top_down', secondary_start='right',
-                           expanding=True):
-    """
-    Expanding Kececi Layout: Progresses along the primary axis, with an offset
-    on the secondary axis.
-
-    Args:
-        graph (networkx.Graph): A NetworkX graph object.
-        primary_spacing (float): The distance between nodes along the primary axis.
-        secondary_spacing (float): The base unit for the zigzag offset.
-        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
-        secondary_start (str): Initial direction for the zigzag offset.
-        expanding (bool): If True (default), the zigzag offset grows.
-                          If False, the offset is constant (parallel lines).
-
-    Returns:
-        dict: A dictionary of positions keyed by node ID.
-    """
-    pos = {}
-    nodes = sorted(list(graph.nodes()))
-    if not nodes:
-        return {}
-
-    is_vertical = primary_direction in ['top_down', 'bottom_up']
-    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-    if not (is_vertical or is_horizontal):
-        raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']:
-        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
-
-
-    for i, node_id in enumerate(nodes):
-        # 1. Calculate Primary Axis Coordinate
-        if primary_direction == 'top_down':
-            primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom_up':
-            primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right':
-            primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else:
-            primary_coord, secondary_axis = i * -primary_spacing, 'y'
-
-        # 2. Calculate Secondary Axis Offset
-        secondary_offset = 0.0
-        if i > 0:
-            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            side = 1 if i % 2 != 0 else -1
-            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
-
-        # 3. Assign Coordinates
-        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
-        pos[node_id] = (x, y)
-
-    return pos
-
-def kececi_layout_networkx(graph, primary_spacing=1.0, secondary_spacing=1.0,
-                           primary_direction='top_down', secondary_start='right',
-                           expanding=True):
-    """
-    Expanding Kececi Layout: Progresses along the primary axis, with an offset
-    on the secondary axis.
-
-    Args:
-        graph (networkx.Graph): A NetworkX graph object.
-        primary_spacing (float): The distance between nodes along the primary axis.
-        secondary_spacing (float): The base unit for the zigzag offset.
-        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
-        secondary_start (str): Initial direction for the zigzag offset.
-        expanding (bool): If True (default), the zigzag offset grows.
-                          If False, the offset is constant (parallel lines).
-
-    Returns:
-        dict: A dictionary of positions keyed by node ID.
-    """
-    pos = {}
-    nodes = sorted(list(graph.nodes()))
-    if not nodes:
-        return {}
-
-    is_vertical = primary_direction in ['top_down', 'bottom_up']
-    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-    if not (is_vertical or is_horizontal):
-        raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']:
-        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
-
-
-    for i, node_id in enumerate(nodes):
-        # 1. Calculate Primary Axis Coordinate
-        if primary_direction == 'top_down':
-            primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom_up':
-            primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right':
-            primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else:
-            primary_coord, secondary_axis = i * -primary_spacing, 'y'
-
-        # 2. Calculate Secondary Axis Offset
-        secondary_offset = 0.0
-        if i > 0:
-            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            side = 1 if i % 2 != 0 else -1
-            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
-
-        # 3. Assign Coordinates
-        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
-        pos[node_id] = (x, y)
-
-    return pos
-
-
-def kececi_layout_ig(graph: "ig.Graph", primary_spacing=1.0, secondary_spacing=1.0,
-                         primary_direction='top_down', secondary_start='right',
-                           expanding=True):
-    """
-    Expanding Kececi Layout: Progresses along the primary axis, with an offset
-    on the secondary axis.
-    Kececi layout for an igraph.Graph object.
-
-    Args:
-        graph (igraph.Graph): An igraph.Graph object.
-        primary_spacing (float): The spacing between nodes on the primary axis.
-        secondary_spacing (float): The offset spacing on the secondary axis.
-        primary_direction (str): Direction of the primary axis ('top_down', 'bottom_up', 'left-to-right', 'right-to-left').
-        secondary_start (str): Direction of the initial offset on the secondary axis ('right', 'left', 'up', 'down').
-
-    Returns:
-        list: A list of coordinates sorted by vertex ID (e.g., [[x0,y0], [x1,y1], ...]).
-    """
-    num_nodes = graph.vcount()
-    if num_nodes == 0:
-        return []
-
-    # generate coordinate list (will be ordered by vertex IDs 0 to N-1)
-    pos_list = [[0.0, 0.0]] * num_nodes
-    # Since vertex IDs are already 0 to N-1, we can use range directly
-    nodes = range(num_nodes)  # Vertex IDs
-
-    is_vertical = primary_direction in ['top_down', 'bottom_up']
-    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-
-    if not (is_vertical or is_horizontal):
-        raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']:
-        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
-
-    for i in nodes:  # Here, i is the vertex index (0, 1, 2...)
-        if primary_direction == 'top_down':
-            primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom_up':
-            primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right':
-            primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else:  # right-to-left
-            primary_coord, secondary_axis = i * -primary_spacing, 'y'
-
-        # 2. Calculate Secondary Axis Offset
-        secondary_offset = 0.0
-        if i > 0:
-            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            side = 1 if i % 2 != 0 else -1
-            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
-
-        # 3. Assign Coordinates
-        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
-        pos_list[i] = [x, y]  # Add [x, y] to the list at the correct index
-
-    # Returning a direct list is the most common and flexible approach.
-    # The plot function accepts a list of coordinates directly.
-    return pos_list
-
-
-def kececi_layout_igraph(graph: "ig.Graph", primary_spacing=1.0, secondary_spacing=1.0,
-                         primary_direction='top_down', secondary_start='right',
-                           expanding=True):
-    """
-    Expanding Kececi Layout: Progresses along the primary axis, with an offset
-    on the secondary axis.
-    Kececi layout for an igraph.Graph object.
-
-    Args:
-        graph (igraph.Graph): An igraph.Graph object.
-        primary_spacing (float): The spacing between nodes on the primary axis.
-        secondary_spacing (float): The offset spacing on the secondary axis.
-        primary_direction (str): Direction of the primary axis ('top_down', 'bottom_up', 'left-to-right', 'right-to-left').
-        secondary_start (str): Direction of the initial offset on the secondary axis ('right', 'left', 'up', 'down').
-
-    Returns:
-        list: A list of coordinates sorted by vertex ID (e.g., [[x0,y0], [x1,y1], ...]).
-    """
-    num_nodes = graph.vcount()
-    if num_nodes == 0:
-        return []
-
-    # generate coordinate list (will be ordered by vertex IDs 0 to N-1)
-    pos_list = [[0.0, 0.0]] * num_nodes
-    # Since vertex IDs are already 0 to N-1, we can use range directly
-    nodes = range(num_nodes)  # Vertex IDs
-
-    is_vertical = primary_direction in ['top_down', 'bottom_up']
-    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-
-    if not (is_vertical or is_horizontal):
-        raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']:
-        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
-
-    for i in nodes:  # Here, i is the vertex index (0, 1, 2...)
-        if primary_direction == 'top_down':
-            primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom_up':
-            primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right':
-            primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else:  # right-to-left
-            primary_coord, secondary_axis = i * -primary_spacing, 'y'
-
-        # 2. Calculate Secondary Axis Offset
-        secondary_offset = 0.0
-        if i > 0:
-            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            side = 1 if i % 2 != 0 else -1
-            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
-
-        # 3. Assign Coordinates
-        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
-        pos_list[i] = [x, y]  # Add [x, y] to the list at the correct index
-
-    # Returning a direct list is the most common and flexible approach.
-    # The plot function accepts a list of coordinates directly.
-    return pos_list
-
-
-def kececi_layout_nk(graph: "nk.graph.Graph", primary_spacing=1.0, secondary_spacing=1.0,
-                            primary_direction='top_down', secondary_start='right',
-                           expanding=True):
-    """
-    Expanding Kececi Layout: Progresses along the primary axis, with an offset
-    on the secondary axis.
-    Kececi Layout - Provides a sequential-zigzag layout for nodes in a NetworKit graph.
-
-    Args:
-        graph (networkit.graph.Graph): A NetworKit graph object.
-        primary_spacing (float): The distance on the primary axis.
-        secondary_spacing (float): The distance on the secondary axis.
-        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
-        secondary_start (str): The starting direction for the offset ('right', 'left', 'up', 'down').
-
-    Returns:
-        dict[int, tuple[float, float]]: A dictionary containing the coordinate
-        for each node ID (typically an integer in NetworKit).
-    """
-    # In NetworKit, node IDs are generally sequential, but let's get a sorted
-    # list to be safe. iterNodes() returns the node IDs.
-    try:
-        nodes = sorted(list(graph.iterNodes()))
-    except Exception as e:
-        print(f"Error getting NetworKit node list: {e}")
-        return {}  # Return empty on error
-
-    num_nodes = len(nodes)
-    if num_nodes == 0:
-        return {}
-
-    pos = {}
-    is_vertical = primary_direction in ['top_down', 'bottom_up']
-    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-
-    if not (is_vertical or is_horizontal):
-        raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start ('{secondary_start}') for vertical primary_direction. Use 'right' or 'left'.")
-    if is_horizontal and secondary_start not in ['up', 'down']:
-        raise ValueError(f"Invalid secondary_start ('{secondary_start}') for horizontal primary_direction. Use 'up' or 'down'.")
-
-    # Main loop
-    for i, node_id in enumerate(nodes):
-        # i: The index in the sorted list (0, 1, 2, ...), used for positioning.
-        # node_id: The actual NetworKit node ID, used as the key in the result dictionary.
-        
-        # 1. Calculate Primary Axis Coordinate
-        if primary_direction == 'top_down':
-            primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom_up':
-            primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right':
-            primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else: # 'right-to-left'
-            primary_coord, secondary_axis = i * -primary_spacing, 'y'
-
-        # 2. Calculate Secondary Axis Offset
-        secondary_offset = 0.0
-        if i > 0:
-            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            side = 1 if i % 2 != 0 else -1
-            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
-
-        # 3. Assign Coordinates
-        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
-        pos[node_id] = (x, y)
-
-    return pos
-
-
-def kececi_layout_networkit(graph: "nk.graph.Graph", primary_spacing=1.0, secondary_spacing=1.0,
-                            primary_direction='top_down', secondary_start='right',
-                           expanding=True):
-    """
-    Expanding Kececi Layout: Progresses along the primary axis, with an offset
-    on the secondary axis.
-    Kececi Layout - Provides a sequential-zigzag layout for nodes in a NetworKit graph.
-
-    Args:
-        graph (networkit.graph.Graph): A NetworKit graph object.
-        primary_spacing (float): The distance on the primary axis.
-        secondary_spacing (float): The distance on the secondary axis.
-        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
-        secondary_start (str): The starting direction for the offset ('right', 'left', 'up', 'down').
-
-    Returns:
-        dict[int, tuple[float, float]]: A dictionary containing the coordinate
-        for each node ID (typically an integer in NetworKit).
-    """
-    # In NetworKit, node IDs are generally sequential, but let's get a sorted
-    # list to be safe. iterNodes() returns the node IDs.
-    try:
-        nodes = sorted(list(graph.iterNodes()))
-    except Exception as e:
-        print(f"Error getting NetworKit node list: {e}")
-        return {}  # Return empty on error
-
-    num_nodes = len(nodes)
-    if num_nodes == 0:
-        return {}
-
-    pos = {}
-    is_vertical = primary_direction in ['top_down', 'bottom_up']
-    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-
-    if not (is_vertical or is_horizontal):
-        raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start ('{secondary_start}') for vertical primary_direction. Use 'right' or 'left'.")
-    if is_horizontal and secondary_start not in ['up', 'down']:
-        raise ValueError(f"Invalid secondary_start ('{secondary_start}') for horizontal primary_direction. Use 'up' or 'down'.")
-
-    # Main loop
-    for i, node_id in enumerate(nodes):
-        # i: The index in the sorted list (0, 1, 2, ...), used for positioning.
-        # node_id: The actual NetworKit node ID, used as the key in the result dictionary.
-        
-        # 1. Calculate Primary Axis Coordinate
-        if primary_direction == 'top_down':
-            primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom_up':
-            primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right':
-            primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else: # 'right-to-left'
-            primary_coord, secondary_axis = i * -primary_spacing, 'y'
-
-        # 2. Calculate Secondary Axis Offset
-        secondary_offset = 0.0
-        if i > 0:
-            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            side = 1 if i % 2 != 0 else -1
-            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
-
-        # 3. Assign Coordinates
-        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
-        pos[node_id] = (x, y)
-
-    return pos
-
-
-def kececi_layout_gg(graph_set: "gg.GraphSet", primary_spacing=1.0, secondary_spacing=1.0,
-                              primary_direction='top_down', secondary_start='right',
-                           expanding=True):
-    """
-    Expanding Kececi Layout: Progresses along the primary axis, with an offset
-    on the secondary axis.
-    Kececi Layout - Provides a sequential-zigzag layout for nodes in a Graphillion universe.
-
-    Args:
-        graph_set (graphillion.GraphSet): A Graphillion GraphSet object.
-        primary_spacing (float): The distance on the primary axis.
-        secondary_spacing (float): The distance on the secondary axis.
-        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
-        secondary_start (str): The starting direction for the offset ('right', 'left', 'up', 'down').
-    Returns:
-        dict: A dictionary of positions keyed by node ID.
-    """
-    # CORRECTION: Get the edge list from the universe.
-    edges_in_universe = graph_set.universe()
-    # CORRECTION: Derive the number of nodes from the edges.
-    num_vertices = find_max_node_id(edges_in_universe)
-
-    if num_vertices == 0:
-        return {}
-
-    # Graphillion often uses 1-based node indexing.
-    # generate the node ID list: 1, 2, ..., num_vertices
-    nodes = list(range(1, num_vertices + 1))
-
-    pos = {}
-    is_vertical = primary_direction in ['top_down', 'bottom_up']
-    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-
-    if not (is_vertical or is_horizontal):
-        raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']:
-        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
-
-    for i, node_id in enumerate(nodes):
-        if primary_direction == 'top_down':
-            primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom_up':
-            primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right':
-            primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else: # right-to-left
-            primary_coord, secondary_axis = i * -primary_spacing, 'y'
-
-        # 2. Calculate Secondary Axis Offset
-        secondary_offset = 0.0
-        if i > 0:
-            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            side = 1 if i % 2 != 0 else -1
-            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
-
-        # 3. Assign Coordinates
-        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
-        pos[node_id] = (x, y)
-
-    return pos
-
-
-def kececi_layout_graphillion(graph_set: "gg.GraphSet", primary_spacing=1.0, secondary_spacing=1.0,
-                              primary_direction='top_down', secondary_start='right',
-                           expanding=True):
-    """
-    Expanding Kececi Layout: Progresses along the primary axis, with an offset
-    on the secondary axis.
-    Kececi Layout - Provides a sequential-zigzag layout for nodes in a Graphillion universe.
-
-    Args:
-        graph_set (graphillion.GraphSet): A Graphillion GraphSet object.
-        primary_spacing (float): The distance on the primary axis.
-        secondary_spacing (float): The distance on the secondary axis.
-        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
-        secondary_start (str): The starting direction for the offset ('right', 'left', 'up', 'down').
-    Returns:
-        dict: A dictionary of positions keyed by node ID.
-    """
-    # CORRECTION: Get the edge list from the universe.
-    edges_in_universe = graph_set.universe()
-    # CORRECTION: Derive the number of nodes from the edges.
-    num_vertices = find_max_node_id(edges_in_universe)
-
-    if num_vertices == 0:
-        return {}
-
-    # Graphillion often uses 1-based node indexing.
-    # generate the node ID list: 1, 2, ..., num_vertices
-    nodes = list(range(1, num_vertices + 1))
-
-    pos = {}
-    is_vertical = primary_direction in ['top_down', 'bottom_up']
-    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-
-    if not (is_vertical or is_horizontal):
-        raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']:
-        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
-
-    for i, node_id in enumerate(nodes):
-        if primary_direction == 'top_down':
-            primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom_up':
-            primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right':
-            primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else: # right-to-left
-            primary_coord, secondary_axis = i * -primary_spacing, 'y'
-
-        # 2. Calculate Secondary Axis Offset
-        secondary_offset = 0.0
-        if i > 0:
-            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            side = 1 if i % 2 != 0 else -1
-            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
-
-        # 3. Assign Coordinates
-        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
-        pos[node_id] = (x, y)
-
-    return pos
-
-
-def kececi_layout_rx(graph: "rx.PyGraph", primary_spacing=1.0, secondary_spacing=1.0,
-                            primary_direction='top_down', secondary_start='right',
-                           expanding=True):
-    """
-    Expanding Kececi Layout: Progresses along the primary axis, with an offset
-    on the secondary axis.
-    Kececi layout for a Rustworkx PyGraph object.
-
-    Args:
-        graph (rustworkx.PyGraph): A Rustworkx graph object.
-        primary_spacing (float): The spacing between nodes on the primary axis.
-        secondary_spacing (float): The offset spacing on the secondary axis.
-        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
-        secondary_start (str): Initial direction for the offset ('right', 'left', 'up', 'down').
-
-    Returns:
-        dict: A dictionary of positions keyed by node index, where values are numpy arrays.
-    """
-    pos = {}
-    nodes = sorted(graph.node_indices())
-    num_nodes = len(nodes)
-    if num_nodes == 0:
-        return {}
-
-    is_vertical = primary_direction in ['top_down', 'bottom_up']
-    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-    if not (is_vertical or is_horizontal):
-        raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']:
-        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
-
-    for i, node_index in enumerate(nodes):
-        if primary_direction == 'top_down':
-            primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom_up':
-            primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right':
-            primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else:
-            primary_coord, secondary_axis = i * -primary_spacing, 'y'
-
-        # 2. Calculate Secondary Axis Offset
-        secondary_offset = 0.0
-        if i > 0:
-            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            side = 1 if i % 2 != 0 else -1
-            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
-
-        # 3. Assign Coordinates
-        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
-        pos[node_index] = np.array([x, y])
-        
-    return pos
-
-
-def kececi_layout_rustworkx(graph: "rx.PyGraph", primary_spacing=1.0, secondary_spacing=1.0,
-                            primary_direction='top_down', secondary_start='right',
-                           expanding=True):
-    """
-    Expanding Kececi Layout: Progresses along the primary axis, with an offset
-    on the secondary axis.
-    Kececi layout for a Rustworkx PyGraph object.
-
-    Args:
-        graph (rustworkx.PyGraph): A Rustworkx graph object.
-        primary_spacing (float): The spacing between nodes on the primary axis.
-        secondary_spacing (float): The offset spacing on the secondary axis.
-        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
-        secondary_start (str): Initial direction for the offset ('right', 'left', 'up', 'down').
-
-    Returns:
-        dict: A dictionary of positions keyed by node index, where values are numpy arrays.
-    """
-    pos = {}
-    nodes = sorted(graph.node_indices())
-    num_nodes = len(nodes)
-    if num_nodes == 0:
-        return {}
-
-    is_vertical = primary_direction in ['top_down', 'bottom_up']
-    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-    if not (is_vertical or is_horizontal):
-        raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']:
-        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
-
-    for i, node_index in enumerate(nodes):
-        if primary_direction == 'top_down':
-            primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom_up':
-            primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right':
-            primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else:
-            primary_coord, secondary_axis = i * -primary_spacing, 'y'
-
-        # 2. Calculate Secondary Axis Offset
-        secondary_offset = 0.0
-        if i > 0:
-            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            side = 1 if i % 2 != 0 else -1
-            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
-
-        # 3. Assign Coordinates
-        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
-        pos[node_index] = np.array([x, y])
-        
-    return pos
-
-def kececi_layout_gt(graph: "gt.Graph", primary_spacing=1.0, secondary_spacing=1.0,
-                             primary_direction='top_down', secondary_start='right',
-                             expanding=True):
-    """
-    Expanding Kececi Layout: Progresses along the primary axis, with an offset
-    on the secondary axis.
-    Kececi layout for a graph-tool graph object.
-    Args:
-        graph (graph_tool.Graph): A graph-tool graph object.
-        primary_spacing (float): The spacing between nodes on the primary axis.
-        secondary_spacing (float): The offset spacing on the secondary axis.
-        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
-        secondary_start (str): Initial direction for the offset ('right', 'left', 'up', 'down').
-    Returns:
-        dict: A dictionary of positions keyed by node index.
-    """
-    nodes = sorted([int(v) for v in graph.vertices()])
-    pos = {}
-    is_vertical = primary_direction in ['top_down', 'bottom_up']
-    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-    if not (is_vertical or is_horizontal):
-        raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']:
-        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
-
-    for i, node_id in enumerate(nodes):
-        if primary_direction == 'top_down':
-            primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom_up':
-            primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right':
-            primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else:
-            primary_coord, secondary_axis = i * -primary_spacing, 'y'
-        secondary_offset = 0.0
-        if i > 0:
-            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            side = 1 if i % 2 != 0 else -1
-            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
-        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
-        pos[node_id] = (x, y)
-    return pos
-
-def kececi_layout_graph_tool(graph: "gt.Graph", primary_spacing=1.0, secondary_spacing=1.0,
-                             primary_direction='top_down', secondary_start='right',
-                             expanding=True):
-    """
-    Expanding Kececi Layout: Progresses along the primary axis, with an offset
-    on the secondary axis.
-    Kececi layout for a graph-tool graph object.
-    Args:
-        graph (graph_tool.Graph): A graph-tool graph object.
-        primary_spacing (float): The spacing between nodes on the primary axis.
-        secondary_spacing (float): The offset spacing on the secondary axis.
-        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', 'right-to-left'.
-        secondary_start (str): Initial direction for the offset ('right', 'left', 'up', 'down').
-    Returns:
-        dict: A dictionary of positions keyed by node index.
-    """
-    nodes = sorted([int(v) for v in graph.vertices()])
-    pos = {}
-    is_vertical = primary_direction in ['top_down', 'bottom_up']
-    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-    if not (is_vertical or is_horizontal):
-        raise ValueError(f"Invalid primary_direction: {primary_direction}")
-    if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start for vertical direction: {secondary_start}")
-    if is_horizontal and secondary_start not in ['up', 'down']:
-        raise ValueError(f"Invalid secondary_start for horizontal direction: {secondary_start}")
-
-    for i, node_id in enumerate(nodes):
-        if primary_direction == 'top_down':
-            primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom_up':
-            primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right':
-            primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else:
-            primary_coord, secondary_axis = i * -primary_spacing, 'y'
-        secondary_offset = 0.0
-        if i > 0:
-            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            side = 1 if i % 2 != 0 else -1
-            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
-        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
-        pos[node_id] = (x, y)
-    return pos
-
-def kececi_layout_pure(nodes, primary_spacing=1.0, secondary_spacing=1.0,
-                         primary_direction='top_down', secondary_start='right',
-                         expanding=True):
-    """
-    Calculates 2D sequential-zigzag coordinates for a given list of nodes.
-    This function does not require any external graph library.
-
-    Args:
-        nodes (iterable): A list or other iterable containing the node IDs to be positioned.
-        primary_spacing (float): The distance between nodes along the primary axis.
-        secondary_spacing (float): The base unit for the zigzag offset.
-        primary_direction (str): 'top_down', 'bottom_up', 'left-to-right', or 'right-to-left'.
-        secondary_start (str): The initial direction for the zigzag ('up', 'down', 'left', 'right').
-        expanding (bool): If True (default), the zigzag offset grows.
-                          If False, the offset is constant (resulting in parallel lines).
-
-    Returns:
-        dict: A dictionary of positions formatted as {node_id: (x, y)}.
-    """
-    try:
-        # Try to sort the nodes for a consistent output.
-        sorted_nodes = sorted(list(nodes))
-    except TypeError:
-        # For unsortable nodes (e.g., mixed types), keep the original order.
-        sorted_nodes = list(nodes)
-
-    pos = {}
-    
-    # --- Direction Validation Block ---
-    is_vertical = primary_direction in ['top_down', 'bottom_up']
-    is_horizontal = primary_direction in ['left-to-right', 'right-to-left']
-
-    if not (is_vertical or is_horizontal):
-        raise ValueError(f"Invalid primary_direction: '{primary_direction}'")
-    if is_vertical and secondary_start not in ['right', 'left']:
-        raise ValueError(f"Invalid secondary_start for vertical direction: '{secondary_start}'")
-    if is_horizontal and secondary_start not in ['up', 'down']:
-        raise ValueError(f"Invalid secondary_start for horizontal direction: '{secondary_start}'")
-    # --- End of Block ---
-
-    for i, node_id in enumerate(sorted_nodes):
-        # 1. Calculate the Primary Axis Coordinate
-        primary_coord = 0.0
-        secondary_axis = ''
-        if primary_direction == 'top_down':
-            primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        elif primary_direction == 'bottom_up':
-            primary_coord, secondary_axis = i * primary_spacing, 'x'
-        elif primary_direction == 'left-to-right':
-            primary_coord, secondary_axis = i * primary_spacing, 'y'
-        else:  # 'right-to-left'
-            primary_coord, secondary_axis = i * -primary_spacing, 'y'
-
-        # 2. Calculate the Secondary Axis Offset
-        secondary_offset = 0.0
-        if i > 0:
-            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            
-            # Determine the offset magnitude based on the 'expanding' flag.
-            magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            
-            # Determine the zigzag side (e.g., left vs. right).
-            side = 1 if i % 2 != 0 else -1
-
-            # Calculate the final offset.
-            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
-
-        # 3. Assign the (x, y) Coordinates
-        x, y = ((secondary_offset, primary_coord) if secondary_axis == 'x' else
-                (primary_coord, secondary_offset))
-        pos[node_id] = (x, y)
-        
-    return pos
-
-# =============================================================================
-# Rastgele Graf Oluşturma Fonksiyonu (Rustworkx ile - Düzeltilmiş subgraph)
-# =============================================================================
-def generate_random_rx_graph(min_nodes=5, max_nodes=15, edge_prob_min=0.15, edge_prob_max=0.4):
-    if min_nodes < 2: 
-        min_nodes = 2
-    if max_nodes < min_nodes: 
-        max_nodes = min_nodes
-    while True:
-        num_nodes_target = random.randint(min_nodes, max_nodes)
-        edge_probability = random.uniform(edge_prob_min, edge_prob_max)
-        G_candidate = rx.PyGraph()
-        node_indices = G_candidate.add_nodes_from([None] * num_nodes_target)
-        for i in range(num_nodes_target):
-            for j in range(i + 1, num_nodes_target):
-                if random.random() < edge_probability:
-                    G_candidate.add_edge(node_indices[i], node_indices[j], None)
-
-        if G_candidate.num_nodes() == 0: 
-            continue
-        if num_nodes_target > 1 and G_candidate.num_edges() == 0: 
-            continue
-
-        if not rx.is_connected(G_candidate):
-             components = rx.connected_components(G_candidate)
-             if not components: 
-                 continue
-             largest_cc_nodes_indices = max(components, key=len, default=set())
-             if len(largest_cc_nodes_indices) < 2 and num_nodes_target >=2 : 
-                 continue
-             if not largest_cc_nodes_indices: 
-                 continue
-             # Set'i listeye çevirerek subgraph oluştur
-             G = G_candidate.subgraph(list(largest_cc_nodes_indices))
-             if G.num_nodes() == 0: 
-                 continue
-        else:
-             G = G_candidate
-
-        if G.num_nodes() >= 2: 
-            break
-    print(f"Oluşturulan Rustworkx Graf: {G.num_nodes()} Düğüm, {G.num_edges()} Kenar (Başlangıç p={edge_probability:.3f})")
-    return G
-
-# =============================================================================
-# Rastgele Graf Oluşturma Fonksiyonu (NetworkX)
-# =============================================================================
-def generate_random_graph(min_nodes=0, max_nodes=200, edge_prob_min=0.15, edge_prob_max=0.4):
-
-    if min_nodes < 2: 
-        min_nodes = 2
-    if max_nodes < min_nodes: 
-        max_nodes = min_nodes
-    while True:
-        num_nodes_target = random.randint(min_nodes, max_nodes)
-        edge_probability = random.uniform(edge_prob_min, edge_prob_max)
-        G_candidate = nx.gnp_random_graph(num_nodes_target, edge_probability, seed=None)
-        if G_candidate.number_of_nodes() == 0: 
-            continue
-        # Düzeltme: 0 kenarlı ama >1 düğümlü grafı da tekrar dene
-        if num_nodes_target > 1 and G_candidate.number_of_edges() == 0 : 
-            continue
-
-        if not nx.is_connected(G_candidate):
-            # Düzeltme: default=set() kullanmak yerine önce kontrol et
-            connected_components = list(nx.connected_components(G_candidate))
-            if not connected_components: 
-                continue # Bileşen yoksa tekrar dene
-            largest_cc_nodes = max(connected_components, key=len)
-            if len(largest_cc_nodes) < 2 and num_nodes_target >=2 : 
-                continue
-            if not largest_cc_nodes: 
-                continue # Bu aslında gereksiz ama garanti olsun
-            G = G_candidate.subgraph(largest_cc_nodes).copy()
-            if G.number_of_nodes() == 0: 
-                continue
-        else: 
-            G = G_candidate
-        if G.number_of_nodes() >= 2: 
-            break
-    G = nx.convert_node_labels_to_integers(G, first_label=0)
-    print(f"Oluşturulan Graf: {G.number_of_nodes()} Düğüm, {G.number_of_edges()} Kenar (Başlangıç p={edge_probability:.3f})")
-    return G
-
-def generate_random_graph_ig(min_nodes=0, max_nodes=200, edge_prob_min=0.15, edge_prob_max=0.4):
-    """igraph kullanarak rastgele bağlı bir graf oluşturur."""
-
-    if min_nodes < 2: 
-        min_nodes = 2
-    if max_nodes < min_nodes: 
-        max_nodes = min_nodes
-    while True:
-        num_nodes_target = random.randint(min_nodes, max_nodes)
-        edge_probability = random.uniform(edge_prob_min, edge_prob_max)
-        g_candidate = ig.Graph.Erdos_Renyi(n=num_nodes_target, p=edge_probability, directed=False)
-        if g_candidate.vcount() == 0: 
-            continue
-        if num_nodes_target > 1 and g_candidate.ecount() == 0 : 
-            continue
-        if not g_candidate.is_connected(mode='weak'):
-            components = g_candidate.components(mode='weak')
-            if not components or len(components) == 0: 
-                continue
-            largest_cc_subgraph = components.giant()
-            if largest_cc_subgraph.vcount() < 2 and num_nodes_target >=2 : 
-                continue
-            g = largest_cc_subgraph
-            if g.vcount() == 0: 
-                continue
-        else: 
-            g = g_candidate
-        if g.vcount() >= 2: 
-            break
-    print(f"Oluşturulan igraph Graf: {g.vcount()} Düğüm, {g.ecount()} Kenar (Başlangıç p={edge_probability:.3f})")
-    g.vs["label"] = [str(i) for i in range(g.vcount())]
-    g.vs["degree"] = g.degree()
-    return g
-
-# =============================================================================
-# 1. GRAPH PROCESSING AND CONVERSION HELPERS
-# =============================================================================
-
-def _get_nodes_from_graph(graph):
-    """Extracts a sorted list of nodes from various graph library objects."""
-    nodes = None
-    if gg and isinstance(graph, gg.GraphSet):
-        edges = graph.universe()
-        max_node_id = max(set(itertools.chain.from_iterable(edges))) if edges else 0
-        nodes = list(range(1, max_node_id + 1)) if max_node_id > 0 else []
-    elif ig and isinstance(graph, ig.Graph):
-        nodes = sorted([v.index for v in graph.vs])
-    elif nk and isinstance(graph, nk.graph.Graph):
-        nodes = sorted(list(graph.iterNodes()))
-    elif rx and isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):
-        nodes = sorted(graph.node_indices())
-    elif isinstance(graph, nx.Graph):
-        try:
-            nodes = sorted(list(graph.nodes()))
-        except TypeError:  # For non-sortable node types
-            nodes = list(graph.nodes())
-    else:
-        supported = ["NetworkX"]
-        if rx: 
-            supported.append("Rustworkx")
-        if ig: 
-            supported.append("igraph")
-        if nk: 
-            supported.append("Networkit")
-        if gg: 
-            supported.append("Graphillion")
-        raise TypeError(
-            f"Unsupported graph type: {type(graph)}. Supported types: {', '.join(supported)}"
-        )
-    return nodes
-
-
-def to_networkx(graph):
-    """Converts any supported graph type to a NetworkX graph."""
-    if isinstance(graph, nx.Graph):
-        return graph.copy()
-    
-    nx_graph = nx.Graph()
-    """
-    # PyZX graph support
-    try:
-        import pyzx as zx
-        if hasattr(graph, 'vertices') and hasattr(graph, 'edges'):
-            # PyZX graph olduğunu varsay
-            for v in graph.vertices():
-                nx_graph.add_node(v)
-            for edge in graph.edges():
-                if len(edge) == 2: # TypeError: object of type 'Edge' has no len()
-                    nx_graph.add_edge(edge[0], edge[1])
-            return nx_graph
-    except ImportError:
-        pass
-    """
-
-    # PyZX graph support
-    try:
-        import pyzx as zx
-        if hasattr(graph, 'vertices') and hasattr(graph, 'edges'):
-            for v in graph.vertices():
-                nx_graph.add_node(v)
-            for edge in graph.edges():
-                # PyZX kenarları için doğru erişim
-                u, v = edge.u, edge.v  # PyZX kenarları için uygun erişim
-                nx_graph.add_edge(u, v)
-            return nx_graph
-    except ImportError:
-        pass
-    except AttributeError:
-        pass  # PyZX kenarları için uygun erişim yoksa, bu bloğu atla
-
-    # graph-tool desteği
-    if gt and isinstance(graph, gt.Graph):
-        # Düğümleri ekle
-        for v in graph.vertices():
-            node_id = int(v)
-            nx_graph.add_node(node_id)
-
-        # Kenarları ekle
-        for e in graph.edges():
-            source = int(e.source())
-            target = int(e.target())
-            nx_graph.add_edge(source, target)
-
-        return nx_graph
-    
-    # Diğer graph kütüphaneleri...
-    if rx and isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):
-        nx_graph.add_nodes_from(graph.node_indices())
-        nx_graph.add_edges_from(graph.edge_list())
-    elif ig and hasattr(ig, 'Graph') and isinstance(graph, ig.Graph):
-        nx_graph.add_nodes_from(v.index for v in graph.vs)
-        nx_graph.add_edges_from(graph.get_edgelist())
-    elif nk and isinstance(graph, nk.graph.Graph):
-        nx_graph.add_nodes_from(graph.iterNodes())
-        nx_graph.add_edges_from(graph.iterEdges())
-    elif gg and isinstance(graph, gg.GraphSet):
-        edges = graph.universe()
-        max_node_id = find_max_node_id(edges)
-        if max_node_id > 0:
-            nx_graph.add_nodes_from(range(1, max_node_id + 1))
-            nx_graph.add_edges_from(edges)
-    else:
-        # This block is rarely reached as _get_nodes_from_graph would fail first
-        #raise TypeError(f"Desteklenmeyen graf tipi {type(graph)} NetworkX'e dönüştürülemedi.")
-        raise TypeError(f"Unsupported graph type {type(graph)} could not be converted to NetworkX.")
-
-    return nx_graph
-
-def _kececi_layout_3d_helix(nx_graph):
-    """Internal function: Arranges nodes in a helix along the Z-axis."""
-    pos_3d = {}
-    nodes = sorted(list(nx_graph.nodes()))
-    for i, node_id in enumerate(nodes):
-        angle, radius, z_step = i * (np.pi / 2.5), 1.0, i * 0.8
-        pos_3d[node_id] = (np.cos(angle) * radius, np.sin(angle) * radius, z_step)
-    return pos_3d
-
-def kececi_layout_3d_helix_parametric(nx_graph, z_spacing=2.0, radius=5.0, turns=2.0):
-    """
-    Parametric 3D helix layout for nodes. User can control spacing, radius, and number of turns.
-    Fixed version with division by zero handling.
-    
-    Args:
-        nx_graph: NetworkX graph.
-        z_spacing (float): Vertical distance between consecutive nodes.
-        radius (float): Radius of the helix.
-        turns (float): Number of full turns the helix makes.
-    
-    Returns:
-        dict: {node_id: (x, y, z)}
-    """
-    nodes = sorted(list(nx_graph.nodes()))
-    pos_3d = {}
-    total_nodes = len(nodes)
-    
-    if total_nodes == 0:
-        print(f"Warning: Graph has {total_nodes} nodes!")
-        return pos_3d
-    
-    total_angle = 2 * np.pi * turns
-    
-    for i, node_id in enumerate(nodes):
-        z = i * z_spacing
-        
-        # Division by zero fix for single node case
-        if total_nodes > 1:
-            angle = (i / (total_nodes - 1)) * total_angle
-        else:
-            angle = 0
-        
-        x = np.cos(angle) * radius
-        y = np.sin(angle) * radius
-        pos_3d[node_id] = (x, y, z)
-    
-    return pos_3d
-
-def kececi_layout_3d_helix(G, radius=1.0, pitch=0.5, start_angle=0):
-    pos = {}
-    nodes = list(G.nodes())
-    n = len(nodes)
-    for i, node in enumerate(nodes):
-        t = i / max(1, n-1)  # 0..1
-        angle = start_angle + 2 * np.pi * t * 2  # 2 tam tur
-        x = radius * np.cos(angle)
-        y = radius * np.sin(angle)
-        z = pitch * n * t
-        pos[node] = (x, y, z)
-    return pos
-
-def load_element_data_from_python_dict(filename):
-    """Loads element data from a Python dictionary format file."""
-    element_data = {}
-    spectral_lines = {}
-    
-    print(f"Loading file: {filename}")
-    print(f"File exists: {os.path.exists(filename)}")
-    
-    if not os.path.exists(filename):
-        print(f"ERROR: File '{filename}' not found in directory: {os.getcwd()}")
-        return element_data, spectral_lines
-    
-    try:
-        with open(filename, 'r', encoding='utf-8') as f:
-            content = f.read()
-            
-        # Find element_data dictionary
-        element_data_match = re.search(r'element_data\s*=\s*\{([^}]+)\}', content, re.DOTALL)
-        if element_data_match:
-            element_data_str = element_data_match.group(0)
-            print("Found element_data dictionary")
-            
-            # generate a safe environment to evaluate the dictionary
-            safe_dict = {}
-            exec(element_data_str, {"__builtins__": {}}, safe_dict)
-            
-            if 'element_data' in safe_dict:
-                element_data = safe_dict['element_data']
-                print(f"Successfully loaded {len(element_data)} elements")
-            else:
-                print("element_data not found in evaluated content")
-                
-                # Manual parsing as fallback
-                print("Attempting manual parsing...")
-                lines = element_data_str.split('\n')
-                for line in lines:
-                    line = line.strip()
-                    if ':' in line and '(' in line:
-                        # Parse line like: 1: ("H", 1),
-                        match = re.search(r'(\d+):\s*\("([^"]+)",\s*(\d+)\)', line)
-                        if match:
-                            key = int(match.group(1))
-                            symbol = match.group(2)
-                            atomic_num = int(match.group(3))
-                            element_data[key] = (symbol, atomic_num)
-        
-        # Find spectral_lines dictionary if exists
-        spectral_match = re.search(r'spectral_lines\s*=\s*\{([^}]+)\}', content, re.DOTALL)
-        if spectral_match:
-            spectral_str = spectral_match.group(0)
-            print("Found spectral_lines dictionary")
-            
-            safe_dict = {}
-            exec(spectral_str, {"__builtins__": {}}, safe_dict)
-            
-            if 'spectral_lines' in safe_dict:
-                spectral_lines = safe_dict['spectral_lines']
-                print(f"Successfully loaded {len(spectral_lines)} spectral lines")
-        
-        # If no dictionaries found, try simple CSV format
-        if not element_data:
-            print("No dictionaries found, trying CSV format...")
-            lines = content.split('\n')
-            current_section = None
-            
-            for line in lines:
-                line = line.strip()
-                if not line or line.startswith('#'):
-                    if "element" in line.lower():
-                        current_section = "element"
-                    elif "spectral" in line.lower():
-                        current_section = "spectral"
-                    continue
-                
-                parts = [p.strip() for p in line.split(',')]
-                if current_section == "element" and len(parts) >= 2:
-                    try:
-                        symbol = parts[0]
-                        atomic_number = int(parts[1])
-                        element_data[atomic_number] = (symbol, atomic_number)
-                    except:
-                        continue
-                elif current_section == "spectral" and len(parts) >= 2:
-                    symbol = parts[0]
-                    wavelengths = []
-                    for wl in parts[1:]:
-                        if wl:
-                            try:
-                                wavelengths.append(float(wl))
-                            except:
-                                continue
-                    if wavelengths:
-                        spectral_lines[symbol] = wavelengths
-                        
-    except Exception as e:
-        print(f"Error reading/parsing file: {str(e)}")
-        import traceback
-        traceback.print_exc()
-    
-    print(f"\nTotal elements loaded: {len(element_data)}")
-    print(f"Total spectral lines loaded: {len(spectral_lines)}")
-    
-    if element_data:
-        print("\nFirst 10 elements:")
-        for i, (key, val) in enumerate(list(element_data.items())[:10]):
-            print(f"  {key}: {val}")
-    
-    return element_data, spectral_lines
-
-def generate_complete_periodic_table():
-    """generate a complete periodic table with all 118 elements."""
-    print("generating complete periodic table...")
-    
-    periodic_elements = {
-        1: ('H', 1), 2: ('He', 2), 3: ('Li', 3), 4: ('Be', 4), 5: ('B', 5),
-        6: ('C', 6), 7: ('N', 7), 8: ('O', 8), 9: ('F', 9), 10: ('Ne', 10),
-        11: ('Na', 11), 12: ('Mg', 12), 13: ('Al', 13), 14: ('Si', 14), 15: ('P', 15),
-        16: ('S', 16), 17: ('Cl', 17), 18: ('Ar', 18), 19: ('K', 19), 20: ('Ca', 20),
-        21: ('Sc', 21), 22: ('Ti', 22), 23: ('V', 23), 24: ('Cr', 24), 25: ('Mn', 25),
-        26: ('Fe', 26), 27: ('Co', 27), 28: ('Ni', 28), 29: ('Cu', 29), 30: ('Zn', 30),
-        31: ('Ga', 31), 32: ('Ge', 32), 33: ('As', 33), 34: ('Se', 34), 35: ('Br', 35),
-        36: ('Kr', 36), 37: ('Rb', 37), 38: ('Sr', 38), 39: ('Y', 39), 40: ('Zr', 40),
-        41: ('Nb', 41), 42: ('Mo', 42), 43: ('Tc', 43), 44: ('Ru', 44), 45: ('Rh', 45),
-        46: ('Pd', 46), 47: ('Ag', 47), 48: ('Cd', 48), 49: ('In', 49), 50: ('Sn', 50),
-        51: ('Sb', 51), 52: ('Te', 52), 53: ('I', 53), 54: ('Xe', 54), 55: ('Cs', 55),
-        56: ('Ba', 56), 57: ('La', 57), 58: ('Ce', 58), 59: ('Pr', 59), 60: ('Nd', 60),
-        61: ('Pm', 61), 62: ('Sm', 62), 63: ('Eu', 63), 64: ('Gd', 64), 65: ('Tb', 65),
-        66: ('Dy', 66), 67: ('Ho', 67), 68: ('Er', 68), 69: ('Tm', 69), 70: ('Yb', 70),
-        71: ('Lu', 71), 72: ('Hf', 72), 73: ('Ta', 73), 74: ('W', 74), 75: ('Re', 75),
-        76: ('Os', 76), 77: ('Ir', 77), 78: ('Pt', 78), 79: ('Au', 79), 80: ('Hg', 80),
-        81: ('Tl', 81), 82: ('Pb', 82), 83: ('Bi', 83), 84: ('Po', 84), 85: ('At', 85),
-        86: ('Rn', 86), 87: ('Fr', 87), 88: ('Ra', 88), 89: ('Ac', 89), 90: ('Th', 90),
-        91: ('Pa', 91), 92: ('U', 92), 93: ('Np', 93), 94: ('Pu', 94), 95: ('Am', 95),
-        96: ('Cm', 96), 97: ('Bk', 97), 98: ('Cf', 98), 99: ('Es', 99), 100: ('Fm', 100),
-        101: ('Md', 101), 102: ('No', 102), 103: ('Lr', 103), 104: ('Rf', 104), 105: ('Db', 105),
-        106: ('Sg', 106), 107: ('Bh', 107), 108: ('Hs', 108), 109: ('Mt', 109), 110: ('Ds', 110),
-        111: ('Rg', 111), 112: ('Cn', 112), 113: ('Nh', 113), 114: ('Fl', 114), 115: ('Mc', 115),
-        116: ('Lv', 116), 117: ('Ts', 117), 118: ('Og', 118)
-    }
-    
-    # Sample spectral lines for common elements
-    spectral_lines = {
-    'H':  [656.3, 486.1, 434.0, 410.2],  # Balmer serisi (H-α, H-β, H-γ, H-δ)
-    'He': [587.6, 447.1, 388.9, 402.6],  # He I çizgileri (Sarı, Mavi, Mor)
-    'Li': [670.8, 610.4],                # Lityum çift çizgisi (Kırmızı)
-    'Be': [313.1, 313.0],                # Berilyum UV çizgileri (Yakın UV)
-    'B':  [249.7, 249.6],                # Bor UV çizgileri
-    'C':  [426.7, 505.2, 514.5],         # Nötr Karbon (C I) çizgileri
-    'N':  [346.6, 357.7, 746.8],         # Nötr Azot (N I) çizgileri
-    'O':  [777.4, 777.2, 777.5, 844.6],  # Nötr Oksijen (O I) triplet ve singlet
-    'F':  [685.6, 739.9],                # Flor çizgileri
-    'Ne': [540.1, 585.2, 588.2],         # Neon çizgileri (Yeşil-Sarı)
-    'Na': [589.0, 589.6],                # Sodyum D-çifti (Çok belirgin sarı çizgiler)
-    'Mg': [517.3, 518.4, 457.1],         # Magnezyum triplet (Yeşil) ve UV çizgisi
-    'Al': [396.1, 394.4],                # Alüminyum çizgileri (Mor)
-    'Si': [390.5, 410.7, 504.1],         # Silisyum çizgileri
-    'P':  [515.3, 516.7],                # Fosfor çizgileri
-    'S':  [560.6, 564.0, 869.4],         # Kükürt çizgileri
-    'Cl': [837.6, 841.8],                # Klor çizgileri (Kırmızı)
-    'Ar': [750.4, 763.5],                # Argon çizgileri
-    'K':  [766.5, 769.9],                # Potasyum çift çizgisi (Kırmızı)
-    'Ca': [393.4, 396.8, 422.7],         # Kalsiyum H, K çizgileri (Çok belirgin mor) ve IR çizgisi
-    'Sc': [424.7, 431.9],                # Skandiyum çizgileri
-    'Ti': [498.2, 520.2, 533.7],         # Titanyum çizgileri
-    'V':  [430.5, 437.9],                # Vanadyum çizgileri
-    'Cr': [425.4, 427.5, 428.9],         # Krom çizgileri
-    'Mn': [403.1, 403.5, 475.4],         # Manganez çizgileri
-    'Fe': [438.3, 430.8, 427.2, 527.0],  # Demir çizgileri (Fe I - çok sayıda çizgi var, en belirginler)
-    'Co': [412.1, 411.9],                # Kobalt çizgileri
-    'Ni': [380.7, 385.7],                # Nikel çizgileri
-    'Cu': [510.6, 578.2],                # Bakır çizgileri
-    'Zn': [468.0, 472.2],                # Çinko çizgileri
-    'Ga': [417.2, 403.3],                # Galyum çizgileri
-    'Ge': [422.7, 465.6],                # Germanyum çizgileri
-    'As': [488.9, 514.6],                # Arsenik çizgileri
-    'Se': [479.6, 486.9],                # Selenyum çizgileri
-    'Br': [482.5, 515.8],                # Brom çizgileri
-    'Kr': [557.0, 587.1],                # Kripton çizgileri
-    'Rb': [780.0, 794.8],                # Rubidyum çizgileri (Kırmızı)
-    'Sr': [460.7, 421.6],                # Stronsiyum çizgileri
-    'Y':  [488.4, 490.0],                # İtriyum çizgileri
-    'Zr': [468.8, 473.6],                # Zirkonyum çizgileri
-    'Nb': [478.7, 488.6],                # Niobyum çizgileri
-    'Mo': [478.5, 480.9],                # Molibden çizgileri
-    'Tc': [426.2, 429.6],                # Teknesyum (radyoaktif, teorik)
-    'Ru': [449.9, 451.3],                # Rutenyum çizgileri
-    'Rh': [450.4, 452.2],                # Rodiyum çizgileri
-    'Pd': [468.3, 474.9],                # Paladyum çizgileri
-    'Ag': [497.6, 507.6],                # Gümüş çizgileri
-    'Cd': [508.6, 643.8],                # Kadmiyum çizgileri
-    'In': [451.1, 410.2],                # İndiyum çizgileri
-    'Sn': [452.5, 462.4],                # Kalay çizgileri
-    'Sb': [451.4, 459.3],                # Antimon çizgileri
-    'Te': [460.2, 476.2],                # Tellür çizgileri
-    'I':  [576.5, 579.3],                # İyot çizgileri
-    'Xe': [467.1, 473.4],                # Xenon çizgileri
-    'Cs': [852.1, 894.3],                # Sezyum çizgileri (Kırmızı-IR)
-    'Ba': [455.4, 493.4],                # Baryum çizgileri
-    'La': [463.6, 474.8],                # Lantan çizgileri
-    'Ce': [456.2, 458.2],                # Seryum çizgileri
-    'Pr': [448.8, 451.0],                # Praseodimyum çizgileri
-    'Nd': [451.5, 456.2],                # Neodimyum çizgileri
-    'Pm': [446.0, 450.7],                # Prometyum (radyoaktif, teorik)
-    'Sm': [442.4, 446.5],                # Samaryum çizgileri
-    'Eu': [459.4, 462.7],                # Avrupyum çizgileri
-    'Gd': [455.9, 459.4],                # Gadolinyum çizgileri
-    'Tb': [455.8, 458.2],                # Terbiyum çizgileri
-    'Dy': [455.6, 458.0],                # Disprozyum çizgileri
-    'Ho': [455.5, 458.0],                # Holmiyum çizgileri
-    'Er': [455.4, 457.9],                # Erbiyum çizgileri
-    'Tm': [455.3, 457.7],                # Tulyum çizgileri
-    'Yb': [455.2, 457.6],                # İterbiyum çizgileri
-    'Lu': [455.1, 457.5],                # Lutesyum çizgileri
-    'Hf': [460.5, 462.9],                # Hafniyum çizgileri
-    'Ta': [457.8, 460.2],                # Tantal çizgileri
-    'W':  [460.2, 462.6],                # Volfram çizgileri
-    'Re': [460.0, 462.4],                # Renyum çizgileri
-    'Os': [459.8, 462.2],                # Osmiyum çizgileri
-    'Ir': [459.6, 462.0],                # İridyum çizgileri
-    'Pt': [459.4, 461.8],                # Platin çizgileri
-    'Au': [479.3, 494.6],                # Altın çizgileri
-    'Hg': [435.8, 546.1],                # Cıva çizgileri (Mavi-Yeşil)
-    'Tl': [535.0, 537.6],                # Talyum çizgileri
-    'Pb': [405.8, 436.3],                # Kurşun çizgileri
-    'Bi': [472.2, 474.8],                # Bizmut çizgileri
-    'Po': [453.5, 456.0],                # Polonyum (radyoaktif, teorik)
-    'At': [452.0, 454.5],                # Astatin (radyoaktif, teorik)
-    'Rn': [451.0, 453.5],                # Radon (radyoaktif, teorik)
-    'Fr': [450.0, 452.5],                # Fransiyum (radyoaktif, teorik)
-    'Ra': [449.0, 451.5],                # Radyum (radyoaktif, teorik)
-    'Ac': [448.0, 450.5],                # Aktinyum çizgileri
-    'Th': [401.9, 409.5],                # Toryum çizgileri
-    'Pa': [451.2, 453.7],                # Protaktinyum (radyoaktif, teorik)
-    'U':  [424.4, 424.2],                # Uranyum çizgileri
-    'Np': [450.0, 452.5],                # Neptünyum (radyoaktif, teorik)
-    'Pu': [449.0, 451.5],                # Plütonyum (radyoaktif, teorik)
-    'Am': [448.0, 450.5],                # Amerikyum (radyoaktif, teorik)
-    'Cm': [447.0, 449.5],                # Küriyum (radyoaktif, teorik)
-    'Bk': [446.0, 448.5],                # Berkelyum (radyoaktif, teorik)
-    'Cf': [445.0, 447.5],                # Kaliforniyum (radyoaktif, teorik)
-    'Es': [444.0, 446.5],                # Aynştaynyum (radyoaktif, teorik)
-    'Fm': [443.0, 445.5],                # Fermiyum (radyoaktif, teorik)
-    'Md': [442.0, 444.5],                # Mendelevyum (radyoaktif, teorik)
-    'No': [441.0, 443.5],                # Nobelyum (radyoaktif, teorik)
-    'Lr': [440.0, 442.5],                # Lavrensiyum (radyoaktif, teorik)
-    'Rf': [439.0, 441.5],                # Rutherfordiyum (teorik)
-    'Db': [438.0, 440.5],                # Dubniyum (teorik)
-    'Sg': [437.0, 439.5],                # Seaborgiyum (teorik)
-    'Bh': [436.0, 438.5],                # Bohriyum (teorik)
-    'Hs': [435.0, 437.5],                # Hassiyum (teorik)
-    'Mt': [434.0, 436.5],                # Meitneriyum (teorik)
-    'Ds': [433.0, 435.5],                # Darmstadtium (teorik)
-    'Rg': [432.0, 434.5],                # Roentgenyum (teorik)
-    'Cn': [431.0, 433.5],                # Kopernikyum (teorik)
-    'Nh': [430.0, 432.5],                # Nihonyum (teorik)
-    'Fl': [429.0, 431.5],                # Flerovyum (teorik)
-    'Mc': [428.0, 430.5],                # Moskovyum (teorik)
-    'Lv': [427.0, 429.5],                # Livermorium (teorik)
-    'Ts': [426.0, 428.5],                # Tennessin (teorik)
-    'Og': [425.0, 427.5],                # Oganesson (teorik)
-    }
-    
-    return periodic_elements, spectral_lines
-
-def load_element_data_and_spectral_lines(filename):
-    """Loads element data and spectral lines from a text file."""
-    element_data = {}
-    spectral_lines = {}
-    current_section = None
-    
-    with open(filename, 'r', encoding='utf-8') as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith('#'):
-                if "Element Data" in line:
-                    current_section = "element"
-                elif "Spectral Lines" in line:
-                    current_section = "spectral"
-                continue
-            
-            parts = line.split(',')
-            if current_section == "element" and len(parts) >= 2:
-                symbol = parts[0]
-                atomic_number = int(parts[1])
-                element_data[atomic_number] = (symbol, atomic_number)
-            elif current_section == "spectral" and len(parts) >= 2:
-                symbol = parts[0]
-                wavelengths = [float(wl) for wl in parts[1:] if wl]
-                spectral_lines[symbol] = wavelengths
-    
-    return element_data, spectral_lines
-
-def wavelength_to_rgb(wavelength, gamma=0.8):
-    wavelength = float(wavelength)
-    if 380 <= wavelength <= 750:
-        if wavelength < 440:
-            attenuation = 0.3 + 0.7 * (wavelength - 380) / (440 - 380)
-            R = ((-(wavelength - 440) / (440 - 380)) * attenuation) ** gamma
-            G = 0.0
-            B = (1.0 * attenuation) ** gamma
-        elif wavelength < 490:
-            R = 0.0
-            G = ((wavelength - 440) / (490 - 440)) ** gamma
-            B = 1.0
-        elif wavelength < 510:
-            R = 0.0
-            G = 1.0
-            B = (-(wavelength - 510) / (510 - 490)) ** gamma
-        elif wavelength < 580:
-            R = ((wavelength - 510) / (580 - 510)) ** gamma
-            G = 1.0
-            B = 0.0
-        elif wavelength < 645:
-            R = 1.0
-            G = (-(wavelength - 645) / (645 - 580)) ** gamma
-            B = 0.0
-        else:
-            attenuation = 0.3 + 0.7 * (750 - wavelength) / (750 - 645)
-            R = (1.0 * attenuation) ** gamma
-            G = 0.0
-            B = 0.0
-    else:
-        R = G = B = 0.0 # UV veya IR için siyah
-    return (R, G, B)
-
-def get_text_color_for_bg(bg_color):
-    """Determines optimal text color (white or black) based on background luminance."""
-    luminance = 0.299 * bg_color[0] + 0.587 * bg_color[1] + 0.114 * bg_color[2]
-    return 'white' if luminance < 0.5 else 'black'
-
-def generate_soft_random_colors(n):
-    """
-    Generates n soft, pastel, and completely random colors.
-    Uses high Value and Saturation in HSV space for a soft look.
-    """
-    colors = []
-    for _ in range(n):
-        hue = random.random()
-        # Soft görünüm için doygunluk (saturation) orta seviyede
-        saturation = 0.4 + (random.random() * 0.4)
-        # Soft görünüm için parlaklık (value) yüksek
-        value = 0.7 + (random.random() * 0.3)
-        from matplotlib.colors import hsv_to_rgb
-        rgb = hsv_to_rgb([hue, saturation, value])
-        colors.append(rgb)
-    return colors
-
-def generate_distinct_colors(n):
-    colors = []
-    for i in range(n):
-        hue = i / n
-        saturation = 0.7 + (random.random() * 0.3) # 0.7 - 1.0 arası
-        value = 0.8 + (random.random() * 0.2)     # 0.8 - 1.0 arası
-        rgb = plt.cm.hsv(hue)[:3] # HSV'den RGB'ye dönüştür
-        # Parlaklığı ayarla
-        from matplotlib.colors import hsv_to_rgb
-        adjusted_rgb = hsv_to_rgb([hue, saturation, value])
-        colors.append(adjusted_rgb)
-    return colors
-
-# 2D Layout
-def kececi_layout_2d(
-    nx_graph: nx.Graph,
-    primary_spacing: float = 1.0,
-    secondary_spacing: float = 1.0,
-    primary_direction: str = 'left-to-right',
-    secondary_start: str = 'up',
-    expanding: bool = True
-) -> Dict[int, Tuple[float, float]]:
-    pos = {}
-    nodes = sorted(list(nx_graph.nodes()))
-
-    for i, node_id in enumerate(nodes):
-        if primary_direction == 'left-to-right':
-            primary_coord, secondary_axis = i * primary_spacing, 'y'
-        elif primary_direction == 'right-to-left':
-            primary_coord, secondary_axis = i * -primary_spacing, 'y'
-        elif primary_direction == 'top_down':
-            primary_coord, secondary_axis = i * -primary_spacing, 'x'
-        else:  # 'bottom_up'
-            primary_coord, secondary_axis = i * primary_spacing, 'x'
-
-        secondary_offset = 0.0
-        if i > 0:
-            start_multiplier = 1.0 if secondary_start in ['right', 'up'] else -1.0
-            magnitude = math.ceil(i / 2.0) if expanding else 1.0
-            side = 1 if i % 2 != 0 else -1
-            secondary_offset = start_multiplier * magnitude * side * secondary_spacing
-
-        x, y = (secondary_offset, primary_coord) if secondary_axis == 'x' else (primary_coord, secondary_offset)
-        pos[node_id] = (x, y)
-
-    return pos
-
-# Silindirik Layout
-def kececi_layout_cylindrical(
-    nx_graph: nx.Graph,
-    radius: float = 5.0,
-    height: float = 10.0
-) -> Dict[int, Tuple[float, float, float]]:
-    pos_3d = {}
-    nodes = sorted(list(nx_graph.nodes()))
-    num_nodes = len(nodes)
-
-    for i, node_id in enumerate(nodes):
-        theta = 2 * np.pi * i / num_nodes
-        x = radius * np.cos(theta)
-        y = radius * np.sin(theta)
-        z = height * i / num_nodes
-        pos_3d[node_id] = (x, y, z)
-
-    return pos_3d
-
-# Kübik Layout
-def kececi_layout_cubic(
-    nx_graph: nx.Graph,
-    size: float = 5.0
-) -> Dict[int, Tuple[float, float, float]]:
-    pos_3d = {}
-    nodes = sorted(list(nx_graph.nodes()))
-    num_nodes = len(nodes)
-    cube_size = int(np.cbrt(num_nodes)) + 1
-
-    for i, node_id in enumerate(nodes):
-        x = size * (i % cube_size)
-        y = size * ((i // cube_size) % cube_size)
-        z = size * ((i // (cube_size ** 2)) % cube_size)
-        pos_3d[node_id] = (x, y, z)
-
-    return pos_3d
-
-# Küresel Layout
-def kececi_layout_spherical(
-    nx_graph: nx.Graph,
-    radius: float = 5.0
-) -> Dict[int, Tuple[float, float, float]]:
-    pos_3d = {}
-    nodes = sorted(list(nx_graph.nodes()))
-    num_nodes = len(nodes)
-
-    for i, node_id in enumerate(nodes):
-        theta = 2 * np.pi * i / num_nodes
-        phi = np.arccos(1 - 2 * (i + 0.5) / num_nodes)
-        x = radius * np.sin(phi) * np.cos(theta)
-        y = radius * np.sin(phi) * np.sin(theta)
-        z = radius * np.cos(phi)
-        pos_3d[node_id] = (x, y, z)
-
-    return pos_3d
-
-# Eliptik Layout
-def kececi_layout_elliptical(
-    nx_graph: nx.Graph,
-    a: float = 5.0,
-    b: float = 3.0
-) -> Dict[int, Tuple[float, float]]:
-    pos = {}
-    nodes = sorted(list(nx_graph.nodes()))
-    num_nodes = len(nodes)
-
-    for i, node_id in enumerate(nodes):
-        theta = 2 * np.pi * i / num_nodes
-        x = a * np.cos(theta)
-        y = b * np.sin(theta)
-        pos[node_id] = (x, y)
-
-    return pos
-
-# Torik (Halkasal) Layout
-def kececi_layout_toric(
-    nx_graph: nx.Graph,
-    major_radius: float = 5.0,
-    minor_radius: float = 2.0
-) -> Dict[int, Tuple[float, float, float]]:
-    pos_3d = {}
-    nodes = sorted(list(nx_graph.nodes()))
-    num_nodes = len(nodes)
-
-    for i, node_id in enumerate(nodes):
-        theta = 2 * np.pi * i / num_nodes
-        phi = 2 * np.pi * i / num_nodes
-        x = (major_radius + minor_radius * np.cos(phi)) * np.cos(theta)
-        y = (major_radius + minor_radius * np.cos(phi)) * np.sin(theta)
-        z = minor_radius * np.sin(phi)
-        pos_3d[node_id] = (x, y, z)
-
-    return pos_3d
-
-# Ağırlıklı Çizim (draw_kececi_weighted)
-def draw_kececi_weighted(
-    nx_graph: nx.Graph,
-    pos: Dict[int, Tuple[float, ...]],
-    ax: Optional[plt.Axes] = None,
-    layout: str = "unknown",          # ✅ Varsayılan değer
-    style: str = "weighted",          # ✅ Varsayılan değer
-    node_size: int = 300,
-    edge_width_scale: float = 2.0,
-    with_labels: bool = True,
-    font_size: int = 10,
-    font_weight: str = 'bold',
-    **kwargs
-) -> plt.Axes:
-
-    """
-    2D/3D Weighted edges ile Keçeci layout çizimi.
-    """
-    if ax is None or not hasattr(ax, 'scatter'):  # ax bozuksa yeniden oluştur
-        is_3d = len(next(iter(pos.values()))) == 3
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection='3d' if is_3d else None)
-    
-    # ✅ nodes_kwargs'ı SIFIRLA (en güvenli)
-    nx.draw_networkx_nodes(nx_graph, pos, ax=ax, 
-                          node_size=node_size, node_color='lightblue')
-    """
-    if ax is None:
-        is_3d = len(next(iter(pos.values()))) == 3
-        fig = plt.figure(figsize=(10, 8))
-        if is_3d:
-            ax = fig.add_subplot(111, projection='3d')
-        else:
-            ax = fig.add_subplot(111)
-
-    # ✅ KWARGS FİLTRELEME
-    nodes_kwargs = {k: v for k, v in kwargs.items() if k not in ['font_size', 'font_weight']}
-    node_color = kwargs.get('node_color', 'lightblue')
-
-    # Node'ları çiz ✅ font_size yok
-    nx.draw_networkx_nodes(nx_graph, pos, ax=ax, node_size=node_size, 
-                          node_color=node_color, **nodes_kwargs)
-    """
-
-    # Etiketleri çiz ✅ font_size var
-    if with_labels:
-        if len(next(iter(pos.values()))) == 3:  # 3D
-            for node, coord in pos.items():
-                ax.text(coord[0], coord[1], coord[2], str(node),
-                       size=font_size, zorder=1, color='black', fontweight=font_weight)
-        else:  # 2D
-            nx.draw_networkx_labels(nx_graph, pos, ax=ax, 
-                                  font_size=font_size, font_weight=font_weight)
-
-    # Weighted edges
-    weights = nx.get_edge_attributes(nx_graph, 'weight')
-    if not weights:
-        weights = {edge: 1.0 for edge in nx_graph.edges()}
-    
-    is_3d = len(next(iter(pos.values()))) == 3
-    for (u, v), weight in weights.items():
-        width = weight * edge_width_scale
-        if is_3d:
-            ax.plot([pos[u][0], pos[v][0]], [pos[u][1], pos[v][1]], [pos[u][2], pos[v][2]],
-                   linewidth=width, color='gray', alpha=0.7)
-        else:
-            ax.plot([pos[u][0], pos[v][0]], [pos[u][1], pos[v][1]],
-                   linewidth=width, color='gray', alpha=0.7)
-
-    #ax.set_title("Keçeci Layout: Weighted Edges", fontsize=font_size + 2)
-    ax.set_title(f"Keçeci Layout: {layout.capitalize()} (Weighted Edges)", fontsize=font_size + 2)
-    return ax
-
-
-def draw_kececi_colored(
-    nx_graph: nx.Graph,
-    pos: Dict[int, Tuple[float, ...]],
-    layout: str,                    # ✅ 1. Zorunlu (en başta)
-    style: str = 'colored',         # ✅ 2. Varsayılan  
-    ax: Optional[plt.Axes] = None,  # ✅ 3. Varsayılan
-    node_size: int = 300,
-    with_labels: bool = True,
-    font_size: int = 10,
-    font_weight: str = 'bold',
-    **kwargs
-) -> plt.Axes:
-    """
-    2D/3D Renkli node'lar ile Keçeci layout çizimi.
-    """
-    if ax is None:
-        is_3d = len(next(iter(pos.values()))) == 3
-        fig = plt.figure(figsize=(10, 8))
-        if is_3d:
-            ax = fig.add_subplot(111, projection='3d')
-        else:
-            ax = fig.add_subplot(111)
-
-    # ✅ KWARGS FİLTRELEME
-    nodes_kwargs = {k: v for k, v in kwargs.items() if k not in ['font_size', 'font_weight']}
-
-    # Dereceye göre renk hesapla
-    degrees = dict(nx_graph.degree())
-    max_degree = max(degrees.values()) if degrees else 1
-    node_colors = [plt.cm.viridis(deg / max_degree) for deg in degrees.values()]
-
-    # Node'ları çiz ✅ font_size yok
-    nx.draw_networkx_nodes(nx_graph, pos, ax=ax, node_color=node_colors,
-                          node_size=node_size, **nodes_kwargs)
-
-    # Etiketleri çiz ✅ font_size var
-    if with_labels:
-        if len(next(iter(pos.values()))) == 3:  # 3D
-            for node, coord in pos.items():
-                ax.text(coord[0], coord[1], coord[2], str(node),
-                       size=font_size, zorder=1, color='black', fontweight=font_weight)
-        else:  # 2D
-            nx.draw_networkx_labels(nx_graph, pos, ax=ax, 
-                                  font_size=font_size, font_weight=font_weight)
-
-    # Edges
-    is_3d = len(next(iter(pos.values()))) == 3
-    if is_3d:
-        for u, v in nx_graph.edges():
-            ax.plot([pos[u][0], pos[v][0]], [pos[u][1], pos[v][1]], [pos[u][2], pos[v][2]],
-                   color='gray', alpha=0.5)
-    else:
-        nx.draw_networkx_edges(nx_graph, pos, ax=ax, alpha=0.5)
-
-    #ax.set_title("Keçeci Layout: Colored Nodes", fontsize=font_size + 2)
-    ax.set_title(f"Keçeci Layout: {layout.capitalize()} (Colored Nodes)", fontsize=font_size + 2)
-    return ax
-
-
-"""
-def draw_kececi_weighted(
-    nx_graph: nx.Graph,
-    pos: Dict[int, Tuple[float, ...]],
-    ax: Optional[plt.Axes] = None,
-    node_size: int = 300,
-    edge_width_scale: float = 2.0,
-    **kwargs
-) -> plt.Axes:
-    if ax is None:
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111)
-
-    weights = nx.get_edge_attributes(nx_graph, 'weight')
-    if not weights:
-        weights = {edge: 1.0 for edge in nx_graph.edges()}
-
-    nx.draw_networkx_nodes(nx_graph, pos, ax=ax, node_size=node_size, **kwargs)
-
-    is_3d = len(pos[next(iter(pos))]) == 3
-    if is_3d:
-        for node, coord in pos.items():
-            ax.text(coord[0], coord[1], coord[2], f'  {node}', size=10, zorder=1, color='black')
-    else:
-        nx.draw_networkx_labels(nx_graph, pos, ax=ax)
-
-    for (u, v), weight in weights.items():
-        width = weight * edge_width_scale
-        if is_3d:
-            ax.plot(
-                [pos[u][0], pos[v][0]],
-                [pos[u][1], pos[v][1]],
-                [pos[u][2], pos[v][2]],
-                linewidth=width,
-                color='gray',
-                alpha=0.7
-            )
-        else:
-            ax.plot(
-                [pos[u][0], pos[v][0]],
-                [pos[u][1], pos[v][1]],
-                linewidth=width,
-                color='gray',
-                alpha=0.7
-            )
-
-    ax.set_title("Keçeci Layout: Weighted Edges")
-    return ax
-"""
-"""    
-# Renkli Çizim (draw_kececi_colored)
-def draw_kececi_colored(
-    nx_graph: nx.Graph,
-    pos: Dict[int, Tuple[float, ...]],
-    ax: Optional[plt.Axes] = None,
-    node_size: int = 300,
-    **kwargs
-) -> plt.Axes:
-    if ax is None:
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111)
-
-    degrees = dict(nx_graph.degree())
-    max_degree = max(degrees.values()) if degrees else 1
-    node_colors = [plt.cm.viridis(deg / max_degree) for deg in degrees.values()]
-
-    nx.draw_networkx_nodes(
-        nx_graph, pos, ax=ax,
-        node_color=node_colors,
-        node_size=node_size,
-        **kwargs
-    )
-
-    is_3d = len(pos[next(iter(pos))]) == 3
-    if is_3d:
-        for node, coord in pos.items():
-            ax.text(coord[0], coord[1], coord[2], f'  {node}', size=10, zorder=1, color='black')
-    else:
-        nx.draw_networkx_labels(nx_graph, pos, ax=ax)
-
-    if is_3d:
-        for u, v in nx_graph.edges():
-            ax.plot(
-                [pos[u][0], pos[v][0]],
-                [pos[u][1], pos[v][1]],
-                [pos[u][2], pos[v][2]],
-                color='gray',
-                alpha=0.5
-            )
-    else:
-        nx.draw_networkx_edges(nx_graph, pos, ax=ax, alpha=0.5)
-
-    ax.set_title("Keçeci Layout: Colored Nodes")
-    return ax
-"""
-
-# =============================================================================
-# 3. INTERNAL DRAWING STYLE IMPLEMENTATIONS
-# =============================================================================
-
-def _draw_internal(nx_graph, ax, style, **kwargs):
-    """Internal router that handles the different drawing styles."""
-    layout_params = {
-        k: v for k, v in kwargs.items()
-        if k in ['primary_spacing', 'secondary_spacing', 'primary_direction',
-                 'secondary_start', 'expanding']
-    }
-    draw_params = {k: v for k, v in kwargs.items() if k not in layout_params}
-
-    if style == 'curved':
-        pos = kececi_layout(nx_graph, **layout_params)
-        final_params = {'ax': ax, 'with_labels': True, 'node_color': '#1f78b4',
-                        'node_size': 700, 'font_color': 'white',
-                        'connectionstyle': 'arc3,rad=0.2', 'arrows': True}
-        final_params.update(draw_params)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            nx.draw(nx_graph, pos, **final_params)
-        ax.set_title("Keçeci Layout: Curved Edges")
-
-    elif style == 'transparent':
-        pos = kececi_layout(nx_graph, **layout_params)
-        # node_color'u draw_params'dan al, yoksa default değeri kullan
-        node_color = draw_params.pop('node_color', '#2ca02c')  # DÜZELTME BURADA
-        nx.draw_networkx_nodes(nx_graph, pos, ax=ax, node_color=node_color, 
-                              node_size=700, **draw_params)  # DÜZELTME BURADA
-        nx.draw_networkx_labels(nx_graph, pos, ax=ax, font_color='white')
-        edge_lengths = {e: np.linalg.norm(np.array(pos[e[0]]) - np.array(pos[e[1]])) for e in nx_graph.edges()}
-        max_len = max(edge_lengths.values()) if edge_lengths else 1.0
-        for edge, length in edge_lengths.items():
-            alpha = 0.15 + 0.85 * (1 - length / max_len)
-            nx.draw_networkx_edges(nx_graph, pos, edgelist=[edge], ax=ax, 
-                                  width=1.5, edge_color='black', alpha=alpha)
-        ax.set_title("Keçeci Layout: Transparent Edges")
-
-    elif style == '3d':
-        pos_3d = _kececi_layout_3d_helix(nx_graph)
-        node_color = draw_params.get('node_color', '#d62728')  # DÜZELTME BURADA
-        edge_color = draw_params.get('edge_color', 'gray')     # DÜZELTME BURADA
-        for node, (x, y, z) in pos_3d.items():
-            ax.scatter([x], [y], [z], s=200, c=[node_color], depthshade=True)
-            ax.text(x, y, z, f'  {node}', size=10, zorder=1, color='k')
-        for u, v in nx_graph.edges():
-            coords = np.array([pos_3d[u], pos_3d[v]])
-            ax.plot(coords[:, 0], coords[:, 1], coords[:, 2], 
-                   color=edge_color, alpha=0.8)  # DÜZELTME BURADA
-        ax.set_title("Keçeci Layout: 3D Helix")
-        ax.set_axis_off()
-        ax.view_init(elev=20, azim=-60)
-"""
-def _draw_internal(nx_graph, ax, style, **kwargs):
-    #Internal router that handles the different drawing styles.
-    layout_params = {
-        k: v for k, v in kwargs.items()
-        if k in ['primary_spacing', 'secondary_spacing', 'primary_direction',
-                 'secondary_start', 'expanding']
-    }
-    draw_params = {k: v for k, v in kwargs.items() if k not in layout_params}
-
-    if style == 'curved':
-        pos = kececi_layout(nx_graph, **layout_params)
-        final_params = {'ax': ax, 'with_labels': True, 'node_color': '#1f78b4',
-                        'node_size': 700, 'font_color': 'white',
-                        'connectionstyle': 'arc3,rad=0.2', 'arrows': True}
-        final_params.update(draw_params)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            nx.draw(nx_graph, pos, **final_params)
-        ax.set_title("Keçeci Layout: Curved Edges")
-
-    elif style == 'transparent':
-        pos = kececi_layout(nx_graph, **layout_params)
-        nx.draw_networkx_nodes(nx_graph, pos, ax=ax, node_color='#2ca02c', node_size=700, **draw_params)
-        nx.draw_networkx_labels(nx_graph, pos, ax=ax, font_color='white')
-        edge_lengths = {e: np.linalg.norm(np.array(pos[e[0]]) - np.array(pos[e[1]])) for e in nx_graph.edges()}
-        max_len = max(edge_lengths.values()) if edge_lengths else 1.0
-        for edge, length in edge_lengths.items():
-            alpha = 0.15 + 0.85 * (1 - length / max_len)
-            nx.draw_networkx_edges(nx_graph, pos, edgelist=[edge], ax=ax, width=1.5, edge_color='black', alpha=alpha)
-        ax.set_title("Keçeci Layout: Transparent Edges")
-
-    elif style == '3d':
-        pos_3d = _kececi_layout_3d_helix(nx_graph)
-        node_color = draw_params.get('node_color', '#d62728')
-        edge_color = draw_params.get('edge_color', 'gray')
-        for node, (x, y, z) in pos_3d.items():
-            ax.scatter([x], [y], [z], s=200, c=[node_color], depthshade=True)
-            ax.text(x, y, z, f'  {node}', size=10, zorder=1, color='k')
-        for u, v in nx_graph.edges():
-            coords = np.array([pos_3d[u], pos_3d[v]])
-            ax.plot(coords[:, 0], coords[:, 1], coords[:, 2], color=edge_color, alpha=0.8)
-        ax.set_title("Keçeci Layout: 3D Helix")
-        ax.set_axis_off()
-        ax.view_init(elev=20, azim=-60)
-"""
-
-# =============================================================================
-# 4. MAIN USER-FACING DRAWING FUNCTION
-# =============================================================================
-def draw_kececi(
-    graph,
-    pos=None,
-    layout=None,
-    style='default',
-    ax=None,
-    with_labels=True,
-    node_color='lightblue',
-    node_size=500,
-    font_size=10,
-    font_weight='bold',
-    edge_color='gray',
-    edge_alpha=0.5,
-    edge_width=1.0,
-    **kwargs
-) -> plt.Axes:
-    """
-    Keçeci Layout ile 2B/3B uyumlu graf çizimi.
-    Stiller: 'default', 'standard', 'curved', 'transparent', '3d', 'helix',
-             'weighted', 'colored'
-    """
-    from kececilayout import to_networkx, kececi_layout_2d, kececi_layout_cylindrical, \
-        kececi_layout_cubic, kececi_layout_spherical, kececi_layout_elliptical, \
-        kececi_layout_toric, draw_kececi_weighted, draw_kececi_colored, \
-        _kececi_layout_3d_helix
-
-    nx_graph = to_networkx(graph)
-
-    # -------- Layout hesaplama (pos verilmemişse) --------
-    if pos is None:
-        layout = layout or '2d'
-        if layout == '2d':
-            pos = kececi_layout_2d(nx_graph, **kwargs)
-        elif layout == 'cylindrical':
-            pos = kececi_layout_cylindrical(nx_graph, **kwargs)
-        elif layout == 'cubic':
-            pos = kececi_layout_cubic(nx_graph, **kwargs)
-        elif layout == 'spherical':
-            pos = kececi_layout_spherical(nx_graph, **kwargs)
-        elif layout == 'elliptical':
-            pos = kececi_layout_elliptical(nx_graph, **kwargs)
-        elif layout == 'toric':
-            pos = kececi_layout_toric(nx_graph, **kwargs)
-        else:
-            raise ValueError(f"Geçersiz layout: {layout}")
-
-    # -------- Figür ve eksen --------
-    is_3d = len(next(iter(pos.values()))) == 3
-    if ax is None:
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection='3d' if is_3d else None)
-
-    # -------- Stile göre çizim --------
-    style_lower = style.lower()
-
-    # Ağırlıklı ve renkli stiller kendi özel fonksiyonlarına yönlendirilir
-    if style_lower == 'weighted':
-        return draw_kececi_weighted(
-            nx_graph=nx_graph, pos=pos, ax=ax, layout=layout or 'custom',
-            style='weighted', node_size=node_size, font_size=font_size,
-            font_weight=font_weight, **kwargs
-        )
-    elif style_lower == 'colored':
-        return draw_kececi_colored(
-            nx_graph=nx_graph, pos=pos, ax=ax, layout=layout or 'custom',
-            style='colored', node_size=node_size, font_size=font_size,
-            font_weight=font_weight, **kwargs
-        )
-
-    # -------- Diğer stiller (default, curved, transparent, 3d, helix) --------
-    if is_3d:
-        # 3D stiller için
-        if style_lower in ('3d', 'helix'):
-            pos_3d = _kececi_layout_3d_helix(nx_graph)
-            for node, (x, y, z) in pos_3d.items():
-                ax.scatter(x, y, z, s=node_size, c=[node_color], depthshade=True)
-                if with_labels:
-                    ax.text(x, y, z, f'  {node}', size=font_size, zorder=1,
-                            color='black', fontweight=font_weight)
-            for u, v in nx_graph.edges():
-                coords = np.array([pos_3d[u], pos_3d[v]])
-                ax.plot(coords[:, 0], coords[:, 1], coords[:, 2],
-                        color=edge_color, alpha=edge_alpha, linewidth=edge_width)
-            ax.set_title("Keçeci Layout: 3D Helix")
-            ax.set_axis_off()
-            ax.view_init(elev=20, azim=-60)
-            return ax
-        else:
-            # 3D layout ama özel stil değil → düz çizim
-            for node, coord in pos.items():
-                ax.scatter(*coord, s=node_size, c=[node_color], depthshade=True)
-                if with_labels:
-                    ax.text(*coord, f'  {node}', size=font_size, zorder=1,
-                            color='black', fontweight=font_weight)
-            for u, v in nx_graph.edges():
-                ax.plot([pos[u][0], pos[v][0]], [pos[u][1], pos[v][1]], [pos[u][2], pos[v][2]],
-                        color=edge_color, alpha=edge_alpha, linewidth=edge_width)
-            ax.set_axis_off()
-            return ax
-
-    # -------- 2B Stiller --------
-    if style_lower == 'curved':
-        # Kavisli kenarlar (oklu)
-        nx.draw(
-            nx_graph, pos, ax=ax,
-            with_labels=with_labels,
-            node_color=node_color,
-            node_size=node_size,
-            font_size=font_size,
-            font_weight=font_weight,
-            edge_color=edge_color,
-            connectionstyle='arc3,rad=0.2',
-            arrows=True,
-            arrowstyle='-|>',
-            arrowsize=12,
-            width=edge_width
-        )
-    elif style_lower == 'transparent':
-        # Saydam kenarlar
-        nx.draw_networkx_nodes(nx_graph, pos, ax=ax, node_color=node_color,
-                               node_size=node_size, **kwargs)
-        if with_labels:
-            nx.draw_networkx_labels(nx_graph, pos, ax=ax,
-                                    font_size=font_size, font_weight=font_weight)
-        # Kenar uzunluklarına göre alfa ayarla
-        edge_lengths = {
-            e: np.linalg.norm(np.array(pos[e[0]]) - np.array(pos[e[1]]))
-            for e in nx_graph.edges()
-        }
-        max_len = max(edge_lengths.values()) if edge_lengths else 1.0
-        for edge, length in edge_lengths.items():
-            alpha = 0.15 + 0.85 * (1 - length / max_len)
-            nx.draw_networkx_edges(nx_graph, pos, edgelist=[edge], ax=ax,
-                                   width=edge_width, edge_color=edge_color,
-                                   alpha=alpha)
-    else:  # default, standard
-        # Düz kenarlar
-        nx.draw_networkx_nodes(nx_graph, pos, ax=ax, node_color=node_color,
-                               node_size=node_size, **kwargs)
-        if with_labels:
-            nx.draw_networkx_labels(nx_graph, pos, ax=ax,
-                                    font_size=font_size, font_weight=font_weight)
-        nx.draw_networkx_edges(nx_graph, pos, ax=ax,
-                               alpha=edge_alpha, edge_color=edge_color,
-                               width=edge_width)
-
-    # Başlık ve eksen ayarları
-    layout_display = (layout or "Custom").capitalize()
-    style_display = style_lower.capitalize()
-    ax.set_title(f"Keçeci Layout: {layout_display} ({style_display})",
-                 fontsize=font_size + 2)
-    ax.set_axis_off()
-    plt.tight_layout()
-    return ax
-
-"""
-def draw_kececi(
-    graph, pos=None, layout=None, style='default', ax=None,
-    with_labels=True, node_color='lightblue', node_size=500,
-    font_size=10, font_weight='bold', edge_color='gray',
-    edge_alpha=0.5, edge_width=1.0, **kwargs
-) -> plt.Axes:
-    nx_graph = to_networkx(graph)
-
-    # Layout hesaplama ✅
-    if pos is None:
-        layout = layout or '2d'
-        if layout == '2d':
-            pos = kececi_layout_2d(nx_graph)
-        elif layout == 'cylindrical':
-            pos = kececi_layout_cylindrical(nx_graph)
-        elif layout == 'cubic':
-            pos = kececi_layout_cubic(nx_graph, **kwargs)
-        elif layout == 'spherical':
-            pos = kececi_layout_spherical(nx_graph, **kwargs)
-        elif layout == 'elliptical':
-            pos = kececi_layout_elliptical(nx_graph, **kwargs)
-        elif layout == 'toric':
-            pos = kececi_layout_toric(nx_graph, **kwargs)
-        else:
-            raise ValueError(f"Geçersiz layout: {layout}")
-
-    # ✅ YENİ FIGÜR HER ZAMAN (backend temizliği)
-    fig = plt.figure(figsize=(10, 8))
-    is_3d = len(next(iter(pos.values()))) == 3
-    ax = fig.add_subplot(111, projection='3d' if is_3d else None)
-
-    nodes_kwargs = {k: v for k, v in kwargs.items() if k not in ['font_size', 'font_weight']}
-
-    # Style bazlı çizim
-    if style == 'weighted':
-        draw_kececi_weighted(nx_graph=nx_graph, pos=pos, ax=ax, 
-                            layout=layout, style='weighted',
-                            node_size=node_size, font_size=font_size,
-                            font_weight=font_weight, **kwargs)
-    elif style == 'colored':
-        draw_kececi_colored(nx_graph=nx_graph, pos=pos, ax=ax,
-                           layout=layout, style='colored',
-                           node_size=node_size, font_size=font_size,
-                           font_weight=font_weight, **kwargs)
-
-
-    else:  # default/standard/curved/helix/3d
-        # Default çizim (önceki kodunuz)
-        nx.draw_networkx_nodes(nx_graph, pos, ax=ax, node_color=node_color, 
-                              node_size=node_size, **nodes_kwargs)
-
-        # Labels ✅ font_size var
-        if with_labels:
-            if is_3d:
-                for node, coord in pos.items():
-                    ax.text(coord[0], coord[1], coord[2], str(node),
-                           size=font_size, zorder=1, color='black',
-                           fontweight=font_weight, ha='center', va='center')
-            else:
-                nx.draw_networkx_labels(nx_graph, pos, ax=ax, 
-                                      font_size=font_size, font_weight=font_weight)
-
-        # Edges
-        if is_3d:
-            for u, v in nx_graph.edges():
-                ax.plot([pos[u][0], pos[v][0]], [pos[u][1], pos[v][1]], [pos[u][2], pos[v][2]],
-                       color=edge_color, alpha=edge_alpha, linewidth=edge_width)
-        else:
-            nx.draw_networkx_edges(nx_graph, pos, ax=ax, 
-                                  alpha=edge_alpha, edge_color=edge_color, width=edge_width)
-
-    plt.tight_layout()  # ✅ Backend temizliği
-    layout_display = (layout or "Custom").capitalize()
-    ax.set_title(f"Keçeci Layout: {layout_display} ({style})", fontsize=font_size + 2)
-    ax.set_axis_off()
-    return ax
-"""
-
-"""
-def draw_kececi(
-    graph,
-    pos: Optional[Dict[int, Tuple[float, ...]]] = None,
-    layout: Optional[str] = None,
-    style: str = 'default',
-    ax: Optional[plt.Axes] = None,
-    with_labels: bool = True,
-    node_color: Union[str, List] = 'lightblue',
-    node_size: int = 500,
-    font_weight: str = 'bold',
-    edge_color: str = 'gray',
-    edge_alpha: float = 0.5,
-    edge_width: float = 1.0,
-    **kwargs
-) -> plt.Axes:
-
-    Keçeci Layout ile 2D/3D uyumlu graf çizimi.
-
-    Args:
-        graph: Graf objesi (NetworkX, igraph, vb.).
-        pos: Önceden hesaplanmış koordinatlar (opsiyonel).
-        layout: '2d', 'cylindrical', 'cubic', 'spherical', 'elliptical', 'toric' (opsiyonel).
-        style: 'default', 'weighted', 'colored'.
-        ax: Matplotlib ekseni.
-        with_labels: Düğüm etiketlerini göster.
-        node_color: Düğüm rengi (tek renk veya renk listesi).
-        node_size: Düğüm boyutu.
-        font_weight: Yazı kalınlığı.
-        edge_color: Kenar rengi.
-        edge_alpha: Kenar şeffaflığı.
-        edge_width: Kenar kalınlığı.
-        **kwargs: Ek parametreler.
-
-    Returns:
-        Matplotlib ekseni.
-
-    nx_graph = to_networkx(graph)
-
-    # Eğer pos verilmemişse, layout'a göre hesapla
-    if pos is None:
-        if layout is None:
-            layout = '2d'  # Varsayılan layout
-
-        if layout == '2d':
-            pos = kececi_layout_2d(nx_graph, **kwargs)
-        elif layout == 'cylindrical':
-            pos = kececi_layout_cylindrical(nx_graph, **kwargs)
-        elif layout == 'cubic':
-            pos = kececi_layout_cubic(nx_graph, **kwargs)
-        elif layout == 'spherical':
-            pos = kececi_layout_spherical(nx_graph, **kwargs)
-        elif layout == 'elliptical':
-            pos = kececi_layout_elliptical(nx_graph, **kwargs)
-        elif layout == 'toric':
-            pos = kececi_layout_toric(nx_graph, **kwargs)
-        else:
-            raise ValueError(f"Geçersiz layout: {layout}")
-
-    # 2D mi 3D mi kontrol et
-    is_3d = len(pos[next(iter(pos))]) == 3
-
-    # Eksen oluştur (eğer verilmemişse)
-    if ax is None:
-        fig = plt.figure(figsize=(10, 8))
-        if is_3d:
-            ax = fig.add_subplot(111, projection='3d')
-        else:
-            ax = fig.add_subplot(111)
-
-    # Stile göre çizim yap
-    if style == 'weighted':
-        draw_kececi_weighted(nx_graph, pos, ax, node_size=node_size, 
-                            with_labels=with_labels, font_weight=font_weight, **kwargs)
-    elif style == 'colored':
-        draw_kececi_colored(nx_graph, pos, ax, node_size=node_size,
-                           with_labels=with_labels, font_weight=font_weight, **kwargs)
-    else:  # 'default'
-        # Node'ları çiz
-        nx.draw_networkx_nodes(nx_graph, pos, ax=ax, 
-                              node_color=node_color, 
-                              node_size=node_size,
-                              **kwargs)
-
-        # Etiketleri çiz
-        if with_labels:
-            if is_3d:
-                # 3D için özel etiket çizimi
-                for node, coord in pos.items():
-                    ax.text(coord[0], coord[1], coord[2],  # 3D koordinatlar
-                           str(node),  # 's' parametresi - etiket metni
-                           size=10, 
-                           zorder=1, 
-                           color='black',
-                           fontweight=font_weight,
-                           ha='center',  # Yatayda ortala
-                           va='center')  # Dikeyde ortala
-            else:
-                # 2D için NetworkX etiket çizimi
-                nx.draw_networkx_labels(nx_graph, pos, ax=ax, font_weight=font_weight)
-
-        # Edge'leri çiz
-        if is_3d:
-            for u, v in nx_graph.edges():
-                ax.plot(
-                    [pos[u][0], pos[v][0]],
-                    [pos[u][1], pos[v][1]],
-                    [pos[u][2], pos[v][2]],
-                    color=edge_color,
-                    alpha=edge_alpha,
-                    linewidth=edge_width
-                )
-        else:
-            nx.draw_networkx_edges(nx_graph, pos, ax=ax, 
-                                  alpha=edge_alpha, 
-                                  edge_color=edge_color,
-                                  width=edge_width)
-
-    title = f"Keçeci Layout: {layout.capitalize() if layout else 'Custom'} ({style})"
-    ax.set_title(title)
-    
-    # Eksenleri kapat
-    ax.set_axis_off()
-    
-    return ax
-"""
-
-def draw_kececi_custom_labels(
-    graph,
-    pos: Dict[int, Tuple[float, ...]],
-    labels: Dict[int, str],
-    ax: Optional[plt.Axes] = None,
-    node_size: int = 500,
-    node_color: Union[str, List] = 'lightblue',
-    font_size: int = 10,
-    font_color: Union[str, List] = 'black',
-    font_weight: str = 'bold',
-    **kwargs
-) -> plt.Axes:
-    """
-    Özel etiketlerle Keçeci layout çizimi (2D/3D uyumlu).
-    
-    Args:
-        graph: Graf objesi
-        pos: Node pozisyonları
-        labels: Özel etiketler (node_id: label_text)
-        ax: Matplotlib ekseni
-        node_size: Node boyutu
-        node_color: Node rengi
-        font_size: Yazı boyutu
-        font_color: Yazı rengi
-        font_weight: Yazı kalınlığı
-        **kwargs: Ek parametreler
-        
-    Returns:
-        Matplotlib ekseni
-    """
-    nx_graph = to_networkx(graph)
-    
-    # 2D mi 3D mi kontrol et
-    is_3d = len(pos[next(iter(pos))]) == 3
-    
-    # Eksen oluştur (eğer verilmemişse)
-    if ax is None:
-        fig = plt.figure(figsize=(10, 8))
-        if is_3d:
-            ax = fig.add_subplot(111, projection='3d')
-        else:
-            ax = fig.add_subplot(111)
-    
-    # Node'ları çiz
-    nx.draw_networkx_nodes(nx_graph, pos, ax=ax,
-                          node_color=node_color,
-                          node_size=node_size,
-                          **kwargs)
-    
-    # Edge'leri çiz
-    if is_3d:
-        for u, v in nx_graph.edges():
-            ax.plot(
-                [pos[u][0], pos[v][0]],
-                [pos[u][1], pos[v][1]],
-                [pos[u][2], pos[v][2]],
-                color='gray',
-                alpha=0.5
-            )
-    else:
-        nx.draw_networkx_edges(nx_graph, pos, ax=ax, alpha=0.5)
-    
-    # Özel etiketleri çiz
-    if is_3d:
-        for node, coord in pos.items():
-            if node in labels:
-                ax.text(coord[0], coord[1], coord[2],
-                       labels[node],
-                       fontsize=font_size,
-                       fontweight=font_weight,
-                       color=font_color if isinstance(font_color, str) else font_color[node-1],
-                       ha='center',
-                       va='center',
-                       zorder=10)
-    else:
-        # 2D için NetworkX etiket çizimi
-        nx.draw_networkx_labels(nx_graph, pos, labels=labels, ax=ax,
-                               font_size=font_size,
-                               font_color=font_color,
-                               font_weight=font_weight)
-    
-    ax.set_title("Keçeci Layout with Custom Labels")
-    ax.set_axis_off()
-    
-    return ax
-"""
-def draw_kececi(
-    graph,
-    pos: Optional[Dict[int, Tuple[float, ...]]] = None,
-    layout: Optional[str] = None,
-    style: str = 'default',
-    ax: Optional[plt.Axes] = None,
-    with_labels: bool = True,
-    node_color: str = 'lightblue',
-    node_size: int = 500,
-    font_weight: str = 'bold',
-    **kwargs
-) -> plt.Axes:
-    
-    Keçeci Layout ile graf çizimi.
-    Args:
-        graph: Graf objesi (NetworkX, igraph, vb.).
-        pos: Önceden hesaplanmış koordinatlar (opsiyonel).
-        layout: '2d', 'cylindrical', 'cubic', 'spherical', 'elliptical', 'toric' (opsiyonel).
-        style: 'default', 'weighted', 'colored'.
-        ax: Matplotlib ekseni.
-        with_labels: Düğüm etiketlerini göster.
-        node_color: Düğüm rengi.
-        node_size: Düğüm boyutu.
-        font_weight: Yazı kalınlığı.
-        **kwargs: Ek parametreler.
-    Returns:
-        Matplotlib ekseni.
-
-    nx_graph = to_networkx(graph)
-
-    # Eğer pos verilmemişse, layout'a göre hesapla
-    if pos is None:
-        if layout is None:
-            layout = '2d'  # Varsayılan layout
-
-        if layout == '2d':
-            pos = kececi_layout_2d(nx_graph, **kwargs)
-        elif layout == 'cylindrical':
-            pos = kececi_layout_cylindrical(nx_graph, **kwargs)
-        elif layout == 'cubic':
-            pos = kececi_layout_cubic(nx_graph, **kwargs)
-        elif layout == 'spherical':
-            pos = kececi_layout_spherical(nx_graph, **kwargs)
-        elif layout == 'elliptical':
-            pos = kececi_layout_elliptical(nx_graph, **kwargs)
-        elif layout == 'toric':
-            pos = kececi_layout_toric(nx_graph, **kwargs)
-        else:
-            raise ValueError(f"Geçersiz layout: {layout}")
-
-    # 3D için eksen ayarlaması
-    is_3d = len(pos[next(iter(pos))]) == 3
-    if ax is None:
-        fig = plt.figure(figsize=(10, 8))
-        if is_3d:
-            ax = fig.add_subplot(111, projection='3d')
-        else:
-            ax = fig.add_subplot(111)
-
-    # Stile göre çizim yap
-    if style == 'weighted':
-        draw_kececi_weighted(nx_graph, pos, ax, **kwargs)
-    elif style == 'colored':
-        draw_kececi_colored(nx_graph, pos, ax, **kwargs)
-    else:  # 'default'
-        nx.draw_networkx_nodes(nx_graph, pos, ax=ax, node_color=node_color, node_size=node_size)
-
-        # Düğüm etiketlerini çiz
-        if with_labels:
-            if is_3d:
-                for node, coord in pos.items():
-                    ax.text(coord[0], coord[1], coord[2], f'  {node}', size=10, zorder=1, color='black', fontweight=font_weight)
-            else:
-                nx.draw_networkx_labels(nx_graph, pos, ax=ax, font_weight=font_weight)
-
-        # Kenarları çiz
-        if is_3d:
-            for u, v in nx_graph.edges():
-                ax.plot(
-                    [pos[u][0], pos[v][0]],
-                    [pos[u][1], pos[v][1]],
-                    [pos[u][2], pos[v][2]],
-                    color='gray',
-                    alpha=0.5
-                )
-        else:
-            nx.draw_networkx_edges(nx_graph, pos, ax=ax, alpha=0.5)
-
-    ax.set_title(f"Keçeci Layout: {layout.capitalize() if layout else 'Custom'} ({style})")
-    return ax
-"""
-"""
-def draw_kececi(
-    graph,
-    layout: str = '2d',
-    style: str = 'default',
-    ax: Optional[plt.Axes] = None,
-    **kwargs
-) -> plt.Axes:
-
-    Keçeci Layout ile graf çizimi.
-    Args:
-        graph: Graf objesi (NetworkX, igraph, vb.).
-        layout: '2d', 'cylindrical', 'cubic', 'spherical', 'elliptical', 'toric'.
-        style: 'default', 'weighted', 'colored'.
-        ax: Matplotlib ekseni.
-        **kwargs: Ek parametreler.
-    Returns:
-        Matplotlib ekseni.
-
-    nx_graph = to_networkx(graph)
-
-    # Layout'a göre koordinatları hesapla
-    if layout == '2d':
-        pos = kececi_layout_2d(nx_graph, **kwargs)
-    elif layout == 'cylindrical':
-        pos = kececi_layout_cylindrical(nx_graph, **kwargs)
-    elif layout == 'cubic':
-        pos = kececi_layout_cubic(nx_graph, **kwargs)
-    elif layout == 'spherical':
-        pos = kececi_layout_spherical(nx_graph, **kwargs)
-    elif layout == 'elliptical':
-        pos = kececi_layout_elliptical(nx_graph, **kwargs)
-    elif layout == 'toric':
-        pos = kececi_layout_toric(nx_graph, **kwargs)
-    else:
-        raise ValueError(f"Invalid layout: {layout}")
-
-    # 3D için eksen ayarlaması
-    is_3d = len(pos[next(iter(pos))]) == 3
-    if ax is None:
-        fig = plt.figure(figsize=(10, 8))
-        if is_3d:
-            ax = fig.add_subplot(111, projection='3d')
-        else:
-            ax = fig.add_subplot(111)
-
-    # Stile göre çizim yap
-    if style == 'weighted':
-        draw_kececi_weighted(nx_graph, pos, ax, **kwargs)
-    elif style == 'colored':
-        draw_kececi_colored(nx_graph, pos, ax, **kwargs)
-    else:  # 'default'
-        nx.draw_networkx_nodes(nx_graph, pos, ax=ax, **kwargs)
-
-        # Düğüm etiketlerini çiz
-        if is_3d:
-            for node, coord in pos.items():
-                ax.text(coord[0], coord[1], coord[2], f'  {node}', size=10, zorder=1, color='black')
-        else:
-            nx.draw_networkx_labels(nx_graph, pos, ax=ax)
-
-        # Kenarları çiz
-        if is_3d:
-            for u, v in nx_graph.edges():
-                ax.plot(
-                    [pos[u][0], pos[v][0]],
-                    [pos[u][1], pos[v][1]],
-                    [pos[u][2], pos[v][2]],
-                    color='gray',
-                    alpha=0.5
-                )
-        else:
-            nx.draw_networkx_edges(nx_graph, pos, ax=ax, alpha=0.5)
-
-    ax.set_title(f"Keçeci Layout: {layout.capitalize()} ({style})")
-    return ax
-"""
-
-"""
-def draw_kececi(graph, style='curved', ax=None, **kwargs):
-
-    Draws a graph using the Keçeci Layout with a specified style.
-
-    This function automatically handles graphs from different libraries
-    (Networkx, Networkit, Rustworkx, igraph, Graphillion, graph-tool,etc.).
-
-    Args:
-        graph: The graph object to be drawn.
-        style (str): The drawing style. Options: 'curved', 'transparent', '3d'.
-        ax (matplotlib.axis.Axis, optional): The axis to draw on. If not
-            provided, a new figure and axis are generated.
-        **kwargs: Additional keyword arguments passed to both `kececi_layout`
-                  and the drawing functions (e.g., expanding=True, node_size=500).
-
-    Returns:
-        matplotlib.axis.Axis: The axis object where the graph was drawn.
-
-    nx_graph = to_networkx(graph)
-    is_3d = (style.lower() == '3d')
-
-    if ax is None:
-        fig = plt.figure(figsize=(10, 8))
-        projection = '3d' if is_3d else None
-        ax = fig.add_subplot(111, projection=projection)
-
-    if is_3d and getattr(ax, 'name', '') != '3d':
-        raise ValueError("The '3d' style requires an axis with 'projection=\"3d\"'.")
-
-    draw_styles = ['curved', 'transparent', '3d']
-    if style.lower() not in draw_styles:
-        raise ValueError(f"Invalid style: '{style}'. Options are: {draw_styles}")
-
-    _draw_internal(nx_graph, ax, style.lower(), **kwargs)
-    return ax
-"""
-
-def draw_kececi_periodic_table(
-    graph,
-    periodic_elements: Dict[int, Tuple[str, int]],
-    layout_type: str = '3d_helix',
-    layout_params: Optional[Dict] = None,
-    ax: Optional[plt.Axes] = None,
-    dimension: str = 'auto',  # '2d', '3d', or 'auto'
-    color_scheme: str = 'vibrant',  # 'vibrant', 'distinct', 'pastel', 'group', 'period', 'block', 'electronegativity'
-    node_size: Union[int, List[int]] = 1600,
-    font_size: Union[int, List[int]] = 10,
-    edge_style: str = 'standard',  # 'standard', 'light', 'bold', 'hidden'
-    label_position: str = 'center',  # 'center', 'above', 'below', 'right', 'left'
-    zorder_strategy: str = 'smart',  # 'smart', 'fixed', 'z_based'
-    show_legend: bool = False,
-    title: Optional[str] = None,
-    **kwargs
-) -> Tuple[plt.Axes, Dict]:
-    """
-    Gelişmiş periyodik tablo çizimi - Hem 2D hem 3D uyumlu.
-    """
-    # Graph'ı NetworkX'e çevir
-    nx_graph = to_networkx(graph)
-    node_count = len(periodic_elements)
-    
-    # Dimension belirleme
-    if dimension == 'auto':
-        if '3d' in layout_type.lower():
-            dimension = '3d'
-        else:
-            dimension = '2d'
-    
-    # Layout parametreleri
-    if layout_params is None:
-        layout_params = {}
-    
-    # Layout hesapla
-    pos = _calculate_layout(nx_graph, layout_type, layout_params, dimension, node_count)
-    
-    # Renkleri oluştur
-    node_colors = _generate_colors(node_count, color_scheme, periodic_elements)
-    
-    # Etiketleri oluştur
-    custom_labels = _generate_labels(nx_graph, periodic_elements)
-    
-    # Eksen oluştur (eğer verilmemişse)
-    if ax is None:
-        fig_size = kwargs.get('figsize', (20, 20) if dimension == '3d' else (16, 16))
-        fig = plt.figure(figsize=fig_size)
-        if dimension == '3d':
-            ax = fig.add_subplot(111, projection='3d')
-        else:
-            ax = fig.add_subplot(111)
-    
-    # Çizim sırasını belirle
-    draw_order = _get_draw_order(nx_graph, pos, zorder_strategy, dimension)
-    
-    # Edge stilleri
-    edge_config = _get_edge_config(edge_style)
-    
-    # Edge'leri çiz (ilk sırada)
-    _draw_edges(nx_graph, pos, ax, edge_config, dimension)
-    
-    # Node'ları çiz (çizim sırasına göre)
-    _draw_nodes(nx_graph, pos, node_colors, ax, node_size, draw_order, dimension, **kwargs)
-    
-    # Etiketleri çiz
-    _draw_labels(nx_graph, pos, custom_labels, node_colors, ax, font_size, 
-                label_position, dimension, **kwargs)
-    
-    # Başlık
-    if title is None:
-        title = _generate_title(layout_type, node_count, color_scheme, dimension)
-    ax.set_title(title, fontsize=20, fontweight='bold', pad=25)
-    
-    # Eksen ayarları
-    _configure_axes(ax, pos, dimension, layout_params, **kwargs)
-    
-    # Açıklama (legend)
-    if show_legend and color_scheme in ['group', 'period', 'block']:
-        _add_legend(ax, color_scheme, dimension, periodic_elements)
-    
-    return ax, pos
-
-
-# Yardımcı fonksiyonlar (öncekiyle aynı)
-def _calculate_layout(graph, layout_type, params, dimension, node_count=None):
-    """Layout hesapla."""
-    if layout_type == '3d_helix':
-        return kececi_layout_3d_helix_parametric(
-            graph,
-            z_spacing=params.get('z_spacing', 8.0),
-            radius=params.get('radius', 25.0),
-            turns=params.get('turns', 3.0)
-        )
-    
-    elif layout_type == '2d_linear':
-        return kececi_layout_2d(
-            graph,
-            primary_spacing=params.get('primary_spacing', 2.0),
-            secondary_spacing=params.get('secondary_spacing', 2.0),
-            primary_direction=params.get('primary_direction', 'left-to-right'),
-            secondary_start=params.get('secondary_start', 'up'),
-            expanding=params.get('expanding', True)
-        )
-    
-    elif layout_type == '2d_circular':
-        return nx.circular_layout(graph, scale=params.get('scale', 1.0))
-    
-    elif layout_type == '3d_spherical':
-        pos = {}
-        n = len(graph.nodes())
-        for i, node in enumerate(graph.nodes()):
-            phi = np.arccos(1 - 2 * (i + 0.5) / n)
-            theta = np.pi * (1 + 5**0.5) * i
-            radius = params.get('radius', 20.0)
-            pos[node] = (
-                radius * np.sin(phi) * np.cos(theta),
-                radius * np.sin(phi) * np.sin(theta),
-                radius * np.cos(phi)
-            )
-        return pos
-    
-    elif layout_type == '2d_spring':
-        return nx.spring_layout(graph, k=params.get('k', 2.0), 
-                               iterations=params.get('iterations', 50))
-    
-    elif layout_type == '2d_grid':
-        return _generate_grid_layout(graph, params, node_count)
-    
-    else:
-        return kececi_layout_2d(
-            graph,
-            primary_spacing=params.get('primary_spacing', 2.0),
-            secondary_spacing=params.get('secondary_spacing', 2.0),
-            primary_direction=params.get('primary_direction', 'left-to-right'),
-            secondary_start=params.get('secondary_start', 'up'),
-            expanding=params.get('expanding', True)
-        )
-
-def _generate_grid_layout(graph, params, node_count):
-    """Manuel grid layout oluştur."""
-    rows = params.get('rows', None)
-    cols = params.get('cols', None)
-    spacing = params.get('spacing', 2.0)
-    
-    if rows is None and cols is None:
-        cols = int(np.ceil(np.sqrt(node_count)))
-        rows = int(np.ceil(node_count / cols))
-    elif rows is None:
-        rows = int(np.ceil(node_count / cols))
-    elif cols is None:
-        cols = int(np.ceil(node_count / rows))
-    
-    pos = {}
-    for i, node in enumerate(sorted(graph.nodes())):
-        row = i // cols
-        col = i % cols
-        
-        x_offset = -(cols - 1) * spacing / 2
-        y_offset = (rows - 1) * spacing / 2
-        
-        x = col * spacing + x_offset
-        y = -row * spacing + y_offset
-        
-        pos[node] = (x, y)
-    
-    return pos
-
-
-def _generate_colors(node_count, scheme, periodic_elements=None):
-    """Renkleri oluştur."""
-    colors = []
-    
-    if scheme == 'vibrant':
-        for i in range(node_count):
-            hue = (i * 0.618033988749895) % 1.0
-            saturation = 0.7 + np.random.random() * 0.3
-            value = 0.8 + np.random.random() * 0.2
-            colors.append(hsv_to_rgb([hue, saturation, value]))
-    
-    elif scheme == 'distinct':
-        colors = generate_distinct_colors(node_count)
-    
-    elif scheme == 'pastel':
-        for i in range(node_count):
-            hue = i / max(node_count, 1)
-            saturation = 0.4 + np.random.random() * 0.3
-            value = 0.9 + np.random.random() * 0.1
-            colors.append(hsv_to_rgb([hue, saturation, value]))
-    
-    elif scheme == 'group' and periodic_elements:
-        colors = _get_group_colors(node_count, periodic_elements)
-    
-    elif scheme == 'period' and periodic_elements:
-        colors = _get_period_colors(node_count, periodic_elements)
-    
-    elif scheme == 'block' and periodic_elements:
-        colors = _get_block_colors(node_count, periodic_elements)
-    
-    elif scheme == 'electronegativity' and periodic_elements:
-        colors = _get_electronegativity_colors(node_count, periodic_elements)
-    
-    else:
-        cmap = plt.cm.tab20
-        colors = [cmap(i % 20) for i in range(node_count)]
-    
-    return colors
-
-def _get_group_colors(node_count, periodic_elements):
-    """Gruplara göre renkler."""
-    colors = []
-    group_colors = {
-        1: (1.0, 0.6, 0.6),    # Alkali metals
-        2: (1.0, 0.8, 0.6),    # Alkaline earth
-        3: (0.8, 1.0, 0.6),    # Group 3
-        4: (0.7, 0.9, 0.8),    # Group 4
-        5: (0.6, 0.9, 0.9),    # Group 5
-        6: (0.6, 0.8, 1.0),    # Group 6
-        7: (0.8, 0.6, 1.0),    # Group 7
-        8: (0.9, 0.9, 0.6),    # Group 8
-        9: (1.0, 0.9, 0.6),    # Group 9
-        10: (0.9, 0.8, 0.7),   # Group 10
-        11: (1.0, 0.8, 0.8),   # Group 11
-        12: (0.8, 1.0, 0.8),   # Group 12
-        13: (0.8, 0.9, 1.0),   # Boron group
-        14: (0.9, 0.8, 1.0),   # Carbon group
-        15: (1.0, 0.8, 0.9),   # Nitrogen group
-        16: (0.8, 1.0, 0.9),   # Oxygen group
-        17: (1.0, 0.9, 0.8),   # Halogens
-        18: (0.9, 0.9, 0.9),   # Noble gases
-    }
-    
-    lanthanide_color = (0.7, 1.0, 0.7)
-    actinide_color = (1.0, 0.7, 0.7)
-    
-    for node_id in range(1, node_count + 1):
-        if node_id in list(range(57, 72)):
-            colors.append(lanthanide_color)
-        elif node_id in list(range(89, 104)):
-            colors.append(actinide_color)
-        else:
-            group = _determine_group(node_id)
-            colors.append(group_colors.get(group, (0.8, 0.8, 0.8)))
-    
-    return colors
-
-def _determine_group(atomic_num):
-    """Atom numarasına göre grup belirle."""
-    if atomic_num <= 2:
-        return atomic_num
-    elif atomic_num <= 10:
-        return atomic_num - 2
-    elif atomic_num <= 18:
-        return atomic_num - 10
-    elif atomic_num <= 36:
-        if atomic_num <= 20:
-            return atomic_num - 18
-        elif atomic_num <= 30:
-            return atomic_num - 20
-        else:
-            return atomic_num - 28
-    elif atomic_num <= 54:
-        if atomic_num <= 38:
-            return atomic_num - 36
-        elif atomic_num <= 48:
-            return atomic_num - 38
-        else:
-            return atomic_num - 46
-    else:
-        return 18
-
-def _get_period_colors(node_count, periodic_elements):
-    """Periyotlara göre renkler."""
-    colors = []
-    period_colors = [
-        (1.0, 0.7, 0.7),  # Period 1
-        (1.0, 0.9, 0.7),  # Period 2
-        (0.9, 1.0, 0.7),  # Period 3
-        (0.7, 1.0, 0.8),  # Period 4
-        (0.7, 0.9, 1.0),  # Period 5
-        (0.8, 0.7, 1.0),  # Period 6
-        (1.0, 0.7, 0.9),  # Period 7
-    ]
-    
-    for atomic_num in range(1, node_count + 1):
-        if atomic_num <= 2:
-            period = 0
-        elif atomic_num <= 10:
-            period = 1
-        elif atomic_num <= 18:
-            period = 2
-        elif atomic_num <= 36:
-            period = 3
-        elif atomic_num <= 54:
-            period = 4
-        elif atomic_num <= 86:
-            period = 5
-        else:
-            period = 6
-        
-        colors.append(period_colors[period % len(period_colors)])
-    
-    return colors
-
-def _get_block_colors(node_count, periodic_elements):
-    """Bloklara göre renkler."""
-    colors = []
-    
-    for atomic_num in range(1, node_count + 1):
-        if atomic_num in [1, 2, 3, 4, 11, 12, 19, 20, 37, 38, 55, 56, 87, 88]:
-            colors.append((1.0, 0.6, 0.6))  # s-block
-        elif atomic_num in (list(range(5, 11)) + list(range(13, 19)) + 
-                           list(range(31, 37)) + list(range(49, 55)) + 
-                           list(range(81, 87)) + list(range(113, 119))):
-            colors.append((0.6, 0.8, 1.0))  # p-block
-        elif atomic_num in (list(range(21, 31)) + list(range(39, 49)) + 
-                           list(range(72, 81)) + list(range(104, 113))):
-            colors.append((0.6, 1.0, 0.6))  # d-block
-        elif atomic_num in list(range(57, 72)) + list(range(89, 104)):
-            colors.append((1.0, 0.6, 1.0))  # f-block
-        else:
-            colors.append((0.8, 0.8, 0.8))
-    
-    return colors
-
-def _get_electronegativity_colors(node_count, periodic_elements):
-    """Elektronegativiteye göre renkler."""
-    colors = []
-    electronegativity_data = {
-        1: 2.20, 3: 0.98, 4: 1.57, 5: 2.04, 6: 2.55, 7: 3.04, 8: 3.44,
-        9: 3.98, 11: 0.93, 12: 1.31, 13: 1.61, 14: 1.90, 15: 2.19,
-        16: 2.58, 17: 3.16, 19: 0.82, 20: 1.00, 21: 1.36, 22: 1.54,
-        23: 1.63, 24: 1.66, 25: 1.55, 26: 1.83, 27: 1.88, 28: 1.91, 29: 1.90,
-        30: 1.65, 31: 1.81, 32: 2.01, 33: 2.18, 34: 2.55, 35: 2.96,
-        37: 0.82, 38: 0.95, 39: 1.22, 40: 1.33, 41: 1.60, 42: 2.16, 43: 1.90,
-        44: 2.20, 45: 2.28, 46: 2.20, 47: 1.93, 48: 1.69, 49: 1.78, 50: 1.96,
-        51: 2.05, 52: 2.10, 53: 2.66, 55: 0.79, 56: 0.89, 57: 1.10,
-        58: 1.12, 59: 1.13, 60: 1.14, 62: 1.17, 63: 1.20, 64: 1.20, 65: 1.20,
-        66: 1.22, 67: 1.23, 68: 1.24, 69: 1.25, 70: 1.10, 71: 1.27, 72: 1.30,
-        73: 1.50, 74: 2.36, 75: 1.90, 76: 2.20, 77: 2.20, 78: 2.28, 79: 2.54,
-        80: 2.00, 81: 1.62, 82: 1.87, 83: 2.02, 84: 2.00, 85: 2.20,
-        87: 0.70, 88: 0.89, 89: 1.10, 90: 1.30, 91: 1.50, 92: 1.38, 93: 1.36,
-        94: 1.28, 95: 1.30, 96: 1.30, 97: 1.30, 98: 1.30, 99: 1.30, 100: 1.30,
-        101: 1.30, 102: 1.30, 103: 1.30
-    }
-    
-    for atomic_num in range(1, node_count + 1):
-        en = electronegativity_data.get(atomic_num, 1.5)
-        if en < 1.0:
-            color = (0.0, 0.0, 0.8)
-        elif en < 1.5:
-            color = (0.0, 0.5, 1.0)
-        elif en < 2.0:
-            color = (0.0, 0.8, 0.8)
-        elif en < 2.5:
-            color = (0.5, 1.0, 0.5)
-        elif en < 3.0:
-            color = (1.0, 0.8, 0.0)
-        elif en < 3.5:
-            color = (1.0, 0.5, 0.0)
-        else:
-            color = (1.0, 0.0, 0.0)
-        
-        colors.append(color)
-    
-    return colors
-
-
-def _generate_labels(graph, periodic_elements):
-    """Etiketleri oluştur."""
-    return {node_id: f"{periodic_elements[node_id][0]}\n{periodic_elements[node_id][1]}" 
-            for node_id in graph.nodes()}
-
-def _get_draw_order(graph, pos, strategy, dimension):
-    """Çizim sırasını belirle."""
-    if strategy == 'fixed':
-        return list(graph.nodes())
-    elif strategy == 'z_based' and dimension == '3d':
-        return sorted(graph.nodes(), key=lambda n: pos[n][2], reverse=True)
-    elif strategy == 'smart':
-        nodes = list(graph.nodes())
-        if len(nodes) == 0:
-            return nodes
-        
-        if dimension == '3d':
-            positions = np.array([pos[n] for n in nodes])
-            center = np.mean(positions, axis=0)
-            distances = np.linalg.norm(positions - center, axis=1)
-        else:
-            positions = np.array([pos[n] for n in nodes])
-            center = np.mean(positions, axis=0)
-            distances = np.linalg.norm(positions - center, axis=1)
-        
-        sorted_indices = np.argsort(distances)[::-1]
-        return [nodes[i] for i in sorted_indices]
-    else:
-        return list(graph.nodes())
-
-def _get_edge_config(style):
-    """Edge stilini belirle."""
-    configs = {
-        'standard': {'color': 'gray', 'alpha': 0.5, 'width': 1.0},
-        'light': {'color': 'lightgray', 'alpha': 0.3, 'width': 0.8},
-        'bold': {'color': 'black', 'alpha': 0.7, 'width': 2.0},
-        'hidden': {'color': 'none', 'alpha': 0.0, 'width': 0.0}
-    }
-    return configs.get(style, configs['standard'])
-
-
-def _draw_edges(graph, pos, ax, config, dimension):
-    """Edge'leri çiz."""
-    if config['color'] == 'none':
-        return
-    
-    for u, v in graph.edges():
-        if dimension == '3d':
-            ax.plot(
-                [pos[u][0], pos[v][0]],
-                [pos[u][1], pos[v][1]],
-                [pos[u][2], pos[v][2]],
-                color=config['color'],
-                alpha=config['alpha'],
-                linewidth=config['width'],
-                zorder=1
-            )
-        else:
-            ax.plot(
-                [pos[u][0], pos[v][0]],
-                [pos[u][1], pos[v][1]],
-                color=config['color'],
-                alpha=config['alpha'],
-                linewidth=config['width'],
-                zorder=1
-            )
-
-def _draw_nodes(graph, pos, colors, ax, node_size, draw_order, dimension, **kwargs):
-    """Node'ları çiz."""
-    edge_width = kwargs.get('edge_width', 2.0)
-    alpha = kwargs.get('node_alpha', 1.0)
-    
-    for node_id in draw_order:
-        if dimension == '3d':
-            x, y, z = pos[node_id]
-            ax.scatter(x, y, z,
-                      s=node_size if isinstance(node_size, int) else node_size[node_id-1],
-                      c=[colors[node_id-1]],
-                      edgecolors='black',
-                      linewidths=edge_width,
-                      alpha=alpha,
-                      depthshade=False if kwargs.get('no_depth_shade', False) else True,
-                      zorder=10)
-        else:
-            x, y = pos[node_id]
-            ax.scatter(x, y,
-                      s=node_size if isinstance(node_size, int) else node_size[node_id-1],
-                      c=[colors[node_id-1]],
-                      edgecolors='black',
-                      linewidths=edge_width,
-                      alpha=alpha,
-                      zorder=10)
-
-def _draw_labels(graph, pos, labels, colors, ax, font_size, position, dimension, **kwargs):
-    """Etiketleri çiz."""
-    label_offset = kwargs.get('label_offset', 0.0)
-    
-    for node_id in graph.nodes():
-        if dimension == '3d':
-            x, y, z = pos[node_id]
-            if position == 'above':
-                z += label_offset
-            elif position == 'below':
-                z -= label_offset
-            elif position == 'right':
-                x += label_offset
-            elif position == 'left':
-                x -= label_offset
-            
-            bg_color = colors[node_id-1]
-            text_color = get_text_color_for_bg(bg_color)
-            
-            ax.text(x, y, z,
-                   labels[node_id],
-                   fontsize=font_size if isinstance(font_size, int) else font_size[node_id-1],
-                   fontweight='bold',
-                   color=text_color,
-                   ha='center',
-                   va='center',
-                   zorder=1000)
-        else:
-            x, y = pos[node_id]
-            if position == 'above':
-                y += label_offset
-            elif position == 'below':
-                y -= label_offset
-            elif position == 'right':
-                x += label_offset
-            elif position == 'left':
-                x -= label_offset
-            
-            bg_color = colors[node_id-1]
-            text_color = get_text_color_for_bg(bg_color)
-            
-            ax.text(x, y,
-                   labels[node_id],
-                   fontsize=font_size if isinstance(font_size, int) else font_size[node_id-1],
-                   fontweight='bold',
-                   color=text_color,
-                   ha='center',
-                   va='center',
-                   zorder=1000)
-
-def _generate_title(layout_type, node_count, color_scheme, dimension):
-    """Başlık oluştur."""
-    dim_text = "3D" if dimension == '3d' else "2D"
-    scheme_text = color_scheme.capitalize()
-    
-    layout_names = {
-        '3d_helix': 'Heliks Layout',
-        '2d_linear': 'Lineer Layout',
-        '2d_circular': 'Dairesel Layout',
-        '3d_spherical': 'Küresel Layout',
-        '2d_spring': 'Yay Layout',
-        '2d_grid': 'Grid Layout'
-    }
-    
-    layout_name = layout_names.get(layout_type, layout_type.replace('_', ' ').title())
-    
-    title = f"Keçeci Layout ile Periyodik Tablo\n"
-    title += f"{dim_text} {layout_name}\n"
-    title += f"({node_count} Element, {scheme_text} Renk Şeması)"
-    
-    return title
-
-def _configure_axes(ax, pos, dimension, layout_params, **kwargs):
-    """Eksenleri yapılandır."""
-    ax.set_axis_off()
-    
-    if dimension == '3d':
-        elev = kwargs.get('elevation', -25)
-        azim = kwargs.get('azimuth', 15)
-        ax.view_init(elev=elev, azim=azim)
-        
-        positions = list(pos.values())
-        if positions:
-            xs, ys, zs = zip(*positions)
-            
-            padding = kwargs.get('padding', 0.2)
-            x_range = max(xs) - min(xs)
-            y_range = max(ys) - min(ys)
-            z_range = max(zs) - min(zs)
-            
-            x_range = max(x_range, 10)
-            y_range = max(y_range, 10)
-            z_range = max(z_range, 10)
-            
-            ax.set_xlim(min(xs) - x_range*padding, max(xs) + x_range*padding)
-            ax.set_ylim(min(ys) - y_range*padding, max(ys) + y_range*padding)
-            ax.set_zlim(min(zs) - z_range*padding, max(zs) + z_range*padding)
-    else:
-        ax.set_aspect('equal')
-        ax.autoscale_view()
-
-def _add_legend(ax, color_scheme, dimension, periodic_elements):
-    """Renk şeması açıklaması ekle."""
-    legend_text = f"Renk Şeması: {color_scheme.capitalize()}\n"
-    
-    if color_scheme == 'group':
-        legend_text += "• Kırmızı: Alkali Metaller\n"
-        legend_text += "• Turuncu: Toprak Alkali\n"
-        legend_text += "• Yeşil: Geçiş Metalleri\n"
-        legend_text += "• Mavi: Ametaller\n"
-        legend_text += "• Mor: Halojenler\n"
-        legend_text += "• Gri: Soygazlar"
-    
-    elif color_scheme == 'period':
-        legend_text += "• Her periyot farklı renk\n"
-        legend_text += "• 7 periyot, 7 renk"
-    
-    elif color_scheme == 'block':
-        legend_text += "• Kırmızı: s-blok\n"
-        legend_text += "• Mavi: p-blok\n"
-        legend_text += "• Yeşil: d-blok\n"
-        legend_text += "• Mor: f-blok"
-    
-    if dimension == '3d':
-        ax.text2D(0.02, 0.98, legend_text, transform=ax.transAxes,
-                 fontsize=9, verticalalignment='top',
-                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-    else:
-        ax.text(0.02, 0.98, legend_text, transform=ax.transAxes,
-               fontsize=9, verticalalignment='top',
-               bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-
-# Ana fonksiyonlar
-def quick_periodic_table_3d():
-    """
-    Hızlı 3D periyodik tablo görselleştirmesi.
-    Boş şablonlar oluşmaz.
-    """
-    # Önceki figürleri temizle
-    plt.close('all')
-    
-    # Periyodik tabloyu yükle
-    periodic_elements, _ = generate_complete_periodic_table()
-    
-    # Graf oluştur
-    node_count = len(periodic_elements)
-    G = nx.DiGraph()
-    G.add_nodes_from(range(1, node_count + 1))
-    for i in range(1, node_count):
-        G.add_edge(i, i + 1)
-    
-    # Tek figür oluştur
-    fig = plt.figure(figsize=(20, 20))
-    ax = fig.add_subplot(111, projection='3d')
-    
-    ax, pos = draw_kececi_periodic_table(
-        G,
-        periodic_elements,
-        layout_type='3d_helix',
-        color_scheme='vibrant',
-        node_size=2000,
-        font_size=10,
-        edge_style='light',
-        title="Keçeci Layout ile Periyodik Tablo\n3D Heliks Layout",
-        elevation=-25,
-        azimuth=15
-    )
-    
-    plt.tight_layout()
-    plt.show()
-    
-    # Kullanıcıya bilgi ver
-    print(f"\n3D periyodik tablo oluşturuldu!")
-    print(f"Toplam {node_count} element gösteriliyor.")
-    print("Grafı kapatmak için figür penceresini kapatın.")
-    
-    return ax, pos
-
-def generate_comparison_figure():
-    """
-    4 farklı görseli bir figürde karşılaştırma.
-    Boş şablon oluşmaz.
-    """
-    # Önceki figürleri temizle
-    plt.close('all')
-    
-    # Periyodik tabloyu yükle
-    periodic_elements, _ = generate_complete_periodic_table()
-    
-    # Graf oluştur
-    node_count = len(periodic_elements)
-    G = nx.DiGraph()
-    G.add_nodes_from(range(1, node_count + 1))
-    for i in range(1, node_count):
-        G.add_edge(i, i + 1)
-    
-    # 2x2 grid şeklinde 4 alt figür oluştur
-    fig = plt.figure(figsize=(24, 20))
-    fig.suptitle('Keçeci Layout ile Periyodik Tablo Görselleştirme Karşılaştırması', 
-                 fontsize=24, fontweight='bold', y=0.98)
-    
-    # 1. 3D Heliks Layout
-    ax1 = fig.add_subplot(221, projection='3d')
-    ax1, pos1 = draw_kececi_periodic_table(
-        G,
-        periodic_elements,
-        layout_type='3d_helix',
-        layout_params={'z_spacing': 6.0, 'radius': 20.0, 'turns': 3.0},
-        ax=ax1,
-        color_scheme='vibrant',
-        node_size=1200,
-        font_size=8,
-        edge_style='light',
-        label_position='center',
-        title="3D Heliks Layout\n(Vibrant Renkler)",
-        elevation=-25,
-        azimuth=15,
-        figsize=None  # Figsize'ı burada kullanmıyoruz
-    )
-    
-    # 2. 2D Linear Layout
-    ax2 = fig.add_subplot(222)
-    ax2, pos2 = draw_kececi_periodic_table(
-        G,
-        periodic_elements,
-        layout_type='2d_linear',
-        layout_params={'primary_spacing': 2.5, 'secondary_spacing': 2.5},
-        ax=ax2,
-        color_scheme='group',
-        dimension='2d',
-        node_size=800,
-        font_size=7,
-        edge_style='standard',
-        show_legend=False,
-        title="2D Linear Layout\n(Grup Renkleri)"
-    )
-    
-    # 3. 2D Grid Layout
-    ax3 = fig.add_subplot(223)
-    ax3, pos3 = draw_kececi_periodic_table(
-        G,
-        periodic_elements,
-        layout_type='2d_grid',
-        layout_params={'rows': 9, 'cols': 14, 'spacing': 2.2},
-        ax=ax3,
-        color_scheme='period',
-        dimension='2d',
-        node_size=600,
-        font_size=6,
-        edge_style='light',
-        show_legend=False,
-        title="2D Grid Layout\n(Periyot Renkleri)"
-    )
-    
-    # 4. 2D Circular Layout
-    ax4 = fig.add_subplot(224)
-    ax4, pos4 = draw_kececi_periodic_table(
-        G,
-        periodic_elements,
-        layout_type='2d_circular',
-        layout_params={'scale': 2.0},
-        ax=ax4,
-        color_scheme='block',
-        dimension='2d',
-        node_size=800,
-        font_size=7,
-        edge_style='light',
-        show_legend=False,
-        title="2D Dairesel Layout\n(Blok Renkleri)"
-    )
-    
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.show()
-    
-    return fig, (ax1, ax2, ax3, ax4)
-
-def save_periodic_table_visualization(
-    filename: str = "periodic_table_kececi",
-    format: str = "png",
-    dpi: int = 300,
-    layout_type: str = "3d_helix",
-    color_scheme: str = "vibrant"
+# ==============================================================================
+# PART 1: GENERAL-PURPOSE KEÇECİ FRACTALS
+# ==============================================================================
+def draw_sphere(
+    ax,
+    center,
+    radius,
+    color,
+    alpha=0.8,
+    resolution_u=20,
+    resolution_v=12,
+    edgecolor='k',
+    linewidth=0.2,
+    shade=True
 ):
     """
-    Periyodik tablo görselleştirmesini kaydet.
+    Draw a 3D sphere using plot_surface.
+    
+    Backward-compatible with previous versions.
+    Supports customizable resolution and styling.
     
     Parameters:
-    -----------
-    filename : str
-        Kaydedilecek dosyanın adı (uzantı olmadan)
-    format : str
-        Kayıt formatı: 'png', 'jpg', 'svg', 'pdf'
-    dpi : int
-        Çözünürlük (dots per inch)
-    layout_type : str
-        Layout tipi
-    color_scheme : str
-        Renk şeması
+        ax: matplotlib 3D axis
+        center: (x, y, z) tuple or array-like
+        radius: float
+        color: face color
+        alpha: transparency (default: 0.8)
+        resolution_u: longitudinal resolution (default: 20 → matches old behavior)
+        resolution_v: latitudinal resolution (default: 12 → matches old behavior)
+        edgecolor: color of mesh lines (default: 'k' for visible edges)
+        linewidth: width of mesh lines (default: 0.2)
+        shade: enable shading (default: True)
     """
-    # Önceki figürleri temizle
-    plt.close('all')
-    
-    # Periyodik tabloyu yükle
-    periodic_elements, _ = generate_complete_periodic_table()
-    
-    # Graf oluştur
-    node_count = len(periodic_elements)
-    G = nx.DiGraph()
-    G.add_nodes_from(range(1, node_count + 1))
-    for i in range(1, node_count):
-        G.add_edge(i, i + 1)
-    
-    # Figür oluştur
-    if '3d' in layout_type.lower():
-        fig = plt.figure(figsize=(16, 16))
-        ax = fig.add_subplot(111, projection='3d')
-    else:
-        fig = plt.figure(figsize=(14, 14))
-        ax = fig.add_subplot(111)
-    
-    # Görseli çiz
-    ax, pos = draw_kececi_periodic_table(
-        G,
-        periodic_elements,
-        layout_type=layout_type,
-        ax=ax,
-        color_scheme=color_scheme,
-        node_size=1500 if '3d' in layout_type.lower() else 1000,
-        font_size=9 if '3d' in layout_type.lower() else 8,
-        edge_style='light',
-        show_legend=True if color_scheme in ['group', 'period', 'block'] else False
+    u = np.linspace(0, 2 * np.pi, resolution_u)
+    v = np.linspace(0, np.pi, resolution_v)
+    u, v = np.meshgrid(u, v)
+
+    x = center[0] + radius * np.cos(u) * np.sin(v)
+    y = center[1] + radius * np.sin(u) * np.sin(v)
+    z = center[2] + radius * np.cos(v)
+
+    ax.plot_surface(
+        x, y, z,
+        color=color,
+        alpha=alpha,
+        edgecolor=edgecolor,
+        linewidth=linewidth,
+        shade=shade,
+        antialiased=True
     )
-    
-    # Kaydet
-    full_filename = f"{filename}.{format}"
-    plt.savefig(full_filename, dpi=dpi, bbox_inches='tight', 
-                facecolor='white', edgecolor='none')
-    plt.close()
-    
-    print(f"Görsel kaydedildi: {full_filename}")
-    return full_filename
 
-def highlight_elements(element_symbols: List[str], 
-                      highlight_color: Tuple[float, float, float] = (1.0, 0.0, 0.0),
-                      **kwargs):
+def get_icosahedron_vertices():
+    """Return 12 normalized vertices of an icosahedron for even 3D distribution."""
+    phi = (1 + np.sqrt(5)) / 2
+    verts = np.array([
+        [-1,  phi, 0], [ 1,  phi, 0], [-1, -phi, 0], [ 1, -phi, 0],
+        [0, -1,  phi], [0,  1,  phi], [0, -1, -phi], [0,  1, -phi],
+        [ phi, 0, -1], [ phi, 0,  1], [-phi, 0, -1], [-phi, 0,  1]
+    ], dtype=float)
+    norms = np.linalg.norm(verts, axis=1, keepdims=True)
+    return verts / norms
+
+"""
+def draw_3d_sphere(
+    ax,
+    center: Tuple[float, float, float],
+    radius: float,
+    color: Tuple[float, float, float],
+    alpha: float = 1.0,
+):
+    # 3D eksen üzerine küre çizer.
+
+    if not HAS_3D:
+        return
+
+    u = np.linspace(0, 2 * np.pi, 20)
+    v = np.linspace(0, np.pi, 20)
+
+    x = center[0] + radius * np.outer(np.cos(u), np.sin(v))
+    y = center[1] + radius * np.outer(np.sin(u), np.sin(v))
+    z = center[2] + radius * np.outer(np.ones(np.size(u)), np.cos(v))
+
+    ax.plot_surface(
+        x,
+        y,
+        z,
+        color=color,
+        alpha=alpha,
+        edgecolor="none",
+        antialiased=True,
+        shade=True,
+        linewidth=0.5,
+    )
+"""
+def draw_3d_sphere(ax, center=(0,0,0), radius=1.0, color='cyan', alpha=0.3):
+    """🌀 3D Küre"""
+    u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:12j]
+    x = center[0] + radius * np.cos(u) * np.sin(v)
+    y = center[1] + radius * np.sin(u) * np.sin(v)
+    z = center[2] + radius * np.cos(v)
+    
+    if isinstance(color, (tuple, list)):
+        color = color
+    ax.plot_surface(x, y, z, color=color, alpha=alpha, edgecolor="none",
+                   antialiased=True, shade=True, linewidth=0.5)
+
+def draw_kececi_spiral(ax, center=(0,0,0), turns=4, radius=1.2, color='#44ff88', lw=3):
+    """🌀 Spiral"""
+    t = np.linspace(0, turns*np.pi, 120)
+    r = radius + 0.25*np.sin(6*t)
+    x = r * np.cos(t) * np.sin(t*0.7) + center[0]
+    y = r * np.sin(t) * np.cos(t*1.3) + center[1]
+    z = 0.7 * np.sin(t*2.1) + center[2]
+    ax.plot(x, y, z, color=color, lw=lw, alpha=0.9)
+
+def draw_qec_vortex(ax, center=(0,0,0), major_r=1.1, minor_r=0.4, color='gold', lw=4):
+    """⚛️ QEC VORTEX"""
+    phi = np.linspace(0, 2*np.pi, 80)
+    R = minor_r + 0.12*np.sin(9*phi)
+    x = (major_r + R*np.cos(phi)) * np.cos(phi*0.4) + center[0]
+    y = (major_r + R*np.cos(phi)) * np.sin(phi*0.4) + center[1]
+    z = R * np.sin(phi) + center[2]
+    ax.plot(x, y, z, color=color, lw=lw, alpha=0.85)
+
+def draw_chaotic_shells(ax, scales=[0.9, 0.6, 0.35], alpha=0.3):
+    """🔥 Kaotik Küreler"""
+    u, v = np.mgrid[0:2*np.pi:18j, 0:np.pi:14j]
+    for i, scale in enumerate(scales):
+        distort = 0.18 * np.sin(7*u + i*12)
+        x = scale * (1+distort) * np.cos(u) * np.sin(v)
+        y = scale * (1+distort) * np.sin(u) * np.sin(v)
+        z = scale * np.cos(v)
+        ax.plot_surface(x, y, z, color=f'C{i}', alpha=alpha)
+
+def draw_kececi_fractal_complete(ax, pulse_center=(0,0,0), pulse_r=0.3, frame=0):
+    """🏆 Tam Fractal"""
+    draw_kececi_spiral(ax)
+    draw_qec_vortex(ax)
+    draw_chaotic_shells(ax)
+    u, v = np.mgrid[0:2*np.pi:22j, 0:np.pi:14j]
+    pulse_rad = pulse_r + 0.15*np.sin(frame*0.3)
+    x = pulse_rad*np.cos(u)*np.sin(v) + pulse_center[0]
+    y = pulse_rad*np.sin(u)*np.sin(v) + pulse_center[1]
+    z = pulse_rad*np.cos(v) + pulse_center[2]
+    ax.plot_surface(x, y, z, color='cyan', alpha=0.75)
+
+def kececi_3d_fractal(
+    num_children: int = 8,
+    max_level: int = 3,
+    scale_factor: float = 0.4,
+    base_radius: float = 1.0,
+    min_radius: float = 0.05,
+    color_scheme: str = "plasma",
+    alpha_decay: float = 0.7,
+    figsize: Tuple[int, int] = (12, 10),
+    elev: float = 30.0,
+    azim: float = 45.0,
+    background_color: Union[str, Tuple[float, float, float], None] = "#0a0a0a",
+    show_grid: bool = True,
+    grid_alpha: float = 0.1,
+    title: Optional[str] = None,
+    show_axis_labels: bool = False,
+    axis_label_color: str = "white",
+    interactive_info: bool = False,
+    return_figure: bool = True,  # YENİ: Figür döndürülsün mü?
+    output_mode: str = "show",  # 'show', 'save', 'return'
+    filename: str = "kececi_fractal_3d",
+    dpi: int = 300,
+    verbose: bool = True,
+) -> Union[None, Tuple[plt.Figure, plt.Axes]]:
     """
-    Belirli elementleri vurgula.
+    Generates and visualizes 3D Keçeci fractals.
     
     Parameters:
     -----------
-    element_symbols : List[str]
-        Vurgulanacak element sembolleri
-    highlight_color : Tuple[float, float, float]
-        Vurgulama rengi (RGB)
-    **kwargs : diğer parametreler draw_kececi_periodic_table'a aktarılır
-    """
-    # Önceki figürleri temizle
-    plt.close('all')
-    
-    # Periyodik tabloyu yükle
-    periodic_elements, _ = generate_complete_periodic_table()
-    
-    # Vurgulanacak elementlerin atom numaralarını bul
-    highlight_indices = []
-    element_symbols_found = []
-    valid_symbols = []
-    
-    # Element sembolünden isim eşleştirmesi için sabit sözlük
-    # Güncellenmiş Türkçe element isimleri
-    element_name_map = {
-        'H': 'Hidrojen', 'He': 'Helyum', 'Li': 'Lityum', 'Be': 'Berilyum',
-        'B': 'Bor', 'C': 'Karbon', 'N': 'Azot', 'O': 'Oksijen', 'F': 'Flor',
-        'Ne': 'Neon', 'Na': 'Sodyum', 'Mg': 'Magnezyum', 'Al': 'Alüminyum',
-        'Si': 'Silisyum', 'P': 'Fosfor', 'S': 'Kükürt', 'Cl': 'Klor',
-        'Ar': 'Argon', 'K': 'Potasyum', 'Ca': 'Kalsiyum', 'Sc': 'Skandiyum',
-        'Ti': 'Titanyum', 'V': 'Vanadyum', 'Cr': 'Krom', 'Mn': 'Mangan',
-        'Fe': 'Demir', 'Co': 'Kobalt', 'Ni': 'Nikel', 'Cu': 'Bakır',
-        'Zn': 'Çinko', 'Ga': 'Galyum', 'Ge': 'Germanyum', 'As': 'Arsenik',
-        'Se': 'Selenyum', 'Br': 'Brom', 'Kr': 'Kripton', 'Rb': 'Rubidyum',
-        'Sr': 'Stronsiyum', 'Y': 'İtriyum', 'Zr': 'Zirkonyum', 'Nb': 'Niyobyum',
-        'Mo': 'Molibden', 'Tc': 'Teknesyum', 'Ru': 'Rutenyum', 'Rh': 'Rodyum',
-        'Pd': 'Paladyum', 'Ag': 'Gümüş', 'Cd': 'Kadmiyum', 'In': 'İndiyum',
-        'Sn': 'Kalay', 'Sb': 'Antimon', 'Te': 'Tellür', 'I': 'İyot',
-        'Xe': 'Ksenon', 'Cs': 'Sezyum', 'Ba': 'Baryum', 'La': 'Lantan',
-        'Ce': 'Seryum', 'Pr': 'Praseodim', 'Nd': 'Neodimyum', 'Pm': 'Prometyum',
-        'Sm': 'Samaryum', 'Eu': 'Europyum', 'Gd': 'Gadolinyum', 'Tb': 'Terbiyum',
-        'Dy': 'Disprozyum', 'Ho': 'Holmiyum', 'Er': 'Erbiyum', 'Tm': 'Tulyum',
-        'Yb': 'İterbiyum', 'Lu': 'Lutesyum', 'Hf': 'Hafniyum', 'Ta': 'Tantal',
-        'W': 'Tungsten', 'Re': 'Renyum', 'Os': 'Osmiyum', 'Ir': 'İridyum',
-        'Pt': 'Platin', 'Au': 'Altın', 'Hg': 'Cıva', 'Tl': 'Talyum',
-        'Pb': 'Kurşun', 'Bi': 'Bizmut', 'Po': 'Polonyum', 'At': 'Astatin',
-        'Rn': 'Radon', 'Fr': 'Fransiyum', 'Ra': 'Radyum', 'Ac': 'Aktinyum',
-        'Th': 'Toryum', 'Pa': 'Protaktinyum', 'U': 'Uranyum', 'Np': 'Neptünyum',
-        'Pu': 'Plütonyum', 'Am': 'Amerikyum', 'Cm': 'Küriyum', 'Bk': 'Berkelyum',
-        'Cf': 'Kaliforniyum', 'Es': 'Einsteinyum', 'Fm': 'Fermiyum', 'Md': 'Mendelevyum',
-        'No': 'Nobelyum', 'Lr': 'Lawrensiyum', 'Rf': 'Rutherfordiyum', 'Db': 'Dubniyum',
-        'Sg': 'Seaborgiyum', 'Bh': 'Bohriyum', 'Hs': 'Hassiyum', 'Mt': 'Meitneriyum',
-        'Ds': 'Darmstadtiyum', 'Rg': 'Röntgenyum', 'Cn': 'Kopernikyum', 'Nh': 'Nihonyum',
-        'Fl': 'Flerovyum', 'Mc': 'Moscovyum', 'Lv': 'Livermoryum', 'Ts': 'Tenesin',
-        'Og': 'Oganesson/Oganesyan' 
-    }
-    
-    for input_symbol in element_symbols:
-        input_symbol_clean = str(input_symbol).strip()
-        found = False
-        for atomic_num, (sym, atomic_num_in_tuple) in periodic_elements.items():
-            # Periyodik tablodaki sembol ile kullanıcının girdiği sembolü karşılaştır
-            # Büyük/küçük harf duyarsız karşılaştırma
-            if sym.upper() == input_symbol_clean.upper():
-                highlight_indices.append(atomic_num - 1)  # 0-based index
-                # Orijinal sembolü (büyük/küçük harf korunarak) ekle
-                element_symbols_found.append(sym)  # Burada sym kullanıyoruz (periyodik tablodaki orijinal)
-                valid_symbols.append(sym)  # Orijinal sembolü sakla
-                found = True
-                break
-        
-        if not found:
-            print(f"Uyarı: '{input_symbol_clean}' elementi bulunamadı!")
-    
-    if not highlight_indices:
-        print("Vurgulanacak geçerli element bulunamadı!")
-        return None, None
-    
-    # Element isimlerini bul
-    element_names = [element_name_map.get(sym, sym) for sym in element_symbols_found]
-    
-    print(f"Vurgulanan elementler: {', '.join(element_names)}")
-    
-    # Graf oluştur
-    node_count = len(periodic_elements)
-    G = nx.DiGraph()
-    G.add_nodes_from(range(1, node_count + 1))
-    for i in range(1, node_count):
-        G.add_edge(i, i + 1)
-    
-    # Özel renk şeması oluştur
-    colors = []
-    for i in range(1, node_count + 1):
-        if (i - 1) in highlight_indices:
-            colors.append(highlight_color)
-        else:
-            # Gri tonlarında diğer elementler
-            colors.append((0.9, 0.9, 0.9))
-    
-    # Layout tipini belirle
-    layout_type = kwargs.get('layout_type', '3d_helix')
-    dimension = '3d' if '3d' in layout_type.lower() else '2d'
-    
-    # Figür oluştur
-    if dimension == '3d':
-        fig = plt.figure(figsize=(16, 16))
-        ax = fig.add_subplot(111, projection='3d')
-    else:
-        fig = plt.figure(figsize=(14, 14))
-        ax = fig.add_subplot(111)
-    
-    # Layout hesapla
-    layout_params = kwargs.get('layout_params', {})
-    pos = _calculate_layout(G, layout_type, layout_params, dimension, node_count)
-    
-    # Özel etiketler oluştur
-    custom_labels = _generate_labels(G, periodic_elements)
-    
-    # Node boyutlarını ayarla (vurgulananlar daha büyük)
-    node_sizes = []
-    for i in range(1, node_count + 1):
-        if (i - 1) in highlight_indices:
-            node_sizes.append(kwargs.get('highlight_size', 2000))
-        else:
-            node_sizes.append(kwargs.get('normal_size', 800))
-    
-    # Font boyutlarını ayarla
-    font_sizes = []
-    for i in range(1, node_count + 1):
-        if (i - 1) in highlight_indices:
-            font_sizes.append(kwargs.get('highlight_font_size', 12))
-        else:
-            font_sizes.append(kwargs.get('normal_font_size', 7))
-    
-    # Çizim sırasını belirle
-    draw_order = _get_draw_order(G, pos, 'smart', dimension)
-    
-    # Edge stilini al
-    edge_config = _get_edge_config(kwargs.get('edge_style', 'light'))
-    
-    # Çiz
-    _draw_edges(G, pos, ax, edge_config, dimension)
-    _draw_nodes(G, pos, colors, ax, node_sizes, draw_order, dimension, 
-               edge_width=kwargs.get('edge_width', 2.0),
-               node_alpha=kwargs.get('node_alpha', 1.0))
-    
-    # Etiketleri çiz
-    _draw_labels(G, pos, custom_labels, colors, ax, font_sizes, 
-                kwargs.get('label_position', 'center'), dimension,
-                label_offset=kwargs.get('label_offset', 0.0))
-    
-    # Başlık
-    title = kwargs.get('title')
-    if title is None:
-        # Orijinal sembolleri (büyük/küçük harf korunarak) kullan
-        element_symbols_str = ', '.join(element_symbols_found)
-        element_names_str = ', '.join(element_names)
-        title = f"Keçeci Layout ile Vurgulanan Elementler\nHighlighted Elements with Keçeci Layout:\n: {element_names_str} ({element_symbols_str})\n"
-        title += f"Layout: {layout_type}, Toplam/Total {node_count} Element"
-    
-    ax.set_title(title, fontsize=18, fontweight='bold', pad=20)
-    
-    # Eksen ayarları
-    _configure_axes(ax, pos, dimension, layout_params,
-                   elevation=kwargs.get('elevation', -25),
-                   azimuth=kwargs.get('azimuth', 15))
-    
-    plt.tight_layout()
-    
-    # Açıklama ekle
-    if dimension == '3d':
-        ax.text2D(0.02, 0.98, 
-                 f"Kırmızı: {', '.join(element_names)}\nGri: Diğer elementler", 
-                 transform=ax.transAxes,
-                 fontsize=10, verticalalignment='top',
-                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-    else:
-        ax.text(0.02, 0.98, 
-               f"Kırmızı: {', '.join(element_names)}\nGri: Diğer elementler", 
-               transform=ax.transAxes,
-               fontsize=10, verticalalignment='top',
-               bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-    
-    plt.show()
-    
-    print(f"\nVurgulama tamamlandı!")
-    print(f"Toplam {node_count} element, {len(highlight_indices)} element vurgulandı.")
-    print("Grafı kapatmak için figür penceresini kapatın.")
-    
-    return ax, pos
-
-def demo_periodic_table_visualizations():
-    """
-    Periyodik tablo görselleştirmelerinin demo gösterimi.
-    Her görsel ayrı ayrı gösterilir, boş şablonlar oluşmaz.
-    """
-    # Tüm figürleri temizle
-    plt.close('all')
-    
-    # Periyodik tabloyu yükle
-    print("Periyodik tablo yükleniyor...")
-    periodic_elements, _ = generate_complete_periodic_table()
-    
-    # Graf oluştur
-    node_count = len(periodic_elements)
-    G = nx.DiGraph()
-    G.add_nodes_from(range(1, node_count + 1))
-    for i in range(1, node_count):
-        G.add_edge(i, i + 1)
-    
-    print("=" * 70)
-    print("PERİYODİK TABLO GÖRSELLEŞTİRME DEMOLARI")
-    print("=" * 70)
-    print(f"Toplam {node_count} element gösterilecek.")
-    print("Her görsel 5 saniye boyunca gösterilecek...")
-    
-    demos = [
-        {
-            "name": "3D Heliks Layout",
-            "layout_type": "3d_helix",
-            "color_scheme": "vibrant",
-            "params": {'z_spacing': 8.0, 'radius': 25.0, 'turns': 3.0},
-            "figsize": (20, 20),
-            "projection": '3d'
-        },
-        {
-            "name": "2D Linear Layout", 
-            "layout_type": "2d_linear",
-            "color_scheme": "group",
-            "params": {'primary_spacing': 3.0, 'secondary_spacing': 3.0},
-            "figsize": (16, 16),
-            "projection": None
-        },
-        {
-            "name": "2D Grid Layout",
-            "layout_type": "2d_grid",
-            "color_scheme": "period",
-            "params": {'rows': 9, 'cols': 14, 'spacing': 3.0},
-            "figsize": (18, 18),
-            "projection": None
-        },
-        {
-            "name": "2D Circular Layout",
-            "layout_type": "2d_circular",
-            "color_scheme": "block",
-            "params": {'scale': 2.0},
-            "figsize": (16, 16),
-            "projection": None
-        }
-    ]
-    
-    for i, demo in enumerate(demos, 1):
-        print(f"\n{i}. {demo['name']} ({demo['color_scheme']} renkler) oluşturuluyor...")
-        
-        if demo['projection'] == '3d':
-            fig = plt.figure(figsize=demo['figsize'])
-            ax = fig.add_subplot(111, projection='3d')
-        else:
-            fig = plt.figure(figsize=demo['figsize'])
-            ax = fig.add_subplot(111)
-        
-        ax, pos = draw_kececi_periodic_table(
-            G,
-            periodic_elements,
-            layout_type=demo['layout_type'],
-            layout_params=demo['params'],
-            ax=ax,
-            color_scheme=demo['color_scheme'],
-            node_size=2000 if demo['projection'] == '3d' else 1000,
-            font_size=10 if demo['projection'] == '3d' else 8,
-            edge_style='light',
-            show_legend=True if demo['color_scheme'] in ['group', 'period', 'block'] else False,
-            title=f"Keçeci Layout ile\n {i}/4: {demo['name']}\n{demo['color_scheme'].capitalize()} Renk Şeması"
-        )
-        
-        plt.tight_layout()
-        plt.show(block=False)
-        plt.pause(5)
-        plt.close(fig)
-    
-    print("\n" + "=" * 70)
-    print("TÜM DEMOLAR TAMAMLANDI!")
-    print("=" * 70)
-    
-    return True
-
-def get_element_info(element_symbol: str) -> Dict[str, Any]:
-    """
-    Element sembolünden element bilgilerini getir.
-    
-    Parameters:
-    -----------
-    element_symbol : str
-        Element sembolü (örn: 'H', 'He', 'Fe')
+    num_children : int
+        Number of child spheres at each level (default: 8)
+    max_level : int
+        Maximum recursion depth (default: 3)
+    scale_factor : float
+        Size reduction factor for child spheres (default: 0.4)
+    base_radius : float
+        Radius of the central sphere (default: 1.0)
+    min_radius : float
+        Minimum sphere radius (stops recursion when reached) (default: 0.05)
+    color_scheme : str
+        Matplotlib colormap name (default: 'plasma')
+    alpha_decay : float
+        Alpha transparency decay factor per level (default: 0.7)
+    figsize : Tuple[int, int]
+        Figure size (width, height) (default: (12, 10))
+    elev : float
+        Elevation angle for 3D view (default: 30)
+    azim : float
+        Azimuth angle for 3D view (default: 45)
+    background_color : str or tuple
+        Background color (default: '#0a0a0a')
+    show_grid : bool
+        Show grid lines (default: True)
+    grid_alpha : float
+        Grid transparency (default: 0.1)
+    title : str or None
+        Custom title (auto-generated if None)
+    show_axis_labels : bool
+        Show X, Y, Z axis labels (default: False)
+    axis_label_color : str
+        Color for axis labels (default: 'white')
+    interactive_info : bool
+        Show interactive instructions (default: False)
+    return_figure : bool
+        Return (fig, ax) tuple instead of showing/saving (default: True)
+    output_mode : str
+        'show', 'save', or 'return' (default: 'show')
+    filename : str
+        Base filename for saving (default: 'kececi_fractal_3d')
+    dpi : int
+        DPI for saved images (default: 300)
+    verbose : bool
+        Print progress information (default: True)
     
     Returns:
     --------
-    dict : Element bilgileri
+    None or Tuple[plt.Figure, plt.Axes]
+        Depending on return_figure and output_mode parameters
     """
-    # Periyodik tabloyu yükle
-    periodic_elements, element_dict = generate_complete_periodic_table()
     
-    # Element sembolünden atom numarasını bul
-    atomic_num_found = None
-    original_symbol = None
+    if not HAS_3D:
+        if verbose:
+            print("Error: 3D plotting not available. Install matplotlib with 3D support.", 
+                  file=sys.stderr)
+        return None if not return_figure else (None, None)
     
-    for atomic_num, (sym, atomic_num_in_tuple) in periodic_elements.items():
-        if sym.upper() == element_symbol.upper():
-            atomic_num_found = atomic_num
-            original_symbol = sym  # Orijinal sembolü sakla
-            break
+    # Create figure
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111, projection="3d")
     
-    if atomic_num_found is None:
-        raise ValueError(f"Element bulunamadı: {element_symbol}")
+    # Set background color
+    bg_color = _parse_color(background_color) or (0.04, 0.04, 0.04)
+    fig.patch.set_facecolor(bg_color)
+    ax.set_facecolor(bg_color)
     
-    # Element ismini bul - Güncellenmiş Türkçe isimler
-    element_name_map = {
-        'H': 'Hidrojen', 'He': 'Helyum', 'Li': 'Lityum', 'Be': 'Berilyum',
-        'B': 'Bor', 'C': 'Karbon', 'N': 'Azot', 'O': 'Oksijen', 'F': 'Flor',
-        'Ne': 'Neon', 'Na': 'Sodyum', 'Mg': 'Magnezyum', 'Al': 'Alüminyum',
-        'Si': 'Silisyum', 'P': 'Fosfor', 'S': 'Kükürt', 'Cl': 'Klor',
-        'Ar': 'Argon', 'K': 'Potasyum', 'Ca': 'Kalsiyum', 'Sc': 'Skandiyum',
-        'Ti': 'Titanyum', 'V': 'Vanadyum', 'Cr': 'Krom', 'Mn': 'Mangan',
-        'Fe': 'Demir', 'Co': 'Kobalt', 'Ni': 'Nikel', 'Cu': 'Bakır',
-        'Zn': 'Çinko', 'Ga': 'Galyum', 'Ge': 'Germanyum', 'As': 'Arsenik',
-        'Se': 'Selenyum', 'Br': 'Brom', 'Kr': 'Kripton', 'Rb': 'Rubidyum',
-        'Sr': 'Stronsiyum', 'Y': 'İtriyum', 'Zr': 'Zirkonyum', 'Nb': 'Niyobyum',
-        'Mo': 'Molibden', 'Tc': 'Teknesyum', 'Ru': 'Rutenyum', 'Rh': 'Rodyum',
-        'Pd': 'Paladyum', 'Ag': 'Gümüş', 'Cd': 'Kadmiyum', 'In': 'İndiyum',
-        'Sn': 'Kalay', 'Sb': 'Antimon', 'Te': 'Tellür', 'I': 'İyot',
-        'Xe': 'Ksenon', 'Cs': 'Sezyum', 'Ba': 'Baryum', 'La': 'Lantan',
-        'Ce': 'Seryum', 'Pr': 'Praseodim', 'Nd': 'Neodimyum', 'Pm': 'Prometyum',
-        'Sm': 'Samaryum', 'Eu': 'Europyum', 'Gd': 'Gadolinyum', 'Tb': 'Terbiyum',
-        'Dy': 'Disprozyum', 'Ho': 'Holmiyum', 'Er': 'Erbiyum', 'Tm': 'Tulyum',
-        'Yb': 'İterbiyum', 'Lu': 'Lutesyum', 'Hf': 'Hafniyum', 'Ta': 'Tantal',
-        'W': 'Tungsten', 'Re': 'Renyum', 'Os': 'Osmiyum', 'Ir': 'İridyum',
-        'Pt': 'Platin', 'Au': 'Altın', 'Hg': 'Cıva', 'Tl': 'Talyum',
-        'Pb': 'Kurşun', 'Bi': 'Bizmut', 'Po': 'Polonyum', 'At': 'Astatin',
-        'Rn': 'Radon', 'Fr': 'Fransiyum', 'Ra': 'Radyum', 'Ac': 'Aktinyum',
-        'Th': 'Toryum', 'Pa': 'Protaktinyum', 'U': 'Uranyum', 'Np': 'Neptünyum',
-        'Pu': 'Plütonyum', 'Am': 'Amerikyum', 'Cm': 'Küriyum', 'Bk': 'Berkelyum',
-        'Cf': 'Kaliforniyum', 'Es': 'Einsteinyum', 'Fm': 'Fermiyum', 'Md': 'Mendelevyum',
-        'No': 'Nobelyum', 'Lr': 'Lawrensiyum', 'Rf': 'Rutherfordiyum', 'Db': 'Dubniyum',
-        'Sg': 'Seaborgiyum', 'Bh': 'Bohriyum', 'Hs': 'Hassiyum', 'Mt': 'Meitneriyum',
-        'Ds': 'Darmstadtiyum', 'Rg': 'Röntgenyum', 'Cn': 'Kopernikyum', 'Nh': 'Nihonyum',
-        'Fl': 'Flerovyum', 'Mc': 'Moscovyum', 'Lv': 'Livermoryum', 'Ts': 'Tenesin',
-        'Og': 'Oganesson/Oganesyan'
-    }
+    # Create color function
+    cmap = get_cmap_safe(color_scheme)
     
-    element_name = element_name_map.get(original_symbol.upper(), original_symbol)
+    def color_func(level: int) -> Tuple[float, float, float, float]:
+        """Returns color for a given level based on colormap."""
+        return cmap(level / max(max_level, 1))
     
-    # Yuri Oganessian hakkında ek bilgi
-    additional_info = ""
-    if original_symbol.upper() == 'OG':
-        additional_info = "\n  Not: Element, Rus-Armeni fizikçi Yuri Oganessian (Юрий Оганесян) onuruna adlandırılmıştır."
+    # Generate the fractal
+    center = np.array([0.0, 0.0, 0.0])
     
-    # Grup ve periyot bilgilerini hesapla
-    group = _determine_group(atomic_num_found)
+    if verbose:
+        print("Generating 3D fractal...")
+        print(f"   • Level: {max_level}")
+        print(f"   • Children: {num_children}")
+        print(f"   • Color scheme: {color_scheme}")
     
-    # Periyot hesapla
-    if atomic_num_found <= 2:
-        period = 1
-    elif atomic_num_found <= 10:
-        period = 2
-    elif atomic_num_found <= 18:
-        period = 3
-    elif atomic_num_found <= 36:
-        period = 4
-    elif atomic_num_found <= 54:
-        period = 5
-    elif atomic_num_found <= 86:
-        period = 6
-    else:
-        period = 7
-    
-    # Blok bilgisi
-    if atomic_num_found in [1, 2, 3, 4, 11, 12, 19, 20, 37, 38, 55, 56, 87, 88]:
-        block = "s"
-    elif atomic_num_found in (list(range(5, 11)) + list(range(13, 19)) + 
-                       list(range(31, 37)) + list(range(49, 55)) + 
-                       list(range(81, 87)) + list(range(113, 119))):
-        block = "p"
-    elif atomic_num_found in (list(range(21, 31)) + list(range(39, 49)) + 
-                       list(range(72, 81)) + list(range(104, 113))):
-        block = "d"
-    elif atomic_num_found in list(range(57, 72)) + list(range(89, 104)):
-        block = "f"
-    else:
-        block = "unknown"
-    
-    # Elektronegativite verisi
-    electronegativity_data = {
-        1: 2.20, 2: None, 3: 0.98, 4: 1.57, 5: 2.04, 6: 2.55, 7: 3.04, 8: 3.44,
-        9: 3.98, 10: None, 11: 0.93, 12: 1.31, 13: 1.61, 14: 1.90, 15: 2.19,
-        16: 2.58, 17: 3.16, 18: None, 19: 0.82, 20: 1.00, 21: 1.36, 22: 1.54,
-        23: 1.63, 24: 1.66, 25: 1.55, 26: 1.83, 27: 1.88, 28: 1.91, 29: 1.90,
-        30: 1.65, 31: 1.81, 32: 2.01, 33: 2.18, 34: 2.55, 35: 2.96, 36: None,
-        37: 0.82, 38: 0.95, 39: 1.22, 40: 1.33, 41: 1.60, 42: 2.16, 43: 1.90,
-        44: 2.20, 45: 2.28, 46: 2.20, 47: 1.93, 48: 1.69, 49: 1.78, 50: 1.96,
-        51: 2.05, 52: 2.10, 53: 2.66, 54: None, 55: 0.79, 56: 0.89, 57: 1.10,
-        58: 1.12, 59: 1.13, 60: 1.14, 61: 1.13, 62: 1.17, 63: 1.20, 64: 1.20,
-        65: 1.20, 66: 1.22, 67: 1.23, 68: 1.24, 69: 1.25, 70: 1.10, 71: 1.27,
-        72: 1.30, 73: 1.50, 74: 2.36, 75: 1.90, 76: 2.20, 77: 2.20, 78: 2.28,
-        79: 2.54, 80: 2.00, 81: 1.62, 82: 1.87, 83: 2.02, 84: 2.00, 85: 2.20,
-        86: None, 87: 0.70, 88: 0.89, 89: 1.10, 90: 1.30, 91: 1.50, 92: 1.38,
-        93: 1.36, 94: 1.28, 95: 1.30, 96: 1.30, 97: 1.30, 98: 1.30, 99: 1.30,
-        100: 1.30, 101: 1.30, 102: 1.30, 103: 1.30, 118: None  # Oganesson
-    }
-    
-    result = {
-        'atomic_number': atomic_num_found,
-        'symbol': original_symbol,  # Orijinal sembolü döndür
-        'name': element_name,
-        'group': group,
-        'period': period,
-        'block': block,
-        'electronegativity': electronegativity_data.get(atomic_num_found, None)
-    }
-    
-    # Ek bilgiyi de döndürelim
-    result['additional_info'] = additional_info
-    
-    return result
-
-def custom_visualization():
-    """
-    Özelleştirilmiş görselleştirme menüsü.
-    """
-    print("\n" + "=" * 70)
-    print("Custom Visualization")
-    print("=" * 70)
-    
-    # Periyodik tabloyu yükle
-    periodic_elements, _ = generate_complete_periodic_table()
-    
-    # Graf oluştur
-    node_count = len(periodic_elements)
-    G = nx.DiGraph()
-    G.add_nodes_from(range(1, node_count + 1))
-    for i in range(1, node_count):
-        G.add_edge(i, i + 1)
-    
-    # Layout seçenekleri
-    layouts = {
-        '1': ('3d_helix', 'Heliks Layout'),
-        '2': ('2d_linear', 'Linear Layout'),
-        '3': ('2d_grid', 'Grid Layout'),
-        '4': ('2d_circular', 'Dairesel Layout'),
-        '5': ('2d_spring', 'Yay Layout')
-    }
-    
-    print("\nLayout Tipleri:")
-    for key, (_, name) in layouts.items():
-        print(f"{key}. {name}")
-    
-    layout_choice = input("\nLayout tipi seçin (1-5): ").strip()
-    if layout_choice not in layouts:
-        print("Varsayılan olarak 3D Heliks seçildi.")
-        layout_type = '3d_helix'
-    else:
-        layout_type, layout_name = layouts[layout_choice]
-    
-    # Renk şeması seçenekleri
-    color_schemes = {
-        '1': 'vibrant',
-        '2': 'distinct',
-        '3': 'pastel',
-        '4': 'group',
-        '5': 'period',
-        '6': 'block',
-        '7': 'electronegativity',
-    }
-    
-    print("\nRenk Şemaları:")
-    print("1. Vibrant (Canlı renkler)")
-    print("2. Distinct (Farklı renkler)")
-    print("3. Pastel (Pastel tonlar)")
-    print("4. Group (Gruplara göre)")
-    print("5. Period (Periyotlara göre)")
-    print("6. Block (Bloklara göre)")
-    print("7. electronegativity (Electronegativitiye göre)")
-    
-    color_choice = input("\nRenk şeması seçin (1-7): ").strip()
-    if color_choice not in color_schemes:
-        print("Varsayılan olarak Vibrant seçildi.")
-        color_scheme = 'vibrant'
-    else:
-        color_scheme = color_schemes[color_choice]
-    
-    # Boyut seçimi
-    try:
-        node_size = int(input(f"\nNode boyutu (varsayılan: 1600): ") or "1600")
-    except:
-        node_size = 1600
-    
-    try:
-        font_size = int(input(f"Font boyutu (varsayılan: 10): ") or "10")
-    except:
-        font_size = 10
-    
-    # 3D için özel parametreler
-    if '3d' in layout_type:
-        fig = plt.figure(figsize=(20, 20))
-        ax = fig.add_subplot(111, projection='3d')
-    else:
-        fig = plt.figure(figsize=(16, 16))
-        ax = fig.add_subplot(111)
-    
-    # Özel başlık
-    custom_title = input("\nÖzel başlık (boş bırakırsanız otomatik oluşturulur): ").strip()
-    
-    # Çizim yap
-    ax, pos = draw_kececi_periodic_table(
-        G,
-        periodic_elements,
-        layout_type=layout_type,
-        ax=ax,
-        color_scheme=color_scheme,
-        node_size=node_size,
-        font_size=font_size,
-        title=custom_title if custom_title else None,
-        show_legend=(color_scheme in ['vibrant', 'distinct', 'pastel', 'group', 'period', 'block', 'electronegativity'])
+    _generate_recursive_3d_fractal(
+        ax,
+        center,
+        base_radius,
+        0,
+        max_level,
+        num_children,
+        scale_factor,
+        min_radius,
+        color_func,
+        alpha_decay,
     )
     
-    plt.tight_layout()
-    plt.show()
+    # Set plot limits
+    max_extent = base_radius * (1 + 2 * scale_factor * max_level) * 1.2
+    ax.set_xlim([-max_extent, max_extent])
+    ax.set_ylim([-max_extent, max_extent])
+    ax.set_zlim([-max_extent, max_extent])
     
-    print(f"\n{layout_name} ile {color_scheme} renk şeması başarıyla oluşturuldu!")
-    return ax, pos
-
-def debug_periodic_table_structure():
-    """Periyodik tablo veri yapısını kontrol et."""
-    print("Periyodik tablo veri yapısı kontrol ediliyor...")
-    periodic_elements, _ = generate_complete_periodic_table()
+    # Configure view
+    ax.view_init(elev=elev, azim=azim)
     
-    print(f"\nToplam element sayısı: {len(periodic_elements)}")
+    # Grid settings
+    if show_grid:
+        ax.grid(True, alpha=grid_alpha, linestyle="--", linewidth=0.5)
+    else:
+        ax.grid(False)
     
-    # İlk 5 elementi göster
-    print("\nİlk 5 element:")
-    for i, (atomic_num, value) in enumerate(list(periodic_elements.items())[:5]):
-        print(f"  Atom numarası {atomic_num}:")
-        print(f"    Değer: {value}")
-        print(f"    Tip: {type(value)}")
+    # Axis labels
+    if show_axis_labels:
+        ax.set_xlabel("X", fontsize=10, labelpad=10, color=axis_label_color)
+        ax.set_ylabel("Y", fontsize=10, labelpad=10, color=axis_label_color)
+        ax.set_zlabel("Z", fontsize=10, labelpad=10, color=axis_label_color)
         
-        if isinstance(value, tuple):
-            print(f"    Tuple uzunluğu: {len(value)}")
-            for j, item in enumerate(value):
-                print(f"      Item {j}: {item} (tip: {type(item)})")
-    
-    # Rastgele bir element kontrolü
-    print("\nRastgele element kontrolü (atom numarası 26 - Demir):")
-    if 26 in periodic_elements:
-        value = periodic_elements[26]
-        print(f"  Değer: {value}")
-        print(f"  Tip: {type(value)}")
-        if isinstance(value, tuple) and len(value) >= 2:
-            print(f"  Sembol: {value[0]}")
-            print(f"  İsim: {value[1]}")
-
-def _generate_labels(graph, periodic_elements):
-    """Etiketleri oluştur."""
-    labels = {}
-    for node_id in graph.nodes():
-        if node_id in periodic_elements:
-            sym, atomic_num = periodic_elements[node_id]
-            # Etiket formatı: Sembol\nAtom Numarası
-            labels[node_id] = f"{sym}\n{atomic_num}"
-        else:
-            labels[node_id] = str(node_id)
-    return labels
-
-def kececi_barbell_layout(G, primary_spacing=1.5, secondary_spacing=0.8, 
-                         primary_direction='horizontal', debug=False):
-    """
-    KEÇECİ BARBELL LAYOUT v3.0 - %100 NODE KAPSAMA GARANTİSİ
-    kececilayout.draw_kececi ile uyumlu
-    """
-    
-    if debug:
-        print("🔍 KEÇECİ BARBELL LAYOUT v3.0 - %100 KAPSAMA")
-    
-    pos = {}
-    nodes = sorted(G.nodes())
-    n = len(nodes)
-    
-    if debug:
-        print(f"  Node aralığı: {n} node [{nodes[0]}-{nodes[-1]}]")
-    
-    # ✅ GARANTİ: TÜM NODE'LARA POZİSYON VER
-    if n <= 10:
-        # Küçük graf: Klasik barbell
-        pos = classic_small_barbell(nodes, primary_spacing, secondary_spacing)
-    elif n <= 25:
-        # Orta graf: Genişletilmiş barbell
-        pos = extended_barbell_layout(nodes, primary_spacing, secondary_spacing)
+        ax.xaxis.label.set_color(axis_label_color)
+        ax.yaxis.label.set_color(axis_label_color)
+        ax.zaxis.label.set_color(axis_label_color)
+        ax.tick_params(axis="x", colors=axis_label_color, labelsize=8)
+        ax.tick_params(axis="y", colors=axis_label_color, labelsize=8)
+        ax.tick_params(axis="z", colors=axis_label_color, labelsize=8)
     else:
-        # Büyük graf: Zigzag Keçeci
-        pos = zigzag_kececi_layout(nodes, primary_spacing, secondary_spacing)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_zticks([])
     
-    # ✅ SİGORTA: HÂLÂ EKSİK VAR MI?
-    missing = set(nodes) - set(pos.keys())
-    if missing:
-        if debug: print(f"  ⚠️  {len(missing)} node ekleniyor...")
-        for i, node in enumerate(missing):
-            pos[node] = (i * 0.5, n + i * 0.3)  # Güvenli pozisyon
+    # Title
+    if title is None:
+        title = f"3D Keçeci Fractal (Levels: {max_level}, Children: {num_children})"
     
-    if debug:
-        print(f"✅ TAM KAPSAMA: {len(pos)}/{n} node ✓")
+    ax.set_title(title, fontsize=14, fontweight="bold", color="white", pad=20)
     
-    return pos
-
-
-def detect_barbell_structure(G, debug=False):
-    """Barbell yapısını otomatik tespit et"""
+    # Interactive info
+    if interactive_info:
+        info_text = (
+            "Rotate: Left click + drag\n"
+            "Zoom: Mouse wheel\n"
+            "Pan: Right click + drag"
+        )
+        fig.text(
+            0.02,
+            0.02,
+            info_text,
+            fontsize=9,
+            color="white",
+            bbox=dict(boxstyle="round", facecolor="black", alpha=0.7),
+        )
     
-    # Yöntem 1: Yüksek dereceli kümeler + düşük dereceli köprü
-    degrees = dict(G.degree())
-    high_degree_nodes = [n for n, d in degrees.items() if d > G.number_of_nodes()/4]
-    low_degree_nodes = [n for n, d in degrees.items() if d < 3]
+    plt.tight_layout()
     
-    if debug:
-        print(f"  Yüksek dereceli: {len(high_degree_nodes)}, Düşük: {len(low_degree_nodes)}")
+    # Output handling
+    output_mode = output_mode.lower().strip()
     
-    if len(high_degree_nodes) > 4 and len(low_degree_nodes) > 0:
-        # İki ana küme + köprü adayları
-        cliques = split_into_cliques(high_degree_nodes, G)
-        bridge_nodes = low_degree_nodes[:3]  # Max 3 köprü node
-        return cliques, bridge_nodes
-    
-    # Yöntem 2: NetworkX barbell_graph kontrolü
-    import networkx as nx
-    if hasattr(nx.generators.classic, 'barbell_graph'):
-        cliques = [[i for i in range(5)], [i for i in range(6,11)]]
-        bridge_nodes = [5]
-        return cliques, bridge_nodes
-    
-    return None, None
-
-
-def split_into_cliques(nodes, G, min_size=4):
-    """Yüksek bağlantılı kümeleri ayır"""
-    from itertools import combinations
-    
-    cliques = []
-    remaining = set(nodes)
-    
-    while remaining:
-        # En yüksek dereceli node'dan başla
-        start = max(remaining, key=lambda n: G.degree(n))
-        clique = set()
-        
-        # Komşularından clique oluştur
-        clique.add(start)
-        for neighbor in G.neighbors(start):
-            if neighbor in remaining and G.degree(neighbor) > 3:
-                clique.add(neighbor)
-        
-        if len(clique) >= min_size:
-            cliques.append(sorted(clique))
-            remaining -= clique
-    
-    return cliques[:2]  # Max 2 ana küme
-
-
-def horizontal_barbell_layout(cliques, bridge_nodes, all_nodes, p_spacing, s_spacing):
-    """Yatay barbell: Sol Küme ←→ Köprü ←→ Sağ Küme"""
-    pos = {}
-    
-    # Sol küme
-    if cliques and len(cliques) >= 1:
-        left_nodes = cliques[0][:5]  # Max 5 node
-        for i, node in enumerate(left_nodes):
-            angle = 2 * np.pi * i / len(left_nodes)
-            pos[node] = (np.cos(angle), np.sin(angle))
-    
-    # Köprü (yatay)
-    bridge_x = 2.5
-    for i, node in enumerate(bridge_nodes[:3]):
-        pos[node] = (bridge_x + i * p_spacing * 0.6, np.sin(i * np.pi / 4))
-    
-    # Sağ küme  
-    if len(cliques) >= 2:
-        right_nodes = cliques[1][:5]
-        for i, node in enumerate(right_nodes):
-            angle = 2 * np.pi * i / len(right_nodes)
-            pos[node] = (5 - np.cos(angle), np.sin(angle))
-    
-    # Kalan node'lar (genişletilmiş destek)
-    remaining = [n for n in all_nodes if n not in pos]
-    for i, node in enumerate(remaining):
-        if i < 4:  # Max 4 ek node
-            pos[node] = (1 + i * 0.8, 1.5 + (i%2) * (-0.5))
-    
-    return pos
-
-
-def fallback_kececi_layout(G, direction='horizontal', debug=False):
-    """Genel Keçeci layout (barbell değilse)"""
-    n = G.number_of_nodes()
-    nodes = sorted(G.nodes)
-    pos = {}
-    
-    if direction == 'horizontal':
-        for i, node in enumerate(nodes):
-            x = (i % 5) * 1.2
-            y = (i // 5) * 1.5
-            pos[node] = (x, y)
-    else:  # zigzag
-        for i, node in enumerate(nodes):
-            x = i * 0.8
-            y = np.sin(i * np.pi / 3) * 0.5
-            pos[node] = (x, y)
-    
-    return pos
-
-def classic_small_barbell(nodes, p_spacing, s_spacing):
-    """Klasik barbell: Sol K5 │ Köprü │ Sağ K5"""
-    pos = {}
-    n = len(nodes)
-    
-    # Sol küme (ilk 1/3)
-    left_count = min(5, n//3)
-    for i in range(left_count):
-        angle = 2 * np.pi * i / left_count
-        pos[nodes[i]] = (0.8 * np.cos(angle), 0.8 * np.sin(angle))
-    
-    # Köprü (orta %10)
-    bridge_start = left_count
-    bridge_end = min(bridge_start + 2, n)
-    for i in range(bridge_start, bridge_end):
-        x = 2.5 + (i-bridge_start) * p_spacing * 0.5
-        pos[nodes[i]] = (x, np.sin((i-bridge_start) * np.pi / 4))
-    
-    # Sağ küme (son 1/3)
-    right_start = max(bridge_end, n//2)
-    for i in range(right_start, n):
-        idx = i - right_start
-        angle = 2 * np.pi * idx / (n-right_start)
-        pos[nodes[i]] = (5 - 0.8 * np.cos(angle), 0.8 * np.sin(angle))
-    
-    return pos
-
-
-def extended_barbell_layout(nodes, p_spacing, s_spacing):
-    """Genişletilmiş: 2+ küme + geniş köprü"""
-    pos = {}
-    n = len(nodes)
-    
-    # Sol kümeler (ilk %40)
-    left_end = int(0.4 * n)
-    for i in range(left_end):
-        x = (i % 4) * 0.8
-        y = (i // 4) * 1.2
-        pos[nodes[i]] = (x, y)
-    
-    # Köprü bölgesi (%20)
-    bridge_end = int(0.6 * n)
-    for i in range(left_end, bridge_end):
-        x = 3.5 + (i-left_end) * p_spacing * 0.4
-        pos[nodes[i]] = (x, np.sin(i * 0.3))
-    
-    # Sağ kümeler (son %40)
-    for i in range(bridge_end, n):
-        idx = i - bridge_end
-        x = 6 + (idx % 3) * 0.9
-        y = (idx // 3) * 1.1
-        pos[nodes[i]] = (x, y)
-    
-    return pos
-
-
-def zigzag_kececi_layout(nodes, p_spacing, s_spacing):
-    """Keçeci zigzag: Büyük graf'lar için"""
-    pos = {}
-    for i, node in enumerate(nodes):
-        x = i * p_spacing * 0.6
-        y = np.sin(i * np.pi / 3) * s_spacing
-        pos[node] = (x, y)
-    return pos
-
-def center_layout(pos):
-    if not pos: return pos
-    xs = [p[0] for p in pos.values()]
-    ys = [p[1] for p in pos.values()]
-    cx, cy = (min(xs)+max(xs))/2, (min(ys)+max(ys))/2
-    return {n: (x-cx, y-cy) for n, (x,y) in pos.items()}
-
-def scale_layout(pos, scale=1.0):
-    return {n: (x*scale, y*scale) for n, (x,y) in pos.items()}
-
-def gnn_gru_colored_comparison():
-    """
-    GNN‑GRU hesaplama çizgesini 5 farklı Keçeci Layout ile
-    tek bir figürde, düğümler kategorilere göre renkli olarak çizer.
-    """
-    # Çizgeyi oluştur
-    G = nx.DiGraph()
-    edges = [
-        ("X0","GNN0"), ("GNN0","GRU0"), ("h_init","GRU0"), ("GRU0","h0"),
-        ("X1","GNN1"), ("GNN1","GRU1"), ("h0","GRU1"), ("GRU1","h1"),
-        ("h1","Output")
-    ]
-    G.add_edges_from(edges)
-
-    # Renk haritası
-    color_map = {
-        "X0": "#2ca02c", "X1": "#2ca02c",
-        "GNN0": "#1f77b4", "GNN1": "#1f77b4",
-        "GRU0": "#ff7f0e", "GRU1": "#ff7f0e",
-        "h_init": "#d62728", "h0": "#d62728", "h1": "#d62728",
-        "Output": "#9467bd"
-    }
-    node_colors = [color_map[node] for node in G.nodes()]
-
-    # Tüm layoutları hazırla
-    layouts = {
-        "2D Zigzag": kececi_layout_2d(G, primary_direction='left-to-right',
-                                      secondary_start='up', expanding=True),
-        "Eliptik": kececi_layout_elliptical(G, a=4, b=4),
-        "3D Silindirik": kececi_layout_cylindrical(G, radius=4, height=10),
-        "3D Küresel": kececi_layout_spherical(G, radius=5),
-        "3D Torik": kececi_layout_toric(G, major_radius=5, minor_radius=2),
-    }
-
-    fig = plt.figure(figsize=(18, 12))
-    for idx, (title, pos) in enumerate(layouts.items(), 1):
-        is_3d = len(next(iter(pos.values()))) == 3
-        if is_3d:
-            ax = fig.add_subplot(2, 3, idx, projection='3d')
-            for node, coord in pos.items():
-                ax.scatter(*coord, s=200, c=color_map[node], edgecolors='black')
-                ax.text(*coord, f' {node}', fontsize=8)
-            for u, v in G.edges():
-                ax.plot([pos[u][0], pos[v][0]],
-                        [pos[u][1], pos[v][1]],
-                        [pos[u][2], pos[v][2]], color='gray', alpha=0.5)
-            ax.set_axis_off()
+    if output_mode == "show":
+        plt.show()
+        if return_figure:
+            return fig, ax
         else:
-            ax = fig.add_subplot(2, 3, idx)
-            nx.draw(G, pos, ax=ax, with_labels=True, node_color=node_colors,
-                    node_size=600, edge_color='gray', arrows=True,
-                    arrowstyle='-|>', arrowsize=15, font_size=8)
-            if 'Eliptik' in title:
-                ax.set_aspect('equal')
-        ax.set_title(title, fontsize=11)
-
-    plt.tight_layout()
-    plt.show()
-
-def generate_maze(rows, cols):
-    """
-    Recursive Backtracking ile rows x cols boyutunda mükemmel bir labirent üretir.
-    Düğümler: (r, c) tuple'ları.
-    Kenarlar: aralarında duvar OLMAYAN komşu hücreleri bağlar.
-    """
-    # Başlangıçta tüm hücreler ziyaret edilmemiş
-    visited = [[False] * cols for _ in range(rows)]
-    # Labirent kenar listesi (bağlı hücreler)
-    edges = []
-
-    def carve(r, c):
-        visited[r][c] = True
-        directions = [(-1,0), (1,0), (0,-1), (0,1)]
-        random.shuffle(directions)
-        for dr, dc in directions:
-            nr, nc = r + dr, c + dc
-            if 0 <= nr < rows and 0 <= nc < cols and not visited[nr][nc]:
-                edges.append(((r, c), (nr, nc)))
-                carve(nr, nc)
-
-    # Rastgele başlangıç noktasından başla
-    start_r, start_c = random.randint(0, rows-1), random.randint(0, cols-1)
-    carve(start_r, start_c)
-    return edges
-
-def build_maze_graph(rows, cols, edges):
-    """Labirent kenarlarından NetworkX grafı oluşturur (yönsüz)."""
-    G = nx.Graph()
-    for u, v in edges:
-        G.add_edge(u, v)
-    # Tüm düğümleri ekle (izole kalmasın)
-    for r in range(rows):
-        for c in range(cols):
-            G.add_node((r, c))
-    return G
-
-def solve_maze(G, start, end):
-    """BFS ile en kısa yolu bulur, düğüm listesi döndürür."""
-    visited = {start}
-    queue = deque([(start, [start])])
-    while queue:
-        node, path = queue.popleft()
-        if node == end:
-            return path
-        for neighbor in G.neighbors(node):
-            if neighbor not in visited:
-                visited.add(neighbor)
-                queue.append((neighbor, path + [neighbor]))
-    return None
-
-def draw_maze_kececi(rows, cols, edges, solution_path=None):
-    """
-    Keçeci Layout ile labirent hücrelerini zigzag pozisyonlara yerleştirir,
-    duvarları ve isteğe bağlı çözüm yolunu çizer.
-    """
-    G = build_maze_graph(rows, cols, edges)
-
-    # Keçeci Layout: hücreleri soldan sağa, zigzag yukarı-aşağı sıralar.
-    # Düğümlerin sırasını (r,c) tuple'ına göre sıralayıp pozisyon veriyoruz.
-    pos = kececi_layout_2d(
-        G,
-        primary_direction='left-to-right',
-        secondary_start='up',
-        expanding=True,
-        primary_spacing=0.8,
-        secondary_spacing=0.6
-    )
-
-    plt.figure(figsize=(12, 8))
-    # Tüm mümkün komşulukları çiz (duvarları değil, sadece bağlı olanları)
-    nx.draw_networkx_edges(G, pos, edgelist=edges, edge_color='black', width=2)
+            plt.close(fig)
+            return None
     
-    # Düğümleri daire olarak çiz (hücre merkezleri)
-    nx.draw_networkx_nodes(G, pos, node_size=200, node_color='white', edgecolors='black', linewidths=1)
-
-    # Çözüm yolu varsa kırmızı ile vurgula
-    if solution_path:
-        path_edges = [(solution_path[i], solution_path[i+1]) for i in range(len(solution_path)-1)]
-        nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color='red', width=4)
-        # Başlangıç ve bitişi farklı renklerle göster
-        nx.draw_networkx_nodes(G, pos, nodelist=[solution_path[0]], node_color='green', node_size=300)
-        nx.draw_networkx_nodes(G, pos, nodelist=[solution_path[-1]], node_color='blue', node_size=300)
-
-    plt.title("Keçeci Labirent (Maze) - Zigzag Düzen", fontsize=14)
-    plt.axis('off')
-    plt.show()
-
-def kececi_maze_demo(rows=10, cols=10):
-    """
-    Keçeci Labirent Demo:
-    - rows x cols boyutunda rastgele mükemmel labirent oluşturur,
-    - Keçeci Layout ile zigzag düzende çizer,
-    - En kısa çözüm yolunu kırmızıyla gösterir.
-    """
-    edges = generate_maze(rows, cols)
-    G = build_maze_graph(rows, cols, edges)
-    start = (0, 0)
-    end = (rows-1, cols-1)
-    solution = solve_maze(G, start, end)
-    draw_maze_kececi(rows, cols, edges, solution)
-
-def kececi_game_tree_demo(depth=3, branching=2, seed=42):
-    """
-    İki kişilik sıfır toplamlı oyun için sentetik bir oyun ağacı oluşturur
-    (satranç / go benzeri) ve Keçeci Layout (zigzag) ile çizer.
-    
-    - depth: ağacın derinliği (kök hariç)
-    - branching: her düğümden çıkan ortalama hamle sayısı
-    - seed: rastgelelik için sabit
-    """
-    random.seed(seed)
-    G = nx.DiGraph()
-    
-    # Kök düğüm (MAX oyuncusu – genelde beyaz)
-    root = 0
-    G.add_node(root, player='MAX')
-    node_counter = 1
-    current_level = [root]
-    
-    for level in range(depth):
-        next_level = []
-        for parent in current_level:
-            # Bu seviyede her düğümden branching kadar çocuk üret (biraz rastgele)
-            num_children = random.randint(max(1, branching-1), branching+1)
-            for _ in range(num_children):
-                child = node_counter
-                node_counter += 1
-                # Sıradaki oyuncu: MAX'a karşı MIN
-                child_player = 'MIN' if G.nodes[parent]['player'] == 'MAX' else 'MAX'
-                G.add_node(child, player=child_player)
-                G.add_edge(parent, child)
-                next_level.append(child)
-        current_level = next_level
-        # Çok fazla büyümesini engellemek için sınırla
-        if len(current_level) > 20:
-            current_level = random.sample(current_level, 20)
-    
-    # Renk haritası
-    color_map = {'MAX': '#ff7f0e', 'MIN': '#1f77b4'}  # turuncu, mavi
-    node_colors = [color_map[G.nodes[n]['player']] for n in G.nodes()]
-    
-    # Keçeci Layout – soldan sağa zigzag
-    pos = kececi_layout_2d(
-        G, primary_direction='left-to-right',
-        secondary_start='up', expanding=True,
-        primary_spacing=1.0, secondary_spacing=0.6
-    )
-    
-    plt.figure(figsize=(14, 6))
-    nx.draw(G, pos, with_labels=True, node_color=node_colors,
-            node_size=800, edge_color='gray', arrows=True,
-            arrowstyle='-|>', arrowsize=12,
-            font_size=9, font_weight='bold')
-    
-    # Lejant ekle
-    from matplotlib.patches import Patch
-    legend_elements = [
-        Patch(facecolor=color_map['MAX'], label='MAX (Beyaz)'),
-        Patch(facecolor=color_map['MIN'], label='MIN (Siyah)')
-    ]
-    plt.legend(handles=legend_elements, loc='upper right')
-    
-    plt.title(f"Oyun Ağacı – Derinlik: {depth}, Dallanma ≈ {branching}\n(Keçeci Zigzag Layout)", fontsize=14)
-    plt.axis('off')
-    plt.show()
-
-def build_chess_shortest_games():
-    """
-    Birkaç ünlü en kısa mat varyantını (Çoban Matı (Scholar's Mate), Aptal Matı (Fool's Mate), iki hamlede mat vb.)
-    içeren yönlü bir oyun ağacı oluşturur.
-    Düğümler tahta konumları değil, hamle sırası + taraf bilgisidir.
-    Kenarlar hamle metnini (SAN) taşır.
-    """
-    # Her bir oyun = (oyun_adı, [(oyuncu, hamle), ...])   oyuncu: 'W' veya 'B'
-    games = [
-        ("Aptal Matı (Fool's Mate)", [
-            ('W', 'f3'), ('B', 'e5'), ('W', 'g4'), ('B', 'Qh4#')
-        ]),
-        ("Çoban Matı (Scholar's Mate)", [
-            ('W', 'e4'), ('B', 'e5'), ('W', 'Qh5'), ('B', 'Nc6'),('W', 'Bc4'), ('B', 'Nf6'), ('W', 'Qxf7#')
-        ]),
-        # Ek olarak iki hamlede mat (Beyaz oynarsa? Aslında en kısa 2 hamlede mat yok, ama ilginç)
-        ("En Kısa Mat (Siyah 2 hamlede)", [
-            ('W', 'f4'), ('B', 'e6'), ('W', 'g4'), ('B', 'Qh4#')
-        ]),
-    ]
-
-    G = nx.DiGraph()
-    root = "Başlangıç"
-    G.add_node(root, side='start')
-
-    # Renkler
-    color_map = {'W': '#ffffff', 'B': '#000000', 'start': '#cccccc'}
-    node_colors_dict = {root: color_map['start']}
-
-    # Oyunları ekle
-    for game_name, moves in games:
-        prev_node = root
-        move_num = 1
-        for side, move_san in moves:
-            # Düğüm adı: oyun adı + hamle numarası (benzersiz olsun diye)
-            node_id = f"{game_name}_{move_num}.{side}"
-            G.add_node(node_id, side=side)
-            edge_label = f"{move_num}.{move_san}" if side == 'W' else f"{move_num}...{move_san}"
-            G.add_edge(prev_node, node_id, label=edge_label)
-            node_colors_dict[node_id] = color_map[side] if side != 'start' else color_map['start']
-            prev_node = node_id
-            if side == 'B':
-                move_num += 1
-
-    # Renk listesini düğüm sırasına göre hazırla
-    node_colors = [node_colors_dict[n] for n in G.nodes()]
-    return G, node_colors_dict
-
-def draw_chess_shortest_kececi():
-    G, cdict = build_chess_shortest_games()
-    node_colors = [cdict[n] for n in G.nodes()]
-
-    # Keçeci Layout (soldan sağa zigzag)
-    pos = kececi_layout_2d(
-        G, primary_direction='left-to-right',
-        secondary_start='up', expanding=True,
-        primary_spacing=1.5, secondary_spacing=0.8
-    )
-
-    plt.figure(figsize=(14, 7))
-    nx.draw_networkx_nodes(G, pos, node_color=node_colors, edgecolors='gray',
-                           node_size=1200, linewidths=1.5)
-    nx.draw_networkx_edges(G, pos, edge_color='gray', arrows=True,
-                           arrowstyle='-|>', arrowsize=15)
-
-    # Düğüm etiketleri: kenarlarda hamle yazacak, düğümlerin içine kısa bilgi
-    # Düğüm etiketi olarak sadece taraf simgesi koyalım
-    labels = {}
-    for node, data in G.nodes(data=True):
-        if node == "Başlangıç":
-            labels[node] = "♟️"
+    elif output_mode == "save":
+        if filename:
+            output_filename = f"{filename}.png"
+            try:
+                save_kwargs = {
+                    "bbox_inches": "tight",
+                    "pad_inches": 0.1,
+                    "facecolor": fig.get_facecolor(),
+                    "dpi": dpi,
+                }
+                plt.savefig(output_filename, **save_kwargs)
+                if verbose:
+                    print(f"3D Fractal saved to: '{os.path.abspath(output_filename)}'")
+            except Exception as e:
+                print(f"Error saving file: {e}", file=sys.stderr)
+            finally:
+                if not return_figure:
+                    plt.close(fig)
+        if return_figure:
+            return fig, ax
         else:
-            side = data.get('side', '')
-            labels[node] = "♔" if side == 'W' else "♚" if side == 'B' else "?"
-    nx.draw_networkx_labels(G, pos, labels=labels, font_size=12, font_weight='bold')
-
-    # Kenar etiketleri: hamle isimleri
-    edge_labels = {(u, v): d['label'] for u, v, d in G.edges(data=True)}
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels,
-                                 font_size=8, label_pos=0.5, rotate=False)
-
-    # Başlık ve lejant
-    plt.title("En Kısa Satranç Matları\n(Aptal Matı (Fool's Mate ('W', 'f3'), ('B', 'e5'), ('W', 'g4'), ('B', 'Qh4#'))\nÇoban Matı (Scholar's Mate ('W', 'e4'), ('B', 'e5'), ('W', 'Qh5'), ('B', 'Nc6'),('W', 'Bc4'), ('B', 'Nf6'), ('W', 'Qxf7#'))\nİki hamlede mat ('W', 'f4'), ('B', 'e6'), ('W', 'g4'), ('B', 'Qh4#')\nKeçeci Layout (Zigzag)", fontsize=14)
-    # Lejant
-    from matplotlib.patches import Patch
-    legend_elements = [
-        Patch(facecolor='white', edgecolor='gray', label='Beyaz (♔)'),
-        Patch(facecolor='black', edgecolor='gray', label='Siyah (♚)'),
-        Patch(facecolor='#cccccc', edgecolor='gray', label='Başlangıç')
-    ]
-    plt.legend(handles=legend_elements, loc='upper left')
-    plt.axis('off')
-    plt.tight_layout()
-    plt.show()
-
-def build_chess_shortest_games():
-    """
-    Aptal Matı, Çoban Matı ve iki hamlede mat varyantlarını içeren
-    yönlü oyun ağacı oluşturur.
-    """
-    games = [
-        ("Aptal Matı (Fool's Mate)", [
-            ('W', 'f3'), ('B', 'e5'), ('W', 'g4'), ('B', 'Qh4#')
-        ]),
-        ("Çoban Matı (Scholar's Mate)", [
-            ('W', 'e4'), ('B', 'e5'), ('W', 'Qh5'), ('B', 'Nc6'),
-            ('W', 'Bc4'), ('B', 'Nf6'), ('W', 'Qxf7#')
-        ]),
-        ("İki Hamlede Mat", [
-            ('W', 'f4'), ('B', 'e6'), ('W', 'g4'), ('B', 'Qh4#')
-        ]),
-    ]
-
-    G = nx.DiGraph()
-    root = "Başlangıç"
-    G.add_node(root, side='start')
-    color_map = {'W': '#ffffff', 'B': '#000000', 'start': '#cccccc'}
-    node_colors_dict = {root: color_map['start']}
-
-    for game_name, moves in games:
-        prev_node = root
-        move_num = 1
-        for side, move_san in moves:
-            node_id = f"{game_name}_{move_num}.{side}"
-            G.add_node(node_id, side=side)
-            edge_label = f"{move_num}.{move_san}" if side == 'W' else f"{move_num}...{move_san}"
-            G.add_edge(prev_node, node_id, label=edge_label)
-            node_colors_dict[node_id] = color_map[side]
-            prev_node = node_id
-            if side == 'B':
-                move_num += 1
-
-    return G, node_colors_dict
-
-def draw_chess_3d_kececi(layout_type='cylindrical'):
-    """
-    3B Keçeci Layout ile satranç kısa matlarını çizer.
-    layout_type: 'cylindrical', 'spherical' veya 'toric'
-    """
-    G, cdict = build_chess_shortest_games()
-    node_colors = [cdict[n] for n in G.nodes()]
-
-    # 3B pozisyonları hesapla
-    if layout_type == 'spherical':
-        pos = kececi_layout_spherical(G, radius=5)
-    elif layout_type == 'toric':
-        pos = kececi_layout_toric(G, major_radius=5, minor_radius=2)
-    else:  # varsayılan silindirik
-        pos = kececi_layout_cylindrical(G, radius=4, height=12)
-
-    # 3B çizim
-    fig = plt.figure(figsize=(14, 10))
-    ax = fig.add_subplot(111, projection='3d')
-
-    # Düğümleri çiz
-    for node, (x, y, z) in pos.items():
-        color = cdict[node]
-        edgecolor = 'black' if color == '#ffffff' else 'white'
-        ax.scatter(x, y, z, s=200, c=color, edgecolors=edgecolor, linewidths=2)
-        # Etiket (sadece sembol)
-        if node == "Başlangıç":
-            label = "♟️"
-        else:
-            side = G.nodes[node]['side']
-            label = "♔" if side == 'W' else "♚"
-        ax.text(x, y, z+0.3, label, fontsize=10, ha='center', color='black')
-
-    # Kenarları çiz
-    for u, v, data in G.edges(data=True):
-        ax.plot([pos[u][0], pos[v][0]],
-                [pos[u][1], pos[v][1]],
-                [pos[u][2], pos[v][2]], color='gray', alpha=0.7)
-        # Kenar orta noktasına hamle etiketini ekle
-        mid = np.array([(pos[u][i] + pos[v][i])/2 for i in range(3)])
-        ax.text(mid[0] + 0.1, mid[1] + 0.1, mid[2] + 0.1,
-                data['label'], fontsize=7, color='darkred')
-
-    # Başlık – önemli terimler hashtag'li
-    title = ("En Kısa #Satranç Matları #Chess\n"
-             "Aptal Matı (Fool's Mate) • Çoban Matı (Scholar's Mate) • İki Hamlede Mat\n"
-             f"3B Keçeci Layout: {layout_type.capitalize()}")
-    ax.set_title(title, fontsize=13, pad=20)
-    ax.set_axis_off()
-    ax.view_init(elev=25, azim=-60)
-    plt.tight_layout()
-    plt.show()
-
-# Menüden kolay çağırmak için üç varyant
-def draw_chess_3d_cylindrical():
-    draw_chess_3d_kececi('cylindrical')
-
-def draw_chess_3d_spherical():
-    draw_chess_3d_kececi('spherical')
-
-def draw_chess_3d_toric():
-    draw_chess_3d_kececi('toric')
-
-def build_chess_tree(board=None, depth=2, max_moves=30):
-    """
-    Python‑chess ile yasal hamleleri kullanarak oyun ağacı oluşturur.
-    Her düğüme 'path' özelliği eklenir (ör: "1.e4 1...e5").
-    """
-    if board is None:
-        board = chess.Board()
-
-    G = nx.DiGraph()
-    root_fen = board.fen()
-    G.add_node(root_fen, turn=board.turn, path="Başlangıç")
-
-    def _recurse(node_board, node_fen, current_depth, path_str):
-        if current_depth <= 0:
-            return
-        legal_moves = list(node_board.legal_moves)
-        if len(legal_moves) > max_moves:
-            legal_moves = legal_moves[:max_moves]
-        move_number = node_board.fullmove_number
-        for move in legal_moves:
-            child_board = node_board.copy()
-            child_board.push(move)
-            child_fen = child_board.fen()
-            move_san = node_board.san(move)
-            # Hamle numarası ve taraf
-            if node_board.turn == chess.WHITE:
-                move_text = f"{move_number}.{move_san}"
-            else:
-                move_text = f"{move_number}...{move_san}"
-
-            new_path = f"{path_str} {move_text}".strip()
-            G.add_node(child_fen, turn=child_board.turn, path=new_path)
-            G.add_edge(node_fen, child_fen, move=move_san)
-            _recurse(child_board, child_fen, current_depth - 1, new_path)
-
-    _recurse(board, root_fen, depth, "")
-    return G
-
-### 2B Zigzag (Büyük yazı, büyük düğüm)
-def draw_chess_engine_tree_2d(depth=2, max_moves=6):
-    G = build_chess_tree(depth=depth, max_moves=max_moves)
-    node_colors = ['#ffe0b2' if G.nodes[n]['turn'] == chess.WHITE else '#bbdefb' for n in G.nodes()]
-    labels = {n: G.nodes[n]['path'] for n in G.nodes()}
-
-    pos = kececi_layout_2d(
-        G, primary_direction='left-to-right',
-        secondary_start='up', expanding=True,
-        primary_spacing=2.5, secondary_spacing=1.5
-    )
-
-    plt.figure(figsize=(20, 14))
-    nx.draw_networkx_nodes(G, pos, node_color=node_colors,
-                           node_size=700, edgecolors='gray', linewidths=1.5)
-    nx.draw_networkx_edges(G, pos, edge_color='gray', width=1.2,
-                           arrows=True, arrowstyle='-|>', arrowsize=15)
-    nx.draw_networkx_labels(G, pos, labels=labels, font_size=7, font_weight='bold')
-
-    edge_labels = {(u, v): d['move'] for u, v, d in G.edges(data=True)}
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels,
-                                 font_size=6, label_pos=0.5, rotate=False)
-
-    plt.title(f"Satranç Oyun Ağacı – python‑chess (derinlik={depth})\n"
-              "#Satranç #Chess #Keçeci", fontsize=18, fontweight='bold')
-    from matplotlib.patches import Patch
-    legend = [Patch(facecolor='#ffe0b2', label='Beyaz'), Patch(facecolor='#bbdefb', label='Siyah')]
-    plt.legend(handles=legend, loc='upper left', fontsize=12)
-    plt.axis('off')
-    plt.tight_layout()
-    plt.show()
-
-### 3B Silindirik / Küresel / Torik (Büyük, okunaklı)
-def draw_chess_engine_tree_3d(depth=2, layout_type='cylindrical', max_moves=6):
-    G = build_chess_tree(depth=depth, max_moves=max_moves)
-    colors = ['#ffe0b2' if G.nodes[n]['turn'] == chess.WHITE else '#bbdefb' for n in G.nodes()]
-    node_list = list(G.nodes())
-
-    if layout_type == 'spherical':
-        pos = kececi_layout_spherical(G, radius=7)
-    elif layout_type == 'toric':
-        pos = kececi_layout_toric(G, major_radius=7, minor_radius=3)
+            plt.close(fig)
+            return None
+    
+    elif output_mode == "return" or return_figure:
+        # Just return the figure without showing
+        return fig, ax
+    
     else:
-        pos = kececi_layout_cylindrical(G, radius=6, height=16)
-
-    fig = plt.figure(figsize=(18, 14))
-    ax = fig.add_subplot(111, projection='3d')
-
-    for node, (x, y, z) in pos.items():
-        idx = node_list.index(node)
-        ax.scatter(x, y, z, s=200, c=colors[idx], edgecolors='black', linewidths=0.5)
-        # Düğüm yanına path etiketi
-        path = G.nodes[node]['path']
-        ax.text(x, y, z + 0.5, path, fontsize=6, color='black', ha='center', va='bottom')
-
-    for u, v, data in G.edges(data=True):
-        ax.plot([pos[u][0], pos[v][0]], [pos[u][1], pos[v][1]], [pos[u][2], pos[v][2]],
-                color='gray', alpha=0.7, linewidth=1.2)
-        if 'move' in data:
-            mid = [(pos[u][i] + pos[v][i]) / 2 for i in range(3)]
-            ax.text(mid[0], mid[1], mid[2], data['move'], fontsize=5, color='darkred',
-                    ha='center', va='center')
-
-    ax.set_title(f"Satranç Oyun Ağacı – python‑chess 3D {layout_type}\n"
-                 "#Satranç #Chess #Keçeci", fontsize=16, fontweight='bold', pad=25)
-    ax.set_axis_off()
-    fig.subplots_adjust(left=0.02, right=0.98, top=0.92, bottom=0.02)
-    plt.show()
-
-# Menü için kısa fonksiyonlar
-def chess_engine_2d_demo(): draw_chess_engine_tree_2d(depth=2, max_moves=6)
-def chess_engine_3d_cyl_demo(): draw_chess_engine_tree_3d(depth=2, layout_type='cylindrical', max_moves=6)
-def chess_engine_3d_sph_demo(): draw_chess_engine_tree_3d(depth=2, layout_type='spherical', max_moves=6)
-def chess_engine_3d_tor_demo(): draw_chess_engine_tree_3d(depth=2, layout_type='toric', max_moves=6)
-
-def random_chess_opening_moves():
-    """
-    Beyazın 20 olası ilk hamlesini rastgele sırayla karıştırır ve
-    '(Nh3, Nf3, Nc3, Na3, h3, g3, f3, e3, d3, c3, b3, a3, h4, g4, f4, e4, d4, c4, b4, a4)'
-    formatında ekrana yazdırır. Her çalıştırmada farklı bir sıra gösterir.
-    """
-    moves = ["Nh3","Nf3","Nc3","Na3","h3","g3","f3","e3","d3","c3","b3","a3",
-             "h4","g4","f4","e4","d4","c4","b4","a4"]
-    random.shuffle(moves)
-    output = "(" + ", ".join(moves) + ")"
-    print(output)
-
-def thermodynamics_concept_map():
-    """
-    Termodinamiğin temel büyüklüklerini ve aralarındaki ilişkileri
-    Keçeci Layout (2B zigzag) ile görselleştirir.
-    """
-    G = nx.Graph()
-
-    # Düğüm bilgileri: kısaltma, Türkçe adı, türü
-    nodes_info = {
-        'P': ('Basınç', 'state'),
-        'V': ('Hacim', 'state'),
-        'T': ('Sıcaklık', 'state'),
-        'n': ('Mol Sayısı', 'state'),
-        'U': ('İç Enerji', 'energy'),
-        'H': ('Entalpi', 'energy'),
-        'S': ('Entropi', 'energy'),
-        'Q': ('Isı', 'process'),
-        'W': ('İş', 'process')
-    }
-    for node, (name, typ) in nodes_info.items():
-        G.add_node(node, label=name, type=typ)
-
-    # İlişkiler (denklem etiketleriyle birlikte)
-    edges = [
-        ('P', 'V', 'PV=nRT'),
-        ('V', 'T', 'PV=nRT'),
-        ('P', 'T', 'PV=nRT'),
-        ('n', 'P', 'PV=nRT'),
-        ('n', 'V', 'PV=nRT'),
-        ('n', 'T', 'PV=nRT'),
-        ('U', 'Q', 'ΔU=Q-W'),
-        ('U', 'W', 'ΔU=Q-W'),
-        ('S', 'Q', 'dS ≥ δQ/T'),
-        ('S', 'T', 'dS ≥ δQ/T'),
-        ('H', 'U', 'H = U + PV'),
-        ('H', 'P', 'H = U + PV'),
-        ('H', 'V', 'H = U + PV'),
-    ]
-    for u, v, label in edges:
-        G.add_edge(u, v, equation=label)
-
-    # Türlere göre renkler
-    type_color = {
-        'state': '#a6cee3',   # açık mavi – durum değişkenleri
-        'energy': '#b2df8a',  # açık yeşil – enerji büyüklükleri
-        'process': '#fb9a99'  # somon – süreç büyüklükleri
-    }
-    node_colors = [type_color[G.nodes[n]['type']] for n in G.nodes()]
-
-    # Düğüm etiketleri: sembol ve ad
-    labels = {n: f"{n}\n({G.nodes[n]['label']})" for n in G.nodes()}
-
-    # Keçeci Zigzag konumlandırması
-    pos = kececi_layout_2d(
-        G,
-        primary_direction='left-to-right',
-        secondary_start='up',
-        expanding=True,
-        primary_spacing=2.5,   # yatay boşluk
-        secondary_spacing=1.5  # dikey zigzag boşluğu
-    )
-
-    # Çizim
-    plt.figure(figsize=(16, 10))
-    nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=2500,
-                           edgecolors='black', linewidths=1.5)
-    nx.draw_networkx_labels(G, pos, labels=labels, font_size=10, font_weight='bold')
-    nx.draw_networkx_edges(G, pos, edge_color='gray', width=2)
-
-    # Kenar etiketlerini yalnızca denklem olanlara ekle
-    edge_labels = {(u, v): data['equation']
-                   for u, v, data in G.edges(data=True) if data.get('equation')}
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels,
-                                 font_size=9, rotate=False,
-                                 bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
-
-    plt.title("Termodinamik Kavram Haritası\nKeçeci Layout ile Fiziksel Model",
-              fontsize=18, fontweight='bold')
-
-    # Lejant
-    from matplotlib.patches import Patch
-    legend_elements = [
-        Patch(facecolor='#a6cee3', label='Durum Değişkenleri (P, V, T, n)'),
-        Patch(facecolor='#b2df8a', label='Enerji Büyüklükleri (U, H, S)'),
-        Patch(facecolor='#fb9a99', label='Süreç Büyüklükleri (Q, W)')
-    ]
-    plt.legend(handles=legend_elements, loc='lower left', fontsize=11)
-    plt.axis('off')
-    plt.tight_layout()
-    plt.show()
-
-def quantum_mechanics_concept_map():
-    """
-    Kuantum mekaniğinin temel kavramlarını ve aralarındaki matematiksel/fiziksel ilişkileri,
-    Keçeci Layout (genişleyen zigzag) kullanarak renkli bir kavram haritası olarak çizer.
-    """
-    G = nx.Graph()
-
-    # Düğüm bilgileri: id, etiket, kategori
-    nodes = {
-        'psi': ('Dalga Fonksiyonu (ψ)', 'state'),
-        'sch_eq': ('Schrödinger Denklemi', 'equation'),
-        'hamiltonian': ('Hamiltonyen (Ĥ)', 'operator'),
-        'energy': ('Enerji Özdeğerleri (E_n)', 'observable'),
-        'superpos': ('Süperpozisyon', 'principle'),
-        'measure': ('Ölçüm', 'process'),
-        'uncertainty': ('Belirsizlik İlkesi', 'principle'),
-        'entangle': ('Dolanıklık', 'phenomenon'),
-        'operator': ('Operatörler', 'operator'),
-        'eigen': ('Özdurumlar', 'state'),
-    }
-
-    # Kategori renkleri
-    categories = {
-        'state':       '#a6cee3',   # açık mavi
-        'equation':    '#b2df8a',   # açık yeşil
-        'operator':    '#fb9a99',   # somon
-        'observable':  '#fdbf6f',   # açık turuncu
-        'principle':   '#cab2d6',   # lavanta
-        'process':     '#ffff99',   # açık sarı
-        'phenomenon':  '#ff7f00',   # turuncu
-    }
-
-    for nid, (name, cat) in nodes.items():
-        G.add_node(nid, label=name, category=cat)
-
-    # İlişkiler (kenar açıklamalarıyla birlikte)
-    edges = [
-        ('sch_eq', 'psi', 'iħ ∂ψ/∂t = Ĥψ'),
-        ('sch_eq', 'hamiltonian', 'Ĥ = T + V'),
-        ('hamiltonian', 'energy', 'Ĥψ_n = E_n ψ_n'),
-        ('psi', 'superpos', 'Doğrusal Birleşim'),
-        ('superpos', 'measure', 'Dalga Fonksiyonu Çökmesi'),
-        ('measure', 'uncertainty', 'Δx·Δp ≥ ħ/2'),
-        ('psi', 'eigen', 'Özdurum Bazı'),
-        ('operator', 'hamiltonian', 'Enerji Operatörü'),
-        ('operator', 'measure', 'Gözlenebilir Ölçümü'),
-        ('superpos', 'entangle', 'Dolanık Durumlar'),
-        ('eigen', 'energy', 'Ayrık Tayf'),
-        ('entangle', 'measure', 'Bell Eşitsizliği'),
-    ]
-    for u, v, desc in edges:
-        G.add_edge(u, v, description=desc)
-
-    # Renk listesi ve etiketler
-    node_colors = [categories[G.nodes[n]['category']] for n in G.nodes()]
-    labels = {n: G.nodes[n]['label'] for n in G.nodes()}
-
-    # Keçeci Layout pozisyonları
-    pos = kececi_layout_2d(
-        G,
-        primary_direction='left-to-right',
-        secondary_start='up',
-        expanding=True,
-        primary_spacing=2.8,
-        secondary_spacing=1.8
-    )
-
-    # Çizim
-    plt.figure(figsize=(18, 12))
-    nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=2500,
-                           edgecolors='black', linewidths=2.5)
-    nx.draw_networkx_labels(G, pos, labels=labels, font_size=14, font_weight='bold')
-    nx.draw_networkx_edges(G, pos, edge_color='gray', width=3.5)
-
-    # Kenar etiketleri – fontu büyütüldü, arka plan hafifletildi
-    edge_labels = {(u, v): data['description'] for u, v, data in G.edges(data=True)}
-    nx.draw_networkx_edge_labels(
-        G, pos, edge_labels=edge_labels,
-        font_size=11,                      # daha büyük yazı
-        label_pos=0.5,
-        bbox=dict(boxstyle='round,pad=0.3',
-                  facecolor='white',       # beyaz arka plan
-                  alpha=0.65,              # daha transparan
-                  edgecolor='none')        # kenar çizgisi olmasın
-    )
-
-    plt.title("Kuantum Mekaniği Kavram Haritası\nKeçeci Layout", fontsize=20, fontweight='bold')
-
-    # Lejant
-    from matplotlib.patches import Patch
-    legend_elements = [Patch(facecolor=color, label=cat) for cat, color in categories.items()]
-    plt.legend(handles=legend_elements, loc='lower right', fontsize=14)
-
-    plt.axis('off')
-    plt.tight_layout()
-    plt.show()
-"""
-def quantum_field_theory_concept_map():
-    
-    Kuantum Alan Teorisi (QFT) kavram haritası – Keçeci Layout,
-    çakışan düğüm/kenar etiketleri düzeltilmiştir.
-
-    G = nx.Graph()
-
-    # Düğümler: (id, (etiket, kategori))
-    # Uzun etiketler iki satıra bölündü → \n eklenerek okunurluk arttı.
-    nodes = {
-        'field':       ('Alan Operatörü\nφ(x)', 'field'),
-        'lagrangian':  ('Lagranjiyen\nYoğunluğu ℒ', 'equation'),
-        'euler':       ('Euler‑Lagrange\nDenklemleri', 'equation'),
-        'quantization':('Kanonik\nKuantizasyon', 'method'),
-        'feynman':     ('Feynman\nDiyagramları', 'method'),
-        'propagator':  ('Feynman\nPropagatörü Δ_F', 'observable'),
-        'vacuum':      ('Vakum\nDalgalanmaları', 'phenomenon'),
-        'gauge':       ('Ayar Teorisi\nU(1), SU(2), SU(3)', 'theory'),
-        'renorm':      ('Renormalizasyon', 'method'),
-        'scattering':  ('Saçılma\nMatrisi (S)', 'observable'),
-    }
-
-    categories = {
-        'field':       '#a6cee3',
-        'equation':    '#b2df8a',
-        'method':      '#fb9a99',
-        'observable':  '#fdbf6f',
-        'phenomenon':  '#cab2d6',
-        'theory':      '#ffff99',
-    }
-
-    for nid, (label, cat) in nodes.items():
-        G.add_node(nid, label=label, category=cat)
-
-    edges = [
-        ('lagrangian', 'field', 'ℒ(φ, ∂_μφ)'),
-        ('lagrangian', 'euler', 'δS/δφ = 0'),
-        ('euler', 'field', '∂_μ ∂^μφ + m²φ = 0'),
-        ('field', 'quantization', '    [φ(x), π(y)] = iħ δ³(x-y)'),
-        ('quantization', 'propagator', 'Δ_F(x-y) = ⟨0|T φ(x)φ(y)|0⟩'),
-        ('propagator', 'feynman', 'Diyagram Kuralları'),
-        ('feynman', 'scattering', '    S = T exp(-i∫ ℋ_int d⁴x)'),
-        ('vacuum', 'field', 'Vakum Beklenen Değeri'),
-        ('quantization', 'vacuum', 'Sıfır Noktası Enerjisi'),
-        ('gauge', 'field', 'A_μ(x) → A_μ(x) + ∂_μ α(x)'),
-        ('gauge', 'renorm', 'β(g) = μ ∂g/∂μ'),
-        ('renorm', 'propagator', 'Karşıt Terimler'),
-        ('scattering', 'renorm', 'Sonlu Genlikler'),
-    ]
-    for u, v, desc in edges:
-        G.add_edge(u, v, description=desc)
-
-    node_colors = [categories[G.nodes[n]['category']] for n in G.nodes()]
-    labels = {n: G.nodes[n]['label'] for n in G.nodes()}
-
-    # Keçeci Layout
-    pos = kececi_layout_2d(
-        G,
-        primary_direction='left-to-right',
-        secondary_start='up',
-        expanding=True,
-        primary_spacing=3.0,
-        secondary_spacing=2.0
-    )
-
-    # Çakışan düğümleri hafifçe kaydır (lagrangian, propagator, gauge)
-    shift_nodes = {
-        'lagrangian': (0, -0.15),
-        'propagator': (0, 0.15),
-        'gauge': (0, -0.15),
-    }
-    for node, (dx, dy) in shift_nodes.items():
-        if node in pos:
-            x, y = pos[node]
-            pos[node] = (x, y + dy)
-
-    plt.figure(figsize=(18, 12))
-    nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=2500,
-                           edgecolors='black', linewidths=2.5)
-    nx.draw_networkx_labels(G, pos, labels=labels, font_size=12, font_weight='bold')
-    nx.draw_networkx_edges(G, pos, edge_color='gray', width=3)
-
-    # Kenar etiketleri: label_pos 0.65 (ortadan biraz uzak)
-    edge_labels = {(u, v): data['description'] for u, v, data in G.edges(data=True)}
-    nx.draw_networkx_edge_labels(
-        G, pos, edge_labels=edge_labels,
-        font_size=10, label_pos=0.65, rotate=False,
-        bbox=dict(boxstyle='round,pad=0.3', facecolor='white',
-                  alpha=0.75, edgecolor='none')
-    )
-
-    plt.title("Kuantum Alan Teorisi (QFT) Kavram Haritası\nKeçeci Layout",
-              fontsize=18, fontweight='bold')
-    from matplotlib.patches import Patch
-    legend_elements = [Patch(facecolor=color, label=cat) for cat, color in categories.items()]
-    plt.legend(handles=legend_elements, loc='lower right', fontsize=12)
-    plt.axis('off')
-    plt.tight_layout()
-    plt.show()
-"""
+        print(f"Invalid output_mode: '{output_mode}'. Choose 'show', 'save', or 'return'.",
+              file=sys.stderr)
+        plt.close(fig)
+        return None
 
 """
-def quantum_field_theory_concept_map():
-    #Kuantum Alan Teorisi (QFT) Kavram Haritası – Keçeci Layout (curved kenarlar)
-
-    G = nx.Graph()
-
-    nodes = {
-        'field': ('Alan Operatörü\nφ(x)', 'field'),
-        'lagrangian': ('Lagranjiyen\nYoğunluğu ℒ', 'equation'),
-        'euler': ('Euler‑Lagrange\nDenklemleri', 'equation'),
-        'quantization': ('Kanonik\nKuantizasyon', 'method'),
-        'feynman': ('Feynman\nDiyagramları', 'method'),
-        'propagator': ('Feynman\nPropagatörü Δ_F', 'observable'),
-        'vacuum': ('Vakum\nDalgalanmaları', 'phenomenon'),
-        'gauge': ('Ayar Teorisi\nU(1), SU(2), SU(3)', 'theory'),
-        'renorm': ('Renormalizasyon', 'method'),
-        'scattering': ('Saçılma\nMatrisi (S)', 'observable'),
-    }
-
-    categories = {
-        'field': '#a6cee3', 'equation': '#b2df8a', 'method': '#fb9a99',
-        'observable': '#fdbf6f', 'phenomenon': '#cab2d6', 'theory': '#ffff99',
-    }
-
-    for nid, (label, cat) in nodes.items():
-        G.add_node(nid, label=label, category=cat)
-
-    edges = [
-        ('lagrangian', 'field', 'ℒ(φ, ∂_μφ)'),
-        ('lagrangian', 'euler', '                                                                         δS/δφ = 0'),
-        ('euler', 'field', '        ∂_μ ∂^μφ + m²φ = 0'),
-        ('field', 'quantization', '                                                       [φ(x), π(y)] = iħ δ³(x-y)'),
-        ('quantization', 'propagator', 'Δ_F(x-y) = ⟨0|T φ(x)φ(y)|0⟩'),
-        ('propagator', 'feynman', '                                 Diyagram Kuralları'),
-        ('feynman', 'scattering', '                S = T exp(-i∫ ℋ_int d⁴x)'),
-        ('vacuum', 'field', 'Vakum Beklenen Değeri'),
-        ('quantization', 'vacuum', 'Sıfır Noktası Enerjisi'),
-        ('gauge', 'field', 'A_μ(x) → A_μ(x) + ∂_μ α(x)'),
-        ('gauge', 'renorm', '                                    β(g) = μ ∂g/∂μ'),
-        ('renorm', 'propagator', 'Karşıt Terimler'),
-        ('scattering', 'renorm', 'Sonlu Genlikler'),
-    ]
-    for u, v, desc in edges:
-        G.add_edge(u, v, description=desc)
-
-    # Renk ve etiket listeleri
-    node_colors = [categories[G.nodes[n]['category']] for n in G.nodes()]
-    labels = {n: G.nodes[n]['label'] for n in G.nodes()}
-
-    # Keçeci Layout pozisyonları (yatay zigzag)
-    pos = kececi_layout_2d(G,
-                           primary_direction='left-to-right',
-                           secondary_start='up',
-                           expanding=True,
-                           primary_spacing=6.5,
-                           secondary_spacing=3.0)
-
-    # Çakışma riski olan düğümleri hafifçe kaydır
-    shift = {'lagrangian': (0, -0.15), 'propagator': (0, 0.15), 'gauge': (0, -0.15)}
-    for node, (dx, dy) in shift.items():
-        if node in pos:
-            pos[node] = (pos[node][0], pos[node][1] + dy)
-
-    # ------ draw_kececi ile çizim (curved stil) ------
-    ax = draw_kececi(G, pos=pos, style='curved', with_labels=False,
-                     node_color=node_colors, node_size=2500,
-                     edge_color='gray', edge_width=2.5)
-
-    # Düğüm etiketleri
-    nx.draw_networkx_labels(G, pos, labels=labels,
-                            font_size=12, font_weight='bold')
-
-    # Kenar etiketleri (denklemler)
-    edge_labels = {(u, v): data['description'] for u, v, data in G.edges(data=True)}
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels,
-                                 font_size=10, label_pos=0.6, rotate=False,
-                                 bbox=dict(boxstyle='round,pad=0.3',
-                                           facecolor='white', alpha=0.8,
-                                           edgecolor='none'))
-
-    # Başlık ve açıklama kutusu
-    ax.set_title("Kuantum Alan Teorisi (QFT) Kavram Haritası\n"
-                 "Keçeci Layout (curved)", fontsize=18, fontweight='bold')
-
-    from matplotlib.patches import Patch
-    legend_elements = [Patch(facecolor=color, label=cat) for cat, color in categories.items()]
-    ax.legend(handles=legend_elements, loc='lower left', fontsize=12)
-
-    plt.tight_layout()
-    plt.show()
-"""
-def quantum_field_theory_concept_map():
-    """Kuantum Alan Teorisi (QFT) Kavram Haritası – Keçeci Layout (curved kenarlar)"""
-
-    G = nx.Graph()
-
-    nodes = {
-        'field':        ('Alan Operatörü\nφ(x)', 'field'),
-        'lagrangian':   ('Lagranjiyen\nYoğunluğu ℒ', 'equation'),
-        'euler':        ('Euler‑Lagrange\nDenklemleri', 'equation'),
-        'quantization': ('Kanonik\nKuantizasyon', 'method'),
-        'feynman':      ('Feynman\nDiyagramları', 'method'),
-        'propagator':   ('Feynman\nPropagatörü Δ_F', 'observable'),
-        'vacuum':       ('Vakum\nDalgalanmaları', 'phenomenon'),
-        'gauge':        ('Ayar Teorisi\nU(1), SU(2), SU(3)', 'theory'),
-        'renorm':       ('Renormalizasyon', 'method'),
-        'scattering':   ('Saçılma\nMatrisi (S)', 'observable'),
-    }
-
-    categories = {
-        'field':       '#a6cee3',
-        'equation':    '#b2df8a',
-        'method':      '#fb9a99',
-        'observable':  '#fdbf6f',
-        'phenomenon':  '#cab2d6',
-        'theory':      '#ffff99',
-    }
-
-    for nid, (label, cat) in nodes.items():
-        G.add_node(nid, label=label, category=cat)
-
-    edges = [
-        ('lagrangian', 'field',        'ℒ(φ, ∂_μφ)'),
-        ('lagrangian', 'euler',        'δS/δφ = 0'),
-        ('euler', 'field',             '∂_μ ∂^μφ + m²φ = 0'),
-        ('field', 'quantization',      '[φ(x), π(y)] = iħ δ³(x-y)'),
-        ('quantization', 'propagator', 'Δ_F(x-y) = ⟨0|T φ(x)φ(y)|0⟩'),
-        ('propagator', 'feynman',      'Diyagram Kuralları'),
-        ('feynman', 'scattering',      'S = T exp(-i∫ ℋ_int d⁴x)'),
-        ('vacuum', 'field',            'Vakum Beklenen Değeri'),
-        ('quantization', 'vacuum',     'Sıfır Noktası Enerjisi'),
-        ('gauge', 'field',             'A_μ(x) → A_μ(x) + ∂_μ α(x)'),
-        ('gauge', 'renorm',            'β(g) = μ ∂g/∂μ'),
-        ('renorm', 'propagator',       'Karşıt Terimler'),
-        ('scattering', 'renorm',       'Sonlu Genlikler'),
-    ]
-    for u, v, desc in edges:
-        G.add_edge(u, v, description=desc)
-
-    node_colors = [categories[G.nodes[n]['category']] for n in G.nodes()]
-    labels = {n: G.nodes[n]['label'] for n in G.nodes()}
-
-    # Keçeci Layout: geniş aralıklar
-    pos = kececi_layout_2d(
-        G,
-        primary_direction='left-to-right',
-        secondary_start='up',
-        expanding=True,
-        primary_spacing=4.5,      # yatay boşluk – ferah
-        secondary_spacing=2.5     # dikey zigzag boşluğu
-    )
-
-    # Çakışma riskli düğümleri hafifçe kaydır (öncekiyle aynı)
-    shift = {
-        'lagrangian': (0, -0.2),
-        'propagator': (0,  0.2),
-        'gauge':      (0, -0.2),
-    }
-    for node, (dx, dy) in shift.items():
-        if node in pos:
-            pos[node] = (pos[node][0], pos[node][1] + dy)
-
-    # draw_kececi ile çizim – curved stil
-    ax = draw_kececi(
-        G, pos=pos, style='curved', with_labels=False,
-        node_color=node_colors, node_size=600,   # biraz daha ufak, temiz
-        edge_color='gray', edge_width=2.5
-    )
-
-    # Düğüm etiketleri
-    nx.draw_networkx_labels(
-        G, pos, labels=labels,
-        font_size=11, font_weight='bold'
-    )
-
-    # Kenar etiketleri – label_pos = 0.7 ile düğümlerden uzaklaştırıldı
-    edge_labels = {(u, v): data['description'] for u, v, data in G.edges(data=True)}
-    nx.draw_networkx_edge_labels(
-        G, pos, edge_labels=edge_labels,
-        font_size=11, label_pos=0.7, rotate=False,
-        bbox=dict(boxstyle='round,pad=0.3',
-                  facecolor='white', alpha=0.85, edgecolor='none')
-    )
-
-    ax.set_title("Kuantum Alan Teorisi (QFT) Kavram Haritası\n"
-                 "Keçeci Layout (curved)", fontsize=18, fontweight='bold')
-
-    from matplotlib.patches import Patch
-    legend_elements = [Patch(facecolor=color, label=cat) for cat, color in categories.items()]
-    ax.legend(handles=legend_elements, loc='lower left', fontsize=12)
-
-    plt.tight_layout()
-    plt.show()
-
-def kececi_layout_3d(G, primary_spacing=1.0, secondary_spacing=0.5, tertiary_spacing=0.3, expanding=True):
-    """
-    3D Keçeci Layout: x = sıra, y = zigzag (ikincil), z = katlanmış (üçüncül)
-    expanding=True ile her seviyede hafif açılma.
-    """
-    pos = {}
-    nodes = list(G.nodes())
-    for i, node in enumerate(nodes):
-        x = i * primary_spacing
-        if expanding:
-            y = (i % 2) * secondary_spacing * (1 + 0.1 * i)
-            z = ((i // 2) % 2) * tertiary_spacing * (1 + 0.05 * i)
-        else:
-            y = (i % 2) * secondary_spacing
-            z = ((i // 2) % 2) * tertiary_spacing
-        pos[node] = (x, y, z)
-    return pos
-
-def kececi_layout_curved(G, **kwargs):
-    """
-    Curved stil için layout değil, sadece uyumluluk taklidi.
-    Aslında curved stil çizim aşamasında belirlenir.
-    Bu fonksiyon normal 2D layout'u döndürür.
-    """
-    # Normal 2D layout'u döndür (curved sadece çizim stilidir)
-    from kececilayout import kececi_layout_2d
-    return kececi_layout_2d(G, **kwargs)
-
-# -------------------------------------------------------------------------
-# 2. Yardımcı çizim fonksiyonları (eksik olanlar)
-# -------------------------------------------------------------------------
-def _draw_curved(G, primary_direction='left-to-right', secondary_start='up', expanding=True):
-    """Eğri kenarlı Keçeci Layout çizimi."""
-    try:
-        from kececilayout import kececi_layout
-        pos = kececi_layout(G, primary_direction=primary_direction,
-                            secondary_start=secondary_start, expanding=expanding)
-    except ImportError:
-        pos = kececi_layout_3d(G)  # fallback
-    plt.figure(figsize=(10, 8))
-    nx.draw(G, pos, with_labels=True, node_color='#1f78b4', node_size=700,
-            font_color='white', connectionstyle='arc3,rad=0.2', arrows=True)
-    plt.title("Keçeci Curved Style")
-    plt.show()
-
-def _draw_transparent(G, primary_direction='top_down', secondary_start='right', expanding=True):
-    """Şeffaf kenarlı Keçeci Layout."""
-    try:
-        from kececilayout import kececi_layout
-        pos = kececi_layout(G, primary_direction=primary_direction,
-                            secondary_start=secondary_start, expanding=expanding)
-    except ImportError:
-        pos = kececi_layout_3d(G)
-    plt.figure(figsize=(10, 8))
-    nx.draw_networkx_nodes(G, pos, node_color='#2ca02c', node_size=700)
-    nx.draw_networkx_labels(G, pos, font_color='white')
-    edge_lengths = {e: np.linalg.norm(np.array(pos[e[0]]) - np.array(pos[e[1]]))
-                    for e in G.edges()}
-    max_len = max(edge_lengths.values()) if edge_lengths else 1.0
-    for edge, length in edge_lengths.items():
-        alpha = 0.15 + 0.85 * (1 - length / max_len)
-        nx.draw_networkx_edges(G, pos, edgelist=[edge], width=1.5,
-                               edge_color='black', alpha=alpha)
-    plt.title("Keçeci Transparent Style")
-    plt.show()
-
-def _draw_3d_generic(G, pos, title):
-    """3D grafik çizimi (yardımcı)."""
-    fig = plt.figure(figsize=(10,8))
-    ax = fig.add_subplot(111, projection='3d')
-    for node, (x,y,z) in pos.items():
-        ax.scatter(x,y,z, s=100, c='orange')
-        ax.text(x,y,z, str(node), size=8)
-    for u,v in G.edges():
-        ax.plot([pos[u][0],pos[v][0]], [pos[u][1],pos[v][1]], [pos[u][2],pos[v][2]],
-                color='gray', alpha=0.5)
-    ax.set_title(title)
-    ax.set_axis_off()
-    plt.show()
-
-# --------------------------------------------------------------------------
-# 1. Flat spacetime koordinat üreteçleri (2D/3D)
-# --------------------------------------------------------------------------
-def generate_flat_spacetime_2d(num_elements: int = 100, seed: Optional[int] = None) -> pd.DataFrame:
-    """2D flat spacetime (x, t) with causal order."""
-    if seed is not None:
-        np.random.seed(seed)
-    u = np.random.rand(num_elements)
-    v = np.random.rand(num_elements)
-    t = (u + v) / np.sqrt(2)
-    x = (u - v) / np.sqrt(2)
-    df = pd.DataFrame({"x": x, "t": t})
-    return df.sort_values("t").reset_index(drop=True)
-
-def generate_flat_spacetime_3d(num_elements: int = 100, seed: Optional[int] = None) -> pd.DataFrame:
-    """3D flat spacetime (x, y, t) with causal order."""
-    if seed is not None:
-        np.random.seed(seed)
-    u = np.random.rand(num_elements) ** (1.0/3)
-    v = u - np.sqrt(u*u * (1 - np.random.rand(num_elements)))
-    theta = 2 * np.pi * np.random.rand(num_elements)
-    t = (u + v) / np.sqrt(2)
-    r = (u - v) / np.sqrt(2)
-    x = r * np.cos(theta)
-    y = r * np.sin(theta)
-    df = pd.DataFrame({"x": x, "y": y, "t": t})
-    return df.sort_values("t").reset_index(drop=True)
-
-# --------------------------------------------------------------------------
-# 2. Causal DAG oluşturma (2D / 3D)
-# --------------------------------------------------------------------------
-def causal_dag_2d(coords: pd.DataFrame) -> nx.DiGraph:
-    """2D'de t ≥ |Δx| koşulu ile kenar ekler."""
-    G = nx.DiGraph()
-    for i, row in coords.iterrows():
-        G.add_node(i, **row.to_dict())
-    n = len(coords)
-    for i in range(n):
-        for j in range(i+1, n):
-            dt = coords.loc[j, 't'] - coords.loc[i, 't']
-            if dt <= 0:
-                continue
-            dx = coords.loc[j, 'x'] - coords.loc[i, 'x']
-            if dt >= abs(dx):
-                G.add_edge(i, j)
-    return G
-
-def causal_dag_3d(coords: pd.DataFrame) -> nx.DiGraph:
-    """3D'de t ≥ sqrt(Δx²+Δy²) koşulu ile kenar ekler."""
-    G = nx.DiGraph()
-    for i, row in coords.iterrows():
-        G.add_node(i, **row.to_dict())
-    n = len(coords)
-    for i in range(n):
-        for j in range(i+1, n):
-            dt = coords.loc[j, 't'] - coords.loc[i, 't']
-            if dt <= 0:
-                continue
-            dx = coords.loc[j, 'x'] - coords.loc[i, 'x']
-            dy = coords.loc[j, 'y'] - coords.loc[i, 'y']
-            if dt >= np.hypot(dx, dy):
-                G.add_edge(i, j)
-    return G
-
-# --------------------------------------------------------------------------
-# 3. Transitive reduction (kesin ve yaklaşık)
-# --------------------------------------------------------------------------
-def transitive_reduced_dag(G: nx.DiGraph) -> nx.DiGraph:
-    """Ağın transitive reduction'ını hesaplar. DAG olmalıdır."""
-    if not nx.is_directed_acyclic_graph(G):
-        raise ValueError("Graf DAG değil, transitive reduction uygulanamaz.")
-    # nx.transitive_reduction bazen hafıza sorunu çıkarır, küçük-orta grafikler için uygun
-    return nx.transitive_reduction(G)
-
-def transitive_reduction_approximate(G: nx.DiGraph, sample_ratio: float = 0.3) -> nx.DiGraph:
-    """
-    Büyük DAG'ler için yaklaşık transitive reduction.
-    Rastgele düğüm altkümesi kullanarak kenarları kısar.
-    Not: Kesin değildir, ancak O(N²) yerine O(kN) çalışır.
-    """
-    nodes = list(G.nodes())
-    n = len(nodes)
-    k = max(10, int(n * sample_ratio))
-    sampled = set(np.random.choice(nodes, size=k, replace=False))
-    G_red = G.copy()
-    # Sadece örneklenen düğümler için transitive kontrolleri yap
-    for u in sampled:
-        for v in G.successors(u):
-            for w in G.successors(v):
-                if G.has_edge(u, w):
-                    G_red.remove_edge(u, w)
-    return G_red
-
-# --------------------------------------------------------------------------
-# 4. Keçeci Layout sarmalayıcı (layout tipine göre)
-# --------------------------------------------------------------------------
-LayoutType = Literal["2d", "cylindrical", "cubic", "spherical", "elliptical", "toric"]
-StyleType = Literal["standard", "default", "curved", "helix", "3d", "weighted", "colored"]
-
-def get_kececi_layout(
-    G: nx.Graph,
-    layout: LayoutType = "2d",
-    primary_spacing: float = 1.0,
-    secondary_spacing: float = 0.5,
-    primary_direction: str = "top_down",
-    secondary_start: str = "left",
-    expanding: bool = True,
-    **kwargs
-) -> Dict[int, Tuple[float, float]]:
-    """İstenen layout tipine göre Keçeci Layout'u çağırır."""
-    #if not HAS_kececi:
-        #print("Uyarı: kececilayout modülü yüklü değil, basit zigzag kullanılıyor.")
-        #return kececi_layout_2d(G, primary_spacing, secondary_spacing, primary_direction, secondary_start, expanding)
-    if layout == "2d":
-        return kececi_layout_2d(G, primary_spacing, secondary_spacing,
-                                primary_direction, secondary_start, expanding)
-    elif layout == "cylindrical":
-        return kececi_layout_cylindrical(G, **kwargs)
-    elif layout == "cubic":
-        return kececi_layout_3d(G, **kwargs)   # 3D için (x,y,z)
-    elif layout == "spherical":
-        return kececi_layout_spherical(G, **kwargs)
-    elif layout == "elliptical":
-        return kececi_layout_elliptical(G, **kwargs)
-    elif layout == "toric":
-        return kececi_layout_toric(G, **kwargs)
-    else:
-        return kececi_layout_2d(G, primary_spacing, secondary_spacing,
-                                primary_direction, secondary_start, expanding)
-
-# --------------------------------------------------------------------------
-# 5. Gelişmiş çizim (eğriler / weighted / colored)
-# --------------------------------------------------------------------------
-def draw_networkx_with_style(
-    G: nx.Graph,
-    pos: Dict,
-    style: StyleType = "standard",
-    ax: plt.Axes = None,
-    node_kw: Dict = None,
-    edge_kw: Dict = None,
+def kececi_3d_fractal(
+    num_children: int = 8,
+    max_level: int = 3,
+    scale_factor: float = 0.4,
+    base_radius: float = 1.0,
+    min_radius: float = 0.05,
+    color_scheme: str = "plasma",
+    alpha_decay: float = 0.7,
+    figsize: Tuple[int, int] = (12, 10),
+    elev: float = 30.0,
+    azim: float = 45.0,
+    background_color: Union[str, Tuple[float, float, float], None] = "#0a0a0a",
+    show_grid: bool = True,
+    grid_alpha: float = 0.1,
+    title: Optional[str] = None,
+    interactive: bool = False,  # Jupyter'da interactive=False yapıyoruz
+    save_filename: Optional[str] = None,
+    dpi: int = 150,
 ):
-    """Keçeci stillerini destekleyen gelişmiş çizim."""
-    if ax is None:
-        ax = plt.gca()
-    if node_kw is None:
-        node_kw = {}
-    if edge_kw is None:
-        edge_kw = {}
 
-    # Düğüm çizimi
-    default_node_kw = {"node_size": 100, "node_color": "lightblue", "alpha": 0.8}
-    default_node_kw.update(node_kw)
-    nx.draw_networkx_nodes(G, pos, ax=ax, **default_node_kw)
-    nx.draw_networkx_labels(G, pos, ax=ax, font_size=8)
+    #3D Keçeci fraktalı oluşturur ve görselleştirir.
 
-    # Kenar çizimi
-    if style == "curved":
-        # Eğri kenarlar için FancyArrowPatch
-        for u, v in G.edges():
-            rad = 0.1
-            arrow = FancyArrowPatch(
-                pos[u], pos[v],
-                connectionstyle=f"arc3,rad={rad}",
-                arrowstyle='-|>',
-                color='gray',
-                alpha=0.6,
-                linewidth=1.0
-            )
-            ax.add_patch(arrow)
-    elif style == "weighted":
-        # Kenar ağırlıklarını çizgi kalınlığına yansıt
-        weights = [G[u][v].get('weight', 1.0) for u,v in G.edges()]
-        nx.draw_networkx_edges(G, pos, ax=ax, width=np.array(weights)*0.5,
-                               edge_color='blue', alpha=0.6)
-    elif style == "colored":
-        # Düğümleri renkli, kenarları da renk skalası
-        node_colors = [plt.cm.tab10(i % 10) for i in range(len(G.nodes))]
-        nx.draw_networkx_nodes(G, pos, ax=ax, node_color=node_colors, **node_kw)
-        nx.draw_networkx_edges(G, pos, ax=ax, edge_color='gray', alpha=0.5)
-    else:  # default / standard / helix / 3d (basit)
-        nx.draw_networkx_edges(G, pos, ax=ax, edge_color='black', alpha=0.5, **edge_kw)
 
-# --------------------------------------------------------------------------
-# 6. Ana üretici fonksiyon (causal DAG + Keçeci Layout + çizim)
-# --------------------------------------------------------------------------
-def generate_causal_dag(
-    dim: int = 2,
-    num_elements: int = 80,
-    seed: Optional[int] = 42,
-    use_transitive_reduction: bool = True,
-    approximate_reduction: bool = False,
-    layout: LayoutType = "2d",
-    style: StyleType = "standard",
-    primary_spacing: float = 1.0,
-    secondary_spacing: float = 0.5,
-    primary_direction: str = "top_down",
-    secondary_start: str = "left",
-    expanding: bool = True,
-    draw_full: bool = True,
-    draw_reduced: bool = True,
-    layout_kwargs: Dict = None,
-) -> Tuple[nx.DiGraph, nx.DiGraph, Dict]:
-    """
-    2D/3D causal DAG oluşturur, transitive reduction uygular,
-    Keçeci Layout ile konumlandırır ve isteğe bağlı çizer.
-    """
-    if dim == 2:
-        coords = generate_flat_spacetime_2d(num_elements, seed)
-        G_full = causal_dag_2d(coords)
-    else:
-        coords = generate_flat_spacetime_3d(num_elements, seed)
-        G_full = causal_dag_3d(coords)
+    if not HAS_3D:
+        print("Hata: 3D grafik desteği yok. Lütfen matplotlib 3D modülünü yükleyin.")
+        return None, None
 
-    if use_transitive_reduction:
-        if approximate_reduction and len(G_full) > 500:
-            G_red = transitive_reduction_approximate(G_full)
-        else:
-            G_red = transitive_reduced_dag(G_full)
-    else:
-        G_red = G_full.copy()
+    # Figür oluştur
+    fig = plt.figure(figsize=figsize, facecolor="white")
+    ax = fig.add_subplot(111, projection="3d")
 
-    if layout_kwargs is None:
-        layout_kwargs = {}
-    pos = get_kececi_layout(
-        G_full, layout=layout,
-        primary_spacing=primary_spacing,
-        secondary_spacing=secondary_spacing,
-        primary_direction=primary_direction,
-        secondary_start=secondary_start,
-        expanding=expanding,
-        **layout_kwargs
+    # Arkaplan rengini ayarla
+    bg_color = _parse_color(background_color) or (0.04, 0.04, 0.04)
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor(bg_color)
+
+    # Renk fonksiyonunu oluştur
+    color_func = generate_color_function(color_scheme, max_level)
+
+    # Fraktalı oluştur
+    center = np.array([0.0, 0.0, 0.0])
+    print(f"3D fraktal oluşturuluyor...")
+    print(f"   • Seviye: {max_level}")
+    print(f"   • Çocuk sayısı: {num_children}")
+    print(f"   • Renk şeması: {color_scheme}")
+
+    _generate_recursive_3d_fractal(
+        ax,
+        center,
+        base_radius,
+        0,
+        max_level,
+        num_children,
+        scale_factor,
+        min_radius,
+        color_func,
+        alpha_decay,
     )
 
-    if draw_full or draw_reduced:
-        fig, axes = plt.subplots(1, 2 if draw_full and draw_reduced else 1,
-                                 figsize=(14, 6))
-        if draw_full and draw_reduced:
-            ax1, ax2 = axes
-        else:
-            ax1 = axes
-            ax2 = None
+    # Grafik sınırlarını ayarla
+    max_extent = base_radius * (1 + 2 * scale_factor * max_level) * 1.2
+    ax.set_xlim([-max_extent, max_extent])
+    ax.set_ylim([-max_extent, max_extent])
+    ax.set_zlim([-max_extent, max_extent])
 
-        if draw_full:
-            ax1.set_facecolor('#f9f9f9')
-            draw_networkx_with_style(G_full, pos, style=style, ax=ax1)
-            ax1.set_title(f"Full causal DAG ({len(G_full)} nodes, {G_full.number_of_edges()} edges)")
-            ax1.set_aspect('equal')
+    # Görünüm açılarını ayarla
+    ax.view_init(elev=elev, azim=azim)
 
-        if draw_reduced and ax2 is not None:
-            ax2.set_facecolor('#f9f9f9')
-            draw_networkx_with_style(G_red, pos, style=style, ax=ax2)
-            ax2.set_title(f"Transitive reduced ({len(G_red)} nodes, {G_red.number_of_edges()} edges)")
-            ax2.set_aspect('equal')
+    # Eksen etiketlerini ve ızgarayı ayarla
+    ax.set_xlabel("X", fontsize=10, labelpad=10, color="white")
+    ax.set_ylabel("Y", fontsize=10, labelpad=10, color="white")
+    ax.set_zlabel("Z", fontsize=10, labelpad=10, color="white")
 
-        plt.tight_layout()
-        plt.show()
+    # Eksen rengini ayarla
+    ax.xaxis.label.set_color("white")
+    ax.yaxis.label.set_color("white")
+    ax.zaxis.label.set_color("white")
+    ax.tick_params(axis="x", colors="white", labelsize=8)
+    ax.tick_params(axis="y", colors="white", labelsize=8)
+    ax.tick_params(axis="z", colors="white", labelsize=8)
 
-    return G_full, G_red, pos
+    # Izgara ayarları
+    if show_grid:
+        ax.grid(True, alpha=grid_alpha, linestyle="--", linewidth=0.5)
+    else:
+        ax.grid(False)
 
-# --------------------------------------------------------------------------
-# 7. 3D projeksiyon ve görselleştirme (orijinal kodunuzdaki gibi)
-# --------------------------------------------------------------------------
-def plot_3d_and_projections(coords: pd.DataFrame, G_full: nx.DiGraph, G_red: nx.DiGraph):
-    """3D koordinatlar için tam ve indirgenmiş DAG'leri 3D ve projeksiyonlarda çizer."""
-    pos_3d = {i: (coords.loc[i, "x"], coords.loc[i, "y"], coords.loc[i, "t"]) for i in coords.index}
-    pos_xt = {i: (coords.loc[i, "x"], coords.loc[i, "t"]) for i in coords.index}
-    pos_xy = {i: (coords.loc[i, "x"], coords.loc[i, "y"]) for i in coords.index}
+    # Başlık ekle
+    if title is None:
+        title = f"3D Keçeci Fraktalı | Seviye: {max_level} | Çocuk: {num_children}"
 
-    fig = plt.figure(figsize=(16, 10))
+    ax.set_title(title, fontsize=14, fontweight="bold", color="white", pad=20)
 
-    # 3D tam
-    ax1 = fig.add_subplot(2, 3, 1, projection="3d")
-    xc, yc, tc = coords["x"], coords["y"], coords["t"]
-    ax1.scatter(xc, yc, tc, c='blue', s=20, alpha=0.7)
-    for u, v in G_full.edges():
-        ax1.plot(*zip(pos_3d[u], pos_3d[v]), c='black', lw=0.5, alpha=0.3)
-    ax1.set_title(f"3D full causal DAG (edges: {G_full.number_of_edges()})")
+    # Unicode karakterleri temizleyen basit bir info text
+    if interactive:
+        info_text = (
+            "Fare ile döndür: Sol tık + sürükle\n"
+            "Yakınlaştır/Uzaklaştır: Fare tekerleği\n"
+            "Kaydır: Sağ tık + sürükle"
+        )
+        fig.text(
+            0.02,
+            0.02,
+            info_text,
+            fontsize=9,
+            color="white",
+            bbox=dict(boxstyle="round", facecolor="black", alpha=0.7),
+        )
 
-    # 3D indirgenmiş
-    ax2 = fig.add_subplot(2, 3, 2, projection="3d")
-    ax2.scatter(xc, yc, tc, c='blue', s=20, alpha=0.7)
-    for u, v in G_red.edges():
-        ax2.plot(*zip(pos_3d[u], pos_3d[v]), c='red', lw=0.8, alpha=0.6)
-    ax2.set_title(f"3D reduced DAG (edges: {G_red.number_of_edges()})")
-
-    # x–t projeksiyon full
-    ax3 = fig.add_subplot(2, 3, 3)
-    nx.draw(G_full, pos_xt, ax=ax3, node_size=30, with_labels=False, edge_color='gray', alpha=0.7)
-    ax3.set_title("x–t projection (full)")
-
-    # x–t projeksiyon indirgenmiş
-    ax4 = fig.add_subplot(2, 3, 4)
-    nx.draw(G_red, pos_xt, ax=ax4, node_size=30, with_labels=False, edge_color='red', alpha=0.8)
-    ax4.set_title("x–t projection (reduced)")
-
-    # x–y projeksiyon full
-    ax5 = fig.add_subplot(2, 3, 5)
-    nx.draw(G_full, pos_xy, ax=ax5, node_size=30, with_labels=False, edge_color='gray', alpha=0.7)
-    ax5.set_title("x–y projection (full)")
-
-    # x–y projeksiyon indirgenmiş
-    ax6 = fig.add_subplot(2, 3, 6)
-    nx.draw(G_red, pos_xy, ax=ax6, node_size=30, with_labels=False, edge_color='red', alpha=0.8)
-    ax6.set_title("x–y projection (reduced)")
-
+    # Grafik düzenini ayarla
     plt.tight_layout()
-    plt.show()
 
-def kececi_layout_3d_simple(G):
-    pos = {}
-    for i,node in enumerate(G.nodes()):
-        angle = i * np.pi/4
-        pos[node] = (np.cos(angle), np.sin(angle), i*0.5)
-    return pos
-
-# =============================================================================
-# DAG ve Transitive Reduction Karşılaştırma Demoları (show_menu için)
-# =============================================================================
-
-def _dag_2d_comparison():
-    """2B Keçeci Layout ile DAG vs transitive reduced DAG karşılaştırması."""
-    import networkx as nx
-    import matplotlib.pyplot as plt
-
-    # Örnek DAG oluştur (zincir + fazladan kenarlar)
-    G = nx.DiGraph()
-    edges = [(0,1),(0,2),(1,3),(2,3),(3,4),(2,5),(5,6),(3,6),(4,6)]
-    G.add_edges_from(edges)
-    G_red = nx.transitive_reduction(G)
-
-    # Keçeci 2D layout (order‑preserving)
-    pos_full = kececi_layout_2d(G, expanding=True)
-    pos_red = kececi_layout_2d(G_red, expanding=True)
-
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-    nx.draw(G, pos_full, ax=ax1, with_labels=True, node_color='lightblue',
-            edge_color='gray', arrows=True, node_size=600)
-    ax1.set_title(f"Orijinal DAG\n{G.number_of_edges()} kenar")
-
-    nx.draw(G_red, pos_red, ax=ax2, with_labels=True, node_color='lightgreen',
-            edge_color='darkgreen', arrows=True, node_size=600)
-    ax2.set_title(f"Transitive Reduced\n{G_red.number_of_edges()} kenar")
-
-    plt.suptitle("2B Keçeci Layout: DAG vs Transitive Reduction")
-    plt.tight_layout()
-    plt.show()
-
-def _dag_3d_comparison():
-    """3B silindirik (helix) Keçeci Layout ile DAG vs transitive reduced DAG."""
-    import networkx as nx
-    import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d import Axes3D
-
-    G = nx.DiGraph()
-    edges = [(0,1),(0,2),(1,3),(2,3),(3,4),(2,5),(5,6),(3,6),(4,6)]
-    G.add_edges_from(edges)
-    G_red = nx.transitive_reduction(G)
-
-    # 3B layout (silindirik / helix)
-    pos_full = kececi_layout_cylindrical(G, radius=3, height=8)
-    pos_red = kececi_layout_cylindrical(G_red, radius=3, height=8)
-
-    fig = plt.figure(figsize=(14, 6))
-    ax1 = fig.add_subplot(121, projection='3d')
-    for node, (x,y,z) in pos_full.items():
-        ax1.scatter(x, y, z, s=100, c='blue')
-        ax1.text(x, y, z, f'  {node}', size=9)
-    for u,v in G.edges():
-        ax1.plot(*zip(pos_full[u], pos_full[v]), color='gray', alpha=0.6)
-    ax1.set_title(f"3D Orijinal DAG\n{G.number_of_edges()} kenar")
-    ax1.axis('off')
-
-    ax2 = fig.add_subplot(122, projection='3d')
-    for node, (x,y,z) in pos_red.items():
-        ax2.scatter(x, y, z, s=100, c='green')
-        ax2.text(x, y, z, f'  {node}', size=9)
-    for u,v in G_red.edges():
-        ax2.plot(*zip(pos_red[u], pos_red[v]), color='darkgreen', alpha=0.8)
-    ax2.set_title(f"3D Transitive Reduced\n{G_red.number_of_edges()} kenar")
-    ax2.axis('off')
-
-    plt.suptitle("3B Keçeci Layout (Silindirik): DAG vs Transitive Reduction")
-    plt.tight_layout()
-    plt.show()
-
-
-def circuit_to_digraph(circuit: QuantumCircuit) -> nx.DiGraph:
-    G = nx.DiGraph()
-    qubit_count = circuit.num_qubits
-
-    # Giriş qubit düğümleri
-    current_nodes = [f"q{i}_in" for i in range(qubit_count)]
-    for node in current_nodes:
-        G.add_node(node, type='qubit')
-
-    gate_counter = 0
-    for inst in circuit.data:
-        gate_name = inst.operation.name
-        gate_node = f"{gate_name}_{gate_counter}"
-        G.add_node(gate_node, type='gate', label=gate_name)
-        gate_counter += 1
-
-        # Qubit argümanları (inst.qubits)
-        for qubit in inst.qubits:
-            idx = circuit.find_bit(qubit).index
-            prev = current_nodes[idx]
-            G.add_edge(prev, gate_node)
-
-        # Yeni qubit düğümleri oluştur
-        for qubit in inst.qubits:
-            idx = circuit.find_bit(qubit).index
-            new_node = f"q{idx}_{gate_counter}"
-            G.add_node(new_node, type='qubit')
-            G.add_edge(gate_node, new_node)
-            current_nodes[idx] = new_node
-
-    for i, node in enumerate(current_nodes):
-        G.nodes[node]['type'] = 'qubit_out'
-
-    return G
-
-def circuit_to_digraph_robust(circuit: QuantumCircuit) -> nx.DiGraph:
-    G = nx.DiGraph()
-    qubit_count = circuit.num_qubits
-    # Başlangıç düğümleri
-    current = {i: f"q{i}" for i in range(qubit_count)}
-    for i in range(qubit_count):
-        G.add_node(current[i], type='qubit')
-
-    gate_idx = 0
-    for inst in circuit.data:
-        op = inst.operation
-        # Ölçüm, bariyer gibi görmezden gelinecek işlemler
-        if op.name in ('measure', 'barrier', 'reset'):
-            continue
-
-        qubits = inst.qubits
-        # Eğer qubits boşsa (örn. snapshot) atla
-        if not qubits:
-            continue
-
-        gate_node = f"{op.name}_{gate_idx}"
-        G.add_node(gate_node, type='gate', label=op.name)
-        gate_idx += 1
-
-        for q in qubits:
-            idx = circuit.find_bit(q).index
-            G.add_edge(current[idx], gate_node)
-            new_node = f"q{idx}_{gate_idx}"
-            G.add_node(new_node, type='qubit')
-            G.add_edge(gate_node, new_node)
-            current[idx] = new_node
-
-    return G
-
-def min_max_cut(graph, show_plot=True):
-    """
-    Brute‑force yöntemiyle verilen çizgenin tüm ikili bölmelerini
-    (bipartisyon) dener, her biri için kesen kenar sayısını hesaplar,
-    minimum ve maksimum cut değerlerini ve ilgili bölmeleri döndürür.
-
-    Parametreler:
-        graph : NetworkX graph (ya da .edges() ve .nodes() veren bir çizge)
-        show_plot : True ise histogram ve tüm bölmelerin subplot görselini çizer.
-
-    Dönüş:
-        dict: {
-            'min_cut': int,
-            'max_cut': int,
-            'min_partitions': list of tuples (binary vektör),
-            'max_partitions': list of tuples,
-            'all_partitions': list of (binary_vectör, cut_size)
-        }
-    """
-    # Düğüm sayısı
-    nodes = list(graph.nodes())
-    n = len(nodes)
-    edges = list(graph.edges())
-
-    # Tüm anlamlı bölmeleri tara
-    partitions = []
-    for bits in itertools.product([0, 1], repeat=n):
-        if sum(bits) == 0 or sum(bits) == n:  # boş kümeleri atla
-            continue
-        cut = sum(1 for u, v in edges if bits[nodes.index(u)] != bits[nodes.index(v)])
-        partitions.append((bits, cut))
-
-    cuts = [c for _, c in partitions]
-    min_cut = min(cuts)
-    max_cut = max(cuts)
-    min_parts = [p for p, c in partitions if c == min_cut]
-    max_parts = [p for p, c in partitions if c == max_cut]
-
-    if show_plot:
-        # ----- Histogram -----
-        fig_hist, ax_hist = plt.subplots(figsize=(7, 4))
-        bins = np.arange(min_cut - 0.5, max_cut + 1.5, 1)
-        ax_hist.hist(cuts, bins=bins, edgecolor='black', color='steelblue', alpha=0.8)
-        ax_hist.set_xlabel('Cut Size (Kesen Kenar)')
-        ax_hist.set_ylabel('Bölme Sayısı')
-        ax_hist.set_title(f'Cut Değerleri Dağılımı (Min={min_cut}, Maks={max_cut})')
-        ax_hist.set_xticks(range(min_cut, max_cut + 1))
-        ax_hist.axvline(x=min_cut, color='green', linestyle='--', linewidth=2, label=f'Min ({min_cut})')
-        ax_hist.axvline(x=max_cut, color='red', linestyle='--', linewidth=2, label=f'Maks ({max_cut})')
-        ax_hist.legend()
-        plt.tight_layout()
-        plt.show()
-        plt.close(fig_hist)
-
-        # ----- Subplot paneli (tüm bölmeler) -----
-        # Sabit bir layout kullan (kececi_layout_edge varsa onu, yoksa spring_layout)
+    # Kaydetme
+    if save_filename:
         try:
-            from kececilayout import kececi_layout_edge
-            layout = kececi_layout_edge(graph, edge=True)
-        except ImportError:
-            layout = nx.spring_layout(graph, seed=42)
+            # Font uyarılarını geçici olarak gizle
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=UserWarning)
+                plt.savefig(
+                    save_filename,
+                    dpi=dpi,
+                    bbox_inches="tight",
+                    facecolor=fig.get_facecolor(),
+                    edgecolor="none",
+                )
+            print(f"Fraktal kaydedildi: {save_filename}")
+        except Exception as e:
+            print(f"Kaydetme hatası: {e}")
 
-        n_total = len(partitions)
-        n_cols = 4
-        n_rows = int(np.ceil(n_total / n_cols))
-        fig, axes = plt.subplots(n_rows, n_cols, figsize=(14, 3.5 * n_rows))
-        axes = axes.flatten()
+    print("3D fraktal hazır!")
+    return fig, ax
+"""
 
-        color_0 = "#e41a1c"  # kırmızı
-        color_1 = "#377eb8"  # mavi
 
-        for idx, (bits, cut) in enumerate(partitions):
-            ax = axes[idx]
-            for node in graph.nodes():
-                x, y = layout[node]
-                col = color_0 if bits[nodes.index(node)] == 0 else color_1
-                ax.scatter(x, y, c=col, s=300, edgecolors='black', linewidth=0.8, zorder=3)
-            for u, v in edges:
-                x_vals = [layout[u][0], layout[v][0]]
-                y_vals = [layout[u][1], layout[v][1]]
-                if bits[nodes.index(u)] != bits[nodes.index(v)]:
-                    ax.plot(x_vals, y_vals, color='#e41a1c', linewidth=2, alpha=0.8, zorder=2)
-                else:
-                    ax.plot(x_vals, y_vals, color='gray', linewidth=1.2, alpha=0.6, zorder=1)
-            title = f"{bits}\ncut = {cut}"
-            if cut == min_cut:
-                title += "  🟢 MİN"
-            if cut == max_cut:
-                title += "  🔴 MAKS"
-            ax.set_title(title, fontsize=9)
-            ax.set_aspect('equal')
-            ax.axis('off')
+def _draw_recursive_circles(
+    ax, x, y, radius, level, max_level, num_children, min_radius, scale_factor
+):
+    """
+    Internal recursive helper function to draw child circles for general fractals.
+    Not intended for direct use.
+    """
+    if level > max_level:
+        return
 
-        for j in range(n_total, len(axes)):
-            axes[j].axis('off')
+    child_radius = radius * scale_factor
+    if child_radius < min_radius:
+        return
 
-        plt.suptitle('Tüm Bölmeler (Kırmızı = Küme 0, Mavi = Küme 1; Kırmızı kenar = kesen)\n🟢 Minimum Cut, 🔴 Maksimum Cut',
-                     fontsize=14)
-        plt.tight_layout()
-        plt.subplots_adjust(top=0.93)
+    distance_from_parent_center = radius - child_radius
+
+    for i in range(num_children):
+        angle_rad = np.deg2rad(360 / num_children * i)
+        child_x = x + distance_from_parent_center * np.cos(angle_rad)
+        child_y = y + distance_from_parent_center * np.sin(angle_rad)
+
+        child_color = random_soft_color()
+        # General-purpose fractal uses lw=0 for solid, borderless circles.
+        _draw_circle_patch(
+            ax, (child_x, child_y), child_radius, face_color=child_color, lw=0
+        )
+
+        try:
+            _draw_recursive_circles(
+                ax,
+                child_x,
+                child_y,
+                child_radius,
+                level + 1,
+                max_level,
+                num_children,
+                min_radius,
+                scale_factor,
+            )
+        except RecursionError:
+            print(
+                "Warning: Maximum recursion depth reached. Fractal may be incomplete.",
+                file=sys.stderr,
+            )
+            return
+
+
+def kececifractals_circle(
+    initial_children: int = 6,
+    recursive_children: int = 6,
+    text: str = "Keçeci Fractals",
+    font_size: int = 14,
+    font_color: str = "black",
+    font_style: str = "bold",
+    font_family: str = "Arial",
+    max_level: int = 4,
+    min_size_factor: float = 0.001,
+    scale_factor: float = 0.5,
+    base_radius: float = 4.0,
+    background_color: Union[str, Tuple[float, float, float], None] = None,
+    initial_circle_color: Union[str, Tuple[float, float, float], None] = None,
+    output_mode: str = "show",
+    filename: str = "kececi_fractal_circle",
+    dpi: int = 300,
+) -> None:
+    """
+    Generates, displays, or saves a general-purpose, aesthetic Keçeci-style circle fractal.
+
+    Args:
+        initial_children: Number of first-level child circles
+        recursive_children: Number of children for deeper levels
+        text: Text to display around the fractal
+        font_size: Font size for text
+        font_color: Color of text (string or hex)
+        font_style: Font style ('normal', 'bold', 'italic', etc.)
+        font_family: Font family name
+        max_level: Maximum recursion depth
+        min_size_factor: Minimum radius as factor of base_radius
+        scale_factor: Size reduction factor for child circles
+        base_radius: Radius of the central circle
+        background_color: Background color (hex string, named color, or RGB tuple)
+        initial_circle_color: Color of central circle (hex string, named color, or RGB tuple)
+        output_mode: 'show' or file format ('png', 'jpg', etc.)
+        filename: Base filename for saving
+        dpi: DPI for saved images
+    """
+    # Input validation
+    if not isinstance(max_level, int) or max_level < 0:
+        print("Error: max_level must be a non-negative integer.", file=sys.stderr)
+        return
+    if not (0 < scale_factor < 1):
+        print(
+            "Error: scale_factor must be a number between 0 and 1 (exclusive).",
+            file=sys.stderr,
+        )
+        return
+
+    fig, ax = plt.subplots(figsize=(10, 10))
+
+    # Parse colors (accepts hex strings, named colors, or RGB tuples)
+    bg_color = _parse_color(background_color) or random_soft_color()
+    main_color = _parse_color(initial_circle_color) or random_soft_color()
+
+    # Parse font color
+    parsed_font_color = _parse_color(font_color) or (0, 0, 0)
+
+    fig.patch.set_facecolor(bg_color)
+
+    # Draw the main circle
+    _draw_circle_patch(ax, (0, 0), base_radius, face_color=main_color, lw=0)
+
+    min_absolute_radius = base_radius * min_size_factor
+    limit = base_radius + 1.0
+
+    # Text placement
+    if text and isinstance(text, str) and len(text) > 0:
+        text_radius = base_radius + 0.8
+        for i, char in enumerate(text):
+            angle_deg = (360 / len(text) * i) - 90
+            angle_rad = np.deg2rad(angle_deg)
+            x_text, y_text = text_radius * np.cos(angle_rad), text_radius * np.sin(
+                angle_rad
+            )
+            ax.text(
+                x_text,
+                y_text,
+                char,
+                fontsize=font_size,
+                ha="center",
+                va="center",
+                color=parsed_font_color,
+                fontweight=font_style,
+                fontfamily=font_family,
+                rotation=angle_deg + 90,
+            )
+        limit = max(limit, text_radius + font_size * 0.1)
+
+    # Start the recursion
+    if max_level >= 1:
+        initial_radius = base_radius * scale_factor
+        if initial_radius >= min_absolute_radius:
+            dist_initial = base_radius - initial_radius
+            for i in range(initial_children):
+                angle_rad = np.deg2rad(360 / initial_children * i)
+                ix, iy = dist_initial * np.cos(angle_rad), dist_initial * np.sin(
+                    angle_rad
+                )
+                i_color = random_soft_color()
+                _draw_circle_patch(
+                    ax, (ix, iy), initial_radius, face_color=i_color, lw=0
+                )
+                _draw_recursive_circles(
+                    ax,
+                    ix,
+                    iy,
+                    initial_radius,
+                    2,
+                    max_level,
+                    recursive_children,
+                    min_absolute_radius,
+                    scale_factor,
+                )
+
+    # Plot adjustments
+    ax.set_xlim(-limit, limit)
+    ax.set_ylim(-limit, limit)
+    ax.set_aspect("equal", adjustable="box")
+    ax.axis("off")
+    plot_title = f"Keçeci Fractals ({text})" if text else "Keçeci Circle Fractal"
+    plt.title(plot_title, fontsize=16)
+
+    # Output handling
+    output_mode = output_mode.lower().strip()
+    if output_mode == "show":
         plt.show()
+    elif output_mode in ["png", "jpg", "jpeg", "svg"]:
+        output_filename = f"{filename}.{output_mode}"
+        try:
+            save_kwargs = {
+                "bbox_inches": "tight",
+                "pad_inches": 0.1,
+                "facecolor": fig.get_facecolor(),
+            }
+            if output_mode in ["png", "jpg", "jpeg"]:
+                save_kwargs["dpi"] = dpi
+            plt.savefig(output_filename, format=output_mode, **save_kwargs)
+            print(
+                f"Fractal successfully saved to: '{os.path.abspath(output_filename)}'"
+            )
+        except Exception as e:
+            print(
+                f"Error: Could not save file '{output_filename}': {e}", file=sys.stderr
+            )
+        finally:
+            plt.close(fig)
+    else:
+        print(
+            f"Error: Invalid output_mode '{output_mode}'. Choose 'show', 'png', 'jpg', or 'svg'.",
+            file=sys.stderr,
+        )
         plt.close(fig)
 
-    return {
-        'min_cut': min_cut,
-        'max_cut': max_cut,
-        'min_partitions': min_parts,
-        'max_partitions': max_parts,
-        'all_partitions': partitions
-    }
 
-def min_max_cut_u(graph, show_plot=True, unique_partitions=True):
+# ==============================================================================
+# PART 2: QUANTUM ERROR CORRECTION (QEC) VISUALIZATION
+# ==============================================================================
+
+
+def _draw_recursive_qec(
+    ax,
+    x,
+    y,
+    radius,
+    level,
+    max_level,
+    num_children,
+    scale_factor,
+    physical_qubit_color,
+    error_color,
+    error_qubits,
+    current_path,
+):
     """
-    Brute‑force tüm ikili bölmeleri dener, min / max cut değerlerini bulur.
-
-    Parametreler:
-        graph           : NetworkX grafi
-        show_plot       : True → histogram + tüm bölmeler subplot olarak çizilir
-        unique_partitions: True → (A,B) ile (B,A) aynı sayılır, tekrarlar atılır
-    Dönüş:
-        dict: min_cut, max_cut, min_partitions, max_partitions, all_partitions
+    Internal recursive function to draw physical qubits and check for errors for the QEC model.
     """
-    nodes = list(graph.nodes())
-    n = len(nodes)
-    edges = list(graph.edges())
+    if level > max_level:
+        return
 
-    # Tüm anlamlı bölmeleri tara
-    raw_partitions = []
-    for bits in itertools.product([0, 1], repeat=n):
-        if sum(bits) == 0 or sum(bits) == n:
-            continue
-        cut = sum(1 for u, v in edges if bits[nodes.index(u)] != bits[nodes.index(v)])
-        raw_partitions.append((bits, cut))
+    child_radius = radius * scale_factor
+    distance_from_parent_center = radius * (1 - scale_factor)
 
-    # Tekrarları temizle (isteğe bağlı)
-    if unique_partitions:
-        seen = set()
-        partitions = []
-        for bits, cut in raw_partitions:
-            # İlk düğüm 0 olacak şekilde normalize et
-            if bits[0] == 1:
-                bits_norm = tuple(1 - b for b in bits)
-            else:
-                bits_norm = bits
-            if bits_norm not in seen:
-                seen.add(bits_norm)
-                partitions.append((bits_norm, cut))
-    else:
-        partitions = raw_partitions
+    for i in range(num_children):
+        child_path = current_path + [i]
+        angle_rad = np.deg2rad(360 / num_children * i)
+        child_x = x + distance_from_parent_center * np.cos(angle_rad)
+        child_y = y + distance_from_parent_center * np.sin(angle_rad)
 
-    cuts = [c for _, c in partitions]
-    min_cut = min(cuts)
-    max_cut = max(cuts)
-    min_parts = [p for p, c in partitions if c == min_cut]
-    max_parts = [p for p, c in partitions if c == max_cut]
+        qubit_color = (
+            error_color if child_path in error_qubits else physical_qubit_color
+        )
+        _draw_circle_patch(
+            ax, (child_x, child_y), child_radius, face_color=qubit_color, lw=0.75
+        )
 
-    if show_plot:
-        # ----- Histogram -----
-        fig_hist, ax_hist = plt.subplots(figsize=(7, 4))
-        bins = np.arange(min_cut - 0.5, max_cut + 1.5, 1)
-        ax_hist.hist(cuts, bins=bins, edgecolor='black', color='steelblue', alpha=0.8)
-        ax_hist.set_xlabel('Cut Size (Kesen Kenar)')
-        ax_hist.set_ylabel('Bölme Sayısı')
-        ax_hist.set_title(f'Cut Değerleri Dağılımı (Min={min_cut}, Maks={max_cut})')
-        ax_hist.set_xticks(range(min_cut, max_cut + 1))
-        ax_hist.axvline(x=min_cut, color='green', linestyle='--', linewidth=2, label=f'Min ({min_cut})')
-        ax_hist.axvline(x=max_cut, color='red', linestyle='--', linewidth=2, label=f'Maks ({max_cut})')
-        ax_hist.legend()
-        plt.tight_layout()
-        plt.show()
-        plt.close(fig_hist)
+        _draw_recursive_qec(
+            ax,
+            child_x,
+            child_y,
+            child_radius,
+            level + 1,
+            max_level,
+            num_children,
+            scale_factor,
+            physical_qubit_color,
+            error_color,
+            error_qubits,
+            child_path,
+        )
 
-        # ----- Subplot paneli -----
+
+def visualize_qec_fractal(
+    physical_qubits_per_level: int = 5,
+    recursion_level: int = 1,
+    error_qubits: Optional[List[List[int]]] = None,
+    logical_qubit_color: str = "#4A90E2",  # Blue
+    physical_qubit_color: str = "#E0E0E0",  # Light Gray
+    error_color: str = "#D0021B",  # Red
+    background_color: str = "#1C1C1C",  # Dark Gray
+    scale_factor: float = 0.5,
+    filename: str = "qec_fractal_visualization",
+    dpi: int = 300,
+) -> None:
+    """
+    Visualizes a Quantum Error Correction (QEC) code concept using Keçeci Fractals.
+    """
+    error_qubits = [] if error_qubits is None else error_qubits
+
+    fig, ax = plt.subplots(figsize=(12, 12))
+
+    # Parse colors for QEC visualization
+    logical_color_parsed = _parse_color(logical_qubit_color) or (
+        0.29,
+        0.56,
+        0.89,
+    )  # Default blue
+    physical_color_parsed = _parse_color(physical_qubit_color) or (
+        0.88,
+        0.88,
+        0.88,
+    )  # Default light gray
+    error_color_parsed = _parse_color(error_color) or (0.82, 0.01, 0.11)  # Default red
+    bg_color_parsed = _parse_color(background_color) or (
+        0.11,
+        0.11,
+        0.11,
+    )  # Default dark gray
+
+    fig.patch.set_facecolor(bg_color_parsed)
+
+    base_radius = 5.0
+
+    # Draw the Logical Qubit
+    _draw_circle_patch(ax, (0, 0), base_radius, face_color=logical_color_parsed, lw=1.5)
+    ax.text(
+        0,
+        0,
+        "L",
+        color="white",
+        ha="center",
+        va="center",
+        fontsize=40,
+        fontweight="bold",
+        fontfamily="sans-serif",
+    )
+
+    # Draw the Physical Qubits
+    if recursion_level >= 1:
+        initial_radius = base_radius * scale_factor
+        dist_initial = base_radius * (1 - scale_factor)
+        for i in range(physical_qubits_per_level):
+            child_path = [i]
+            angle_rad = np.deg2rad(360 / physical_qubits_per_level * i)
+            ix, iy = dist_initial * np.cos(angle_rad), dist_initial * np.sin(angle_rad)
+            qubit_color = (
+                error_color_parsed
+                if child_path in error_qubits
+                else physical_color_parsed
+            )
+
+            _draw_circle_patch(
+                ax, (ix, iy), initial_radius, face_color=qubit_color, lw=0.75
+            )
+            # Add a number label to the first-level qubits for clarity
+            label_color = "black" if qubit_color != error_color_parsed else "white"
+            ax.text(
+                ix,
+                iy,
+                str(i),
+                color=label_color,
+                ha="center",
+                va="center",
+                fontsize=12,
+                fontweight="bold",
+            )
+
+            _draw_recursive_qec(
+                ax,
+                ix,
+                iy,
+                initial_radius,
+                2,
+                recursion_level,
+                physical_qubits_per_level,
+                scale_factor,
+                physical_color_parsed,
+                error_color_parsed,
+                error_qubits,
+                child_path,
+            )
+
+    # Finalize and Save the Plot
+    ax.set_xlim(-base_radius - 1.5, base_radius + 1.5)
+    ax.set_ylim(-base_radius - 1.5, base_radius + 1.5)
+    ax.set_aspect("equal", adjustable="box")
+    ax.axis("off")
+
+    title = f"QEC Fractal Model: {physical_qubits_per_level}-Qubit Code | Level: {recursion_level} | Errors: {len(error_qubits)}"
+    plt.title(title, color="white", fontsize=18, pad=20)
+
+    output_filename = f"{filename}.png"
+    plt.savefig(
+        output_filename,
+        format="png",
+        dpi=dpi,
+        bbox_inches="tight",
+        facecolor=fig.get_facecolor(),
+    )
+    plt.close(fig)
+    print(f"Visualization saved to: '{os.path.abspath(output_filename)}'")
+
+
+# ==============================================================================
+# PART 3: 3D KEÇECİ FRACTALS
+# ==============================================================================
+
+try:
+    from mpl_toolkits.mplot3d import Axes3D, art3d
+
+    HAS_3D = True
+except ImportError:
+    HAS_3D = False
+    print(
+        "Warning: 3D plotting not available. Install matplotlib for 3D support.",
+        file=sys.stderr,
+    )
+
+
+def _draw_3d_sphere(ax, center, radius, color, alpha=1.0):
+    """
+    Draws a 3D sphere on the given axes.
+    """
+    if not HAS_3D:
+        return
+
+    u = np.linspace(0, 2 * np.pi, 20)
+    v = np.linspace(0, np.pi, 20)
+
+    x = center[0] + radius * np.outer(np.cos(u), np.sin(v))
+    y = center[1] + radius * np.outer(np.sin(u), np.sin(v))
+    z = center[2] + radius * np.outer(np.ones(np.size(u)), np.cos(v))
+
+    ax.plot_surface(
+        x,
+        y,
+        z,
+        color=color,
+        alpha=alpha,
+        edgecolor="none",
+        antialiased=True,
+        shade=True,
+    )
+
+
+def _generate_recursive_3d_fractal(
+    ax,
+    center,
+    radius,
+    level,
+    max_level,
+    num_children,
+    scale_factor,
+    min_radius,
+    color_func,
+    alpha_decay,
+):
+    """
+    Recursive function to generate 3D fractal spheres.
+    """
+    if level > max_level or radius < min_radius:
+        return
+
+    # Draw current sphere
+    color = color_func(level)
+    alpha = 1.0 * (alpha_decay**level)
+    _draw_3d_sphere(ax, center, radius, color, alpha)
+
+    # Calculate positions for child spheres
+    child_radius = radius * scale_factor
+    if child_radius < min_radius:
+        return
+
+    # For 3D, distribute children on a sphere surface
+    phi = np.pi * (3.0 - np.sqrt(5.0))  # Golden angle
+
+    for i in range(num_children):
+        # Fibonacci sphere distribution for even spacing
+        y = 1 - (i / float(num_children - 1)) * 2
+        radius_xy = np.sqrt(1 - y * y)
+
+        theta = phi * i
+
+        x = np.cos(theta) * radius_xy
+        z = np.sin(theta) * radius_xy
+
+        # Scale to put children on surface of parent sphere
+        direction = np.array([x, y, z])
+        direction = direction / np.linalg.norm(direction)
+
+        child_center = center + direction * (radius + child_radius)
+
+        # Recursive call
+        _generate_recursive_3d_fractal(
+            ax,
+            child_center,
+            child_radius,
+            level + 1,
+            max_level,
+            num_children,
+            scale_factor,
+            min_radius,
+            color_func,
+            alpha_decay,
+        )
+
+
+def get_cmap_safe(cmap_name: str):
+    """Güvenli colormap alımı, tüm matplotlib sürümleriyle uyumlu"""
+    try:
+        # Matplotlib 3.7+ için modern yöntem
+        return plt.colormaps[cmap_name]
+    except (AttributeError, KeyError):
         try:
-            from kececilayout import kececi_layout_edge
-            layout = kececi_layout_edge(graph, edge=True)
-        except ImportError:
-            layout = nx.spring_layout(graph, seed=42)
+            # Klasik yöntem
+            return plt.get_cmap(cmap_name)
+        except:
+            # Son çare olarak plt.cm
+            import matplotlib.cm as cm
 
-        n_total = len(partitions)
-        n_cols = 4
-        n_rows = int(np.ceil(n_total / n_cols))
-        fig, axes = plt.subplots(n_rows, n_cols, figsize=(14, 3.5 * n_rows))
-        axes = axes.flatten()
+            return cm.get_cmap(cmap_name)
 
-        color_0 = "#e41a1c"
-        color_1 = "#377eb8"
 
-        for idx, (bits, cut) in enumerate(partitions):
-            ax = axes[idx]
-            for node in graph.nodes():
-                x, y = layout[node]
-                col = color_0 if bits[nodes.index(node)] == 0 else color_1
-                ax.scatter(x, y, c=col, s=300, edgecolors='black', linewidth=0.8, zorder=3)
-            for u, v in edges:
-                x_vals = [layout[u][0], layout[v][0]]
-                y_vals = [layout[u][1], layout[v][1]]
-                if bits[nodes.index(u)] != bits[nodes.index(v)]:
-                    ax.plot(x_vals, y_vals, color='#e41a1c', linewidth=2, alpha=0.8, zorder=2)
-                else:
-                    ax.plot(x_vals, y_vals, color='gray', linewidth=1.2, alpha=0.6, zorder=1)
-            title = f"{bits}\ncut = {cut}"
-            if cut == min_cut:
-                title += "  🟢 MİN"
-            if cut == max_cut:
-                title += "  🔴 MAKS"
-            ax.set_title(title, fontsize=9)
-            ax.set_aspect('equal')
-            ax.axis('off')
+def kececifractals_3d(
+    num_children: int = 8,
+    max_level: int = 3,
+    scale_factor: float = 0.4,
+    base_radius: float = 1.0,
+    min_radius: float = 0.05,
+    color_scheme: str = "plasma",
+    alpha_decay: float = 0.7,
+    figsize: Tuple[int, int] = (12, 10),
+    elev: float = 30,
+    azim: float = 45,
+    output_mode: str = "show",
+    filename: str = "kececi_fractal_3d",
+    dpi: int = 300,
+) -> None:
+    """
+    Generates a 3D version of Keçeci fractals.
 
-        for j in range(n_total, len(axes)):
-            axes[j].axis('off')
+    Args:
+        num_children: Number of child spheres at each level
+        max_level: Maximum recursion depth
+        scale_factor: Size reduction factor for child spheres
+        base_radius: Radius of the central sphere
+        min_radius: Minimum sphere radius (stops recursion when reached)
+        color_scheme: Matplotlib colormap name
+        alpha_decay: Alpha transparency decay factor per level
+        figsize: Figure size (width, height)
+        elev: Elevation angle for 3D view
+        azim: Azimuth angle for 3D view
+        output_mode: 'show' or file format ('png', 'jpg', etc.)
+        filename: Base filename for saving
+        dpi: DPI for saved images
+    """
+    if not HAS_3D:
+        print(
+            "Error: 3D plotting not available. Install matplotlib with 3D support.",
+            file=sys.stderr,
+        )
+        return
 
-        plt.suptitle('Tüm Tekil (Unique) Bölmeler\n🟢 Minimum Cut, 🔴 Maksimum Cut', fontsize=14)
-        plt.tight_layout()
-        plt.subplots_adjust(top=0.93)
+    # generate figure and 3D axes
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111, projection="3d")
+
+    # Set dark background for better contrast
+    dark_bg = _parse_color("#0a0a0a") or (0.04, 0.04, 0.04)
+    fig.patch.set_facecolor(dark_bg)
+    ax.set_facecolor(dark_bg)
+
+    # Color function based on level - using def instead of lambda
+    cmap = get_cmap_safe(color_scheme)
+
+    def color_func(level: int) -> Tuple[float, float, float, float]:
+        """Returns color for a given level based on colormap."""
+        return cmap(level / max(max_level, 1))
+
+    # generate the fractal
+    center = np.array([0.0, 0.0, 0.0])
+    _generate_recursive_3d_fractal(
+        ax,
+        center,
+        base_radius,
+        0,
+        max_level,
+        num_children,
+        scale_factor,
+        min_radius,
+        color_func,
+        alpha_decay,
+    )
+
+    # Set plot limits
+    max_extent = base_radius * (1 + 2 * scale_factor * max_level)
+    ax.set_xlim([-max_extent, max_extent])
+    ax.set_ylim([-max_extent, max_extent])
+    ax.set_zlim([-max_extent, max_extent])
+
+    # Configure view
+    ax.view_init(elev=elev, azim=azim)
+
+    # Remove axis ticks and labels for cleaner look
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_zticks([])
+
+    # Add title
+    plt.title(
+        f"3D Keçeci Fractal (Levels: {max_level}, Children: {num_children})",
+        color="white",
+        fontsize=14,
+        pad=20,
+    )
+
+    # Add lighting effect (simulated with grid)
+    ax.grid(True, alpha=0.1, linestyle="--", linewidth=0.5)
+
+    # Output handling
+    output_mode = output_mode.lower().strip()
+    if output_mode == "show":
         plt.show()
+    elif output_mode in ["png", "jpg", "jpeg", "svg"]:
+        output_filename = f"{filename}.{output_mode}"
+        try:
+            save_kwargs = {
+                "bbox_inches": "tight",
+                "pad_inches": 0.1,
+                "facecolor": fig.get_facecolor(),
+            }
+            if output_mode in ["png", "jpg", "jpeg"]:
+                save_kwargs["dpi"] = dpi
+            plt.savefig(output_filename, format=output_mode, **save_kwargs)
+            print(
+                f"3D Fractal successfully saved to: '{os.path.abspath(output_filename)}'"
+            )
+        except Exception as e:
+            print(
+                f"Error: Could not save file '{output_filename}': {e}", file=sys.stderr
+            )
+        finally:
+            plt.close(fig)
+    else:
+        print(
+            f"Error: Invalid output_mode '{output_mode}'. Choose 'show', 'png', 'jpg', or 'svg'.",
+            file=sys.stderr,
+        )
         plt.close(fig)
 
-    return {
-        'min_cut': min_cut,
-        'max_cut': max_cut,
-        'min_partitions': min_parts,
-        'max_partitions': max_parts,
-        'all_partitions': partitions
-    }
 
-# ------------------------------------------------------------
-# min_max_cut_extended
-# ------------------------------------------------------------
-def min_max_cut_extended(graph, show_plot=True, unique_partitions=True, show_complement=True):
+# ==============================================================================
+# PART 4: STRATUM MODEL VISUALIZATION
+# ==============================================================================
+
+
+def _draw_recursive_stratum_circles(
+    ax,
+    cx,
+    cy,
+    radius,
+    level,
+    max_level,
+    state_collection,
+    branching_rule_func,
+    node_properties_func,
+):
     """
-    Brute‑force tüm ikili bölmeleri bulur, min / max cut değerlerini hesaplar.
-    Genişletilmiş kececi layout stilleriyle (2d, cylindrical, spherical, toric vb.)
-    seçilen min‑cut ve max‑cut bölmelerini görselleştirir.
-    show_complement=True ise her bölmenin tümleyeni de ayrı bir panelde çizilir.
+    Internal recursive helper to draw the Stratum Circular Fractal.
+    It uses provided functions for branching and node properties. Not for direct use.
     """
+    if level >= max_level:
+        return
 
-    nodes = list(graph.nodes())
-    n = len(nodes)
-    edges = list(graph.edges())
+    # Draw the main circle representing the quantum state
+    level_color = plt.cm.plasma(level / max_level)
+    ax.add_patch(
+        plt.Circle((cx, cy), radius, facecolor=level_color, alpha=0.2, zorder=level)
+    )
 
-    # ---------- 1. BRUTE‑FORCE ----------
-    raw = []
-    for bits in itertools.product([0, 1], repeat=n):
-        if sum(bits) == 0 or sum(bits) == n:
-            continue
-        cut = sum(1 for u, v in edges if bits[nodes.index(u)] != bits[nodes.index(v)])
-        raw.append((bits, cut))
+    # Get node properties using the PASSED-IN function
+    node_props = node_properties_func(level, 0)
+    ax.plot(
+        cx,
+        cy,
+        "o",
+        markersize=node_props.get("size", 10),
+        color="white",
+        alpha=0.8,
+        zorder=level + max_level,
+    )
 
-    if unique_partitions:
-        seen = set()
-        partitions = []
-        for bits, cut in raw:
-            if bits[0] == 1:
-                bits_norm = tuple(1 - b for b in bits)
-            else:
-                bits_norm = bits
-            if bits_norm not in seen:
-                seen.add(bits_norm)
-                partitions.append((bits_norm, cut))
+    # Add this state's data to our collection
+    state_collection.append(
+        {
+            "id": len(state_collection),
+            "level": level,
+            "energy": node_props.get("energy", 0.0),
+            "size": node_props.get("size", 10),
+            "color": level_color,
+        }
+    )
+
+    # Determine the number of child states using the PASSED-IN function
+    num_children = branching_rule_func(level)
+
+    # Position and draw the child circles
+    scale_factor = 0.5
+    child_radius = radius * scale_factor
+    distance_from_center = radius * (1 - scale_factor)
+
+    for i in range(num_children):
+        angle = 2 * math.pi * i / num_children + random.uniform(-0.1, 0.1)
+        child_cx = cx + distance_from_center * math.cos(angle)
+        child_cy = cy + distance_from_center * math.sin(angle)
+
+        _draw_recursive_stratum_circles(
+            ax,
+            child_cx,
+            child_cy,
+            child_radius,
+            level + 1,
+            max_level,
+            state_collection,
+            branching_rule_func,
+            node_properties_func,
+        )
+
+
+def visualize_stratum_model(
+    ax,
+    max_level,
+    branching_rule_func,
+    node_properties_func,
+    initial_radius=100,
+    start_cx=0,
+    start_cy=0,
+):
+    """
+    Public-facing function to visualize the Stratum Model as a circular fractal.
+    This is the main entry point from your script.
+
+    Args:
+        ax: The matplotlib axes object to draw on.
+        max_level (int): The maximum recursion depth.
+        branching_rule_func (function): A function that takes a level (int) and returns the number of branches.
+        node_properties_func (function): A function that takes a level and branch_index and returns a dict of properties (e.g., {'size': ..., 'energy': ...}).
+        initial_radius (float): The radius of the first circle.
+        start_cx, start_cy (float): The center coordinates of the first circle.
+
+    Returns:
+        list: A list of dictionaries, where each dictionary represents a generated state.
+    """
+    state_collection = []
+    _draw_recursive_stratum_circles(
+        ax,
+        start_cx,
+        start_cy,
+        initial_radius,
+        0,
+        max_level,
+        state_collection,
+        branching_rule_func,
+        node_properties_func,
+    )
+    return state_collection
+
+
+def visualize_sequential_spectrum(ax, state_collection):
+    """
+    Draws all collected quantum states in a sequential spectrum using the Keçeci Layout,
+    including dotted lines to show the connection between consecutive states.
+    """
+    if not state_collection:
+        ax.text(0.5, 0.5, "No Data Available", color="white", ha="center", va="center")
+        return
+
+    G = nx.Graph()
+    for state_data in state_collection:
+        G.add_node(state_data["id"], **state_data)
+
+    if len(G.nodes()) > 1:
+        for i in range(len(G.nodes()) - 1):
+            G.add_edge(i, i + 1)
+
+    pos = kl.kececi_layout(
+        G, primary_direction="top_down", primary_spacing=1.5, secondary_spacing=1.0
+    )
+
+    node_ids = list(G.nodes())
+    node_sizes = [G.nodes[n].get("size", 10) * 5 for n in node_ids]
+    node_colors = [G.nodes[n].get("color", "blue") for n in node_ids]
+
+    nx.draw_networkx_nodes(
+        G,
+        pos,
+        node_size=node_sizes,
+        node_color=node_colors,
+        edgecolors="white",
+        linewidths=0.5,
+        ax=ax,
+    )
+
+    nx.draw_networkx_edges(G, pos, ax=ax, style="dotted", edge_color="gray", alpha=0.7)
+
+    ax.set_title(
+        "Sequential State Spectrum (Keçeci Layout)", color="white", fontsize=12
+    )
+    ax.set_facecolor("#1a1a1a")
+    ax.axis("off")
+
+
+def generate_color_function(
+    cmap_name: str, max_level: int
+) -> Callable[[int], Tuple[float, float, float, float]]:
+    """
+    generates a color function that returns colors based on level.
+
+    Args:
+        cmap_name: Name of the matplotlib colormap
+        max_level: Maximum level for normalization
+
+    Returns:
+        Function that takes a level and returns RGBA color
+    """
+    cmap = get_cmap_safe(cmap_name)
+
+    def color_func(level: int) -> Tuple[float, float, float, float]:
+        """Returns color for a given level based on colormap."""
+        return cmap(level / max(max_level, 1))
+
+    return color_func
+
+
+def optimized_3d_fractal(
+    num_children: int = 6,
+    max_level: int = 3,
+    resolution: int = 15,  # Düşük çözünürlük için
+    show_plot: bool = True,
+):
+    """
+    Optimize edilmiş 3D fraktal (hızlı render için).
+    """
+    if not HAS_3D:
+        return None, None
+
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection="3d")
+
+    # Basit renk fonksiyonu
+    def simple_color_func(level):
+        colors = [(0.8, 0.2, 0.2), (0.2, 0.8, 0.2), (0.2, 0.2, 0.8), (0.8, 0.8, 0.2)]
+        return colors[level % len(colors)]
+
+    # Optimize edilmiş küre çizimi
+    def draw_sphere_fast(ax, center, radius, color, alpha=0.7):
+        u = np.linspace(0, 2 * np.pi, resolution)
+        v = np.linspace(0, np.pi, resolution)
+
+        x = center[0] + radius * np.outer(np.cos(u), np.sin(v))
+        y = center[1] + radius * np.outer(np.sin(u), np.sin(v))
+        z = center[2] + radius * np.outer(np.ones(np.size(u)), np.cos(v))
+
+        ax.plot_surface(x, y, z, color=color, alpha=alpha, edgecolor="none", shade=True)
+
+    # Optimize edilmiş özyineleme
+    def generate_fractal_fast(
+        ax, center, radius, level, max_level, num_children, scale_factor
+    ):
+        if level > max_level or radius < 0.05:
+            return
+
+        # Küreyi çiz
+        color = simple_color_func(level)
+        draw_sphere_fast(ax, center, radius, color, alpha=0.7 - level * 0.15)
+
+        # Çocuk küreler
+        child_radius = radius * scale_factor
+
+        for i in range(num_children):
+            angle = 2 * np.pi * i / num_children
+            elevation = np.pi * (i % 2) / 2  # Alternatif yükseklik
+
+            x = np.cos(angle) * np.cos(elevation)
+            y = np.sin(angle) * np.cos(elevation)
+            z = np.sin(elevation)
+
+            direction = np.array([x, y, z])
+            direction = direction / np.linalg.norm(direction)
+
+            child_center = center + direction * (radius + child_radius)
+
+            generate_fractal_fast(
+                ax,
+                child_center,
+                child_radius,
+                level + 1,
+                max_level,
+                num_children,
+                scale_factor,
+            )
+
+    # Fraktalı oluştur
+    center = np.array([0.0, 0.0, 0.0])
+    generate_fractal_fast(ax, center, 1.0, 0, max_level, num_children, 0.4)
+
+    # Görünüm ayarları
+    max_extent = 1.0 * (1 + 2 * 0.4 * max_level) * 1.2
+    ax.set_xlim([-max_extent, max_extent])
+    ax.set_ylim([-max_extent, max_extent])
+    ax.set_zlim([-max_extent, max_extent])
+    ax.view_init(elev=25, azim=45)
+
+    ax.set_facecolor("#0a0a0a")
+    ax.grid(True, alpha=0.1)
+    ax.set_title(
+        f"Hızlı 3D Fraktal (Çözünürlük: {resolution})", color="white", fontsize=12
+    )
+
+    if show_plot:
+        plt.tight_layout()
+        plt.show()
+
+    return fig, ax
+
+
+# Her fraktal için ayrı figür oluştur, sonra birleştir
+def generate_single_fractal(num_children, max_level, color_scheme, title):
+    """Tek bir fraktal oluşturur ve surface objelerini döndürür."""
+    fig = plt.figure(figsize=(6, 5))
+    ax = fig.add_subplot(111, projection="3d")
+
+    color_func = generate_color_function(color_scheme, max_level)
+    center = np.array([0.0, 0.0, 0.0])
+
+    # Fraktalı oluştur
+    _generate_recursive_3d_fractal(
+        ax, center, 1.0, 0, max_level, num_children, 0.4, 0.05, color_func, 0.7
+    )
+
+    # Görünüm ayarları
+    max_extent = 1.0 * (1 + 2 * 0.4 * max_level) * 1.2
+    ax.set_xlim([-max_extent, max_extent])
+    ax.set_ylim([-max_extent, max_extent])
+    ax.set_zlim([-max_extent, max_extent])
+    ax.view_init(elev=25, azim=45)
+    ax.set_title(title, fontsize=10, color="white", pad=10)
+    ax.set_facecolor("#0a0a0a")
+    ax.grid(True, alpha=0.1)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_zticks([])
+
+    # Surface objelerini topla (list() kullanarak)
+    surfaces = list(ax.collections)
+
+    plt.close(fig)
+    return surfaces
+
+
+def generate_fractal_directly(ax, config: dict):
+    """
+    Fraktalı doğrudan verilen Matplotlib ekseninde oluşturur.
+
+    Parameters:
+    -----------
+    ax : matplotlib.axes._subplots.Axes3DSubplot
+        3D eksen objesi
+    config : dict
+        Fraktal konfigürasyonu:
+        - num_children: Her seviyedeki çocuk sayısı
+        - max_level: Maksimum özyineleme seviyesi
+        - color_scheme: Renk şeması ismi
+        - title: (opsiyonel) Başlık
+        - scale_factor: (opsiyonel) Ölçek faktörü, varsayılan 0.4
+        - base_radius: (opsiyonel) Ana yarıçap, varsayılan 1.0
+        - min_radius: (opsiyonel) Minimum yarıçap, varsayılan 0.05
+        - alpha_decay: (opsiyonel) Alpha azalma faktörü, varsayılan 0.7
+
+    Returns:
+    --------
+    None
+
+    Raises:
+    -------
+    ThreeDNotSupportedError
+        3D grafik desteği yoksa
+    InvalidAxisError
+        Eksen 3D değilse veya geçersizse
+    FractalParameterError
+        Konfigürasyon parametreleri geçersizse
+    """
+    # 3D desteği kontrolü
+    if not HAS_3D:
+        raise ThreeDNotSupportedError(
+            "3D grafik desteği yok. Lütfen matplotlib'in 3D modülünü yükleyin."
+        )
+
+    # Eksen kontrolü
+    try:
+        # Eksenin 3D olup olmadığını kontrol et
+        if not hasattr(ax, "get_proj"):
+            raise InvalidAxisError("Verilen eksen 3D değil.")
+    except AttributeError:
+        raise InvalidAxisError("Geçersiz eksen objesi.")
+
+    # Konfigürasyon validasyonu
+    required_keys = ["num_children", "max_level", "color_scheme"]
+    for key in required_keys:
+        if key not in config:
+            raise FractalParameterError(f"Gerekli parametre eksik: '{key}'")
+
+    # Parametre validasyonu
+    if not isinstance(config["num_children"], int) or config["num_children"] < 1:
+        raise FractalParameterError("num_children pozitif bir tamsayı olmalıdır.")
+
+    if not isinstance(config["max_level"], int) or config["max_level"] < 0:
+        raise FractalParameterError("max_level negatif olmayan bir tamsayı olmalıdır.")
+
+    # Varsayılan değerleri ayarla
+    config.setdefault("scale_factor", 0.4)
+    config.setdefault("base_radius", 1.0)
+    config.setdefault("min_radius", 0.05)
+    config.setdefault("alpha_decay", 0.7)
+
+    # Parametre aralık kontrolü
+    if not (0 < config["scale_factor"] < 1):
+        raise FractalParameterError("scale_factor 0 ile 1 arasında olmalıdır.")
+
+    if config["base_radius"] <= 0:
+        raise FractalParameterError("base_radius pozitif olmalıdır.")
+
+    if config["min_radius"] <= 0:
+        raise FractalParameterError("min_radius pozitif olmalıdır.")
+
+    if not (0 <= config["alpha_decay"] <= 1):
+        raise FractalParameterError("alpha_decay 0 ile 1 arasında olmalıdır.")
+
+    # Renk fonksiyonunu oluştur
+    try:
+        color_func = generate_color_function(
+            config["color_scheme"], config["max_level"]
+        )
+    except Exception as e:
+        raise FractalParameterError(f"Renk şeması oluşturulamadı: {e}")
+
+    center = np.array([0.0, 0.0, 0.0])
+
+    # Fraktalı oluştur
+    try:
+        _generate_recursive_3d_fractal(
+            ax,
+            center,
+            config["base_radius"],
+            0,
+            config["max_level"],
+            config["num_children"],
+            config["scale_factor"],
+            config["min_radius"],
+            color_func,
+            config["alpha_decay"],
+        )
+    except RecursionError:
+        raise FractalParameterError(
+            f"Özyineleme sınırı aşıldı. max_level değerini azaltmayı deneyin."
+        )
+    except Exception as e:
+        raise KececiFractalError(f"Fraktal oluşturulurken hata: {e}")
+
+    # Eksen ayarları
+    max_extent = (
+        config["base_radius"]
+        * (1 + 2 * config["scale_factor"] * config["max_level"])
+        * 1.2
+    )
+    ax.set_xlim([-max_extent, max_extent])
+    ax.set_ylim([-max_extent, max_extent])
+    ax.set_zlim([-max_extent, max_extent])
+    ax.view_init(elev=25, azim=45)
+
+def generate_simple_3d_fractal(
+    ax,
+    num_children: int = 6,
+    max_level: int = 3,
+    color_scheme: str = "viridis",
+    **kwargs,
+):
+    """
+    Basit bir 3D fraktal oluşturur.
+
+    Parameters:
+    -----------
+    ax : matplotlib.axes._subplots.Axes3DSubplot
+        3D eksen objesi
+    num_children : int, optional
+        Her seviyedeki çocuk sayısı (varsayılan: 6)
+    max_level : int, optional
+        Maksimum özyineleme seviyesi (varsayılan: 3)
+    color_scheme : str, optional
+        Renk şeması ismi (varsayılan: 'viridis')
+    **kwargs : dict
+        Ek parametreler:
+        - scale_factor: Ölçek faktörü (varsayılan: 0.4)
+        - base_radius: Ana yarıçap (varsayılan: 1.0)
+        - min_radius: Minimum yarıçap (varsayılan: 0.05)
+        - alpha_decay: Alpha azalma faktörü (varsayılan: 0.7)
+        - elev: Görünüm eğim açısı (varsayılan: 25)
+        - azim: Görünüm azimut açısı (varsayılan: 45)
+        - show_grid: Izgara gösterilsin mi? (varsayılan: True)
+        - grid_alpha: Izgara saydamlığı (varsayılan: 0.1)
+        - background_color: Arkaplan rengi (varsayılan: '#0a0a0a')
+        - title: Başlık (varsayılan: None)
+        - title_size: Başlık font boyutu (varsayılan: 14)
+        - title_weight: Başlık font kalınlığı (varsayılan: 'bold')
+        - title_color: Başlık rengi (varsayılan: 'white')
+        - title_pad: Başlık padding'i (varsayılan: 20)
+        - show_axis_labels: Eksen etiketleri gösterilsin mi? (varsayılan: False)
+        - xlabel: X eksen etiketi (varsayılan: 'X')
+        - ylabel: Y eksen etiketi (varsayılan: 'Y')
+        - zlabel: Z eksen etiketi (varsayılan: 'Z')
+        - axis_label_color: Eksen etiketi rengi (varsayılan: 'white')
+        - axis_label_size: Eksen etiketi boyutu (varsayılan: 10)
+        - tick_color: Tick rengi (varsayılan: 'white')
+
+    Returns:
+    --------
+    None
+
+    Raises:
+    -------
+    ThreeDNotSupportedError
+        3D grafik desteği yoksa
+    InvalidAxisError
+        Eksen 3D değilse veya geçersizse
+    FractalParameterError
+        Parametreler geçersizse
+    """
+    # 3D desteği kontrolü
+    if not HAS_3D:
+        raise ThreeDNotSupportedError(
+            "3D grafik desteği yok. Lütfen matplotlib'in 3D modülünü yükleyin."
+        )
+
+    # Eksen kontrolü
+    try:
+        if not hasattr(ax, "get_proj"):
+            raise InvalidAxisError("Verilen eksen 3D değil.")
+    except AttributeError:
+        raise InvalidAxisError("Geçersiz eksen objesi.")
+
+    # Parametre validasyonu
+    if not isinstance(num_children, int) or num_children < 1:
+        raise FractalParameterError("num_children pozitif bir tamsayı olmalıdır.")
+
+    if not isinstance(max_level, int) or max_level < 0:
+        raise FractalParameterError("max_level negatif olmayan bir tamsayı olmalıdır.")
+
+    # Varsayılan değerleri ayarla
+    scale_factor = kwargs.get("scale_factor", 0.4)
+    base_radius = kwargs.get("base_radius", 1.0)
+    min_radius = kwargs.get("min_radius", 0.05)
+    alpha_decay = kwargs.get("alpha_decay", 0.7)
+    elev = kwargs.get("elev", 25)
+    azim = kwargs.get("azim", 45)
+    show_grid = kwargs.get("show_grid", True)
+    grid_alpha = kwargs.get("grid_alpha", 0.1)
+    background_color = kwargs.get("background_color", "#0a0a0a")
+    title = kwargs.get("title", None)
+
+    # Parametre aralık kontrolü
+    if not (0 < scale_factor < 1):
+        raise FractalParameterError("scale_factor 0 ile 1 arasında olmalıdır.")
+
+    if base_radius <= 0:
+        raise FractalParameterError("base_radius pozitif olmalıdır.")
+
+    if min_radius <= 0:
+        raise FractalParameterError("min_radius pozitif olmalıdır.")
+
+    if not (0 <= alpha_decay <= 1):
+        raise FractalParameterError("alpha_decay 0 ile 1 arasında olmalıdır.")
+
+    if not (-90 <= elev <= 90):
+        raise FractalParameterError("elev -90 ile 90 arasında olmalıdır.")
+
+    if not (0 <= azim <= 360):
+        raise FractalParameterError("azim 0 ile 360 arasında olmalıdır.")
+
+    # Arkaplan rengini ayarla
+    try:
+        bg_color = _parse_color(background_color) or (0.04, 0.04, 0.04)
+        ax.set_facecolor(bg_color)
+    except Exception as e:
+        raise ColorParseError(f"Arkaplan rengi parse edilemedi: {e}")
+
+    # Renk fonksiyonunu oluştur
+    try:
+        color_func = generate_color_function(color_scheme, max_level)
+    except Exception as e:
+        raise FractalParameterError(f"Renk şeması oluşturulamadı: {e}")
+
+    center = np.array([0.0, 0.0, 0.0])
+
+    # Fraktalı oluştur
+    try:
+        _generate_recursive_3d_fractal(
+            ax,
+            center,
+            base_radius,
+            0,
+            max_level,
+            num_children,
+            scale_factor,
+            min_radius,
+            color_func,
+            alpha_decay,
+        )
+    except RecursionError:
+        raise FractalParameterError(
+            f"Özyineleme sınırı aşıldı. max_level değerini azaltmayı deneyin."
+        )
+    except Exception as e:
+        raise KececiFractalError(f"Fraktal oluşturulurken hata: {e}")
+
+    # Eksen ayarları
+    max_extent = base_radius * (1 + 2 * scale_factor * max_level) * 1.2
+    ax.set_xlim([-max_extent, max_extent])
+    ax.set_ylim([-max_extent, max_extent])
+    ax.set_zlim([-max_extent, max_extent])
+    ax.view_init(elev=elev, azim=azim)
+
+    # Izgara ayarları
+    if show_grid:
+        ax.grid(True, alpha=grid_alpha, linestyle="--", linewidth=0.5)
     else:
-        partitions = raw
+        ax.grid(False)
 
-    cuts = [c for _, c in partitions]
-    min_cut = min(cuts)
-    max_cut = max(cuts)
-    min_parts = [p for p, c in partitions if c == min_cut]
-    max_parts = [p for p, c in partitions if c == max_cut]
+    # Başlık ekle
+    if title:
+        ax.set_title(
+            title,
+            fontsize=kwargs.get("title_size", 14),
+            fontweight=kwargs.get("title_weight", "bold"),
+            color=kwargs.get("title_color", "white"),
+            pad=kwargs.get("title_pad", 20),
+        )
 
-    print("=" * 60)
-    print("  MIN‑MAX CUT EXTENDED (Brute‑Force + Genişletilmiş Layout)")
-    print("=" * 60)
-    print(f"Minimum cut: {min_cut}")
-    print("Bölmeler (benzersiz):")
-    for p in min_parts:
-        print(f"  {p}")
-    print(f"\nMaksimum cut: {max_cut}")
-    print("Bölmeler (benzersiz):")
-    for p in max_parts:
-        print(f"  {p}")
-    print("-" * 60)
+    # Eksen etiketleri
+    if kwargs.get("show_axis_labels", False):
+        ax.set_xlabel(
+            kwargs.get("xlabel", "X"),
+            color=kwargs.get("axis_label_color", "white"),
+            fontsize=kwargs.get("axis_label_size", 10),
+        )
+        ax.set_ylabel(
+            kwargs.get("ylabel", "Y"),
+            color=kwargs.get("axis_label_color", "white"),
+            fontsize=kwargs.get("axis_label_size", 10),
+        )
+        ax.set_zlabel(
+            kwargs.get("zlabel", "Z"),
+            color=kwargs.get("axis_label_color", "white"),
+            fontsize=kwargs.get("axis_label_size", 10),
+        )
 
-    if not show_plot:
-        return {
-            'min_cut': min_cut, 'max_cut': max_cut,
-            'min_partitions': min_parts, 'max_partitions': max_parts,
-            'all_partitions': partitions
+        # Eksen etiketi renkleri
+        ax.xaxis.label.set_color(kwargs.get("axis_label_color", "white"))
+        ax.yaxis.label.set_color(kwargs.get("axis_label_color", "white"))
+        ax.zaxis.label.set_color(kwargs.get("axis_label_color", "white"))
+
+        # Tick renkleri
+        ax.tick_params(axis="x", colors=kwargs.get("tick_color", "white"))
+        ax.tick_params(axis="y", colors=kwargs.get("tick_color", "white"))
+        ax.tick_params(axis="z", colors=kwargs.get("tick_color", "white"))
+    else:
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_zticks([])
+
+def draw_kececi_internal_fractal3d(
+    ax,
+    center=(0, 0, 0),
+    radius=1.0,
+    depth=3,
+    num_children=8,
+    scale_factor=0.4,
+    min_radius=0.02,
+    current_depth=0
+):
+    """
+    🌀 3D Keçeci Internal Fractal – Belirgin Renk Ayrımı ile
+    
+    Çocuk küreler, ebeveyn kürenin İÇ yüzeyine teğet olacak şekilde yerleştirilir.
+    Her seviye sabit, kontrastlı bir renkle gösterilir.
+    """
+    if depth < 0 or radius < min_radius:
+        return
+
+    # Sabit, belirgin renk paleti (derinliğe göre)
+    color_palette = [
+        (0.9, 0.2, 0.2),   # depth 0: kırmızı (merkez)
+        (0.9, 0.6, 0.2),   # depth 1: turuncu
+        (0.9, 0.9, 0.2),   # depth 2: sarı
+        (0.2, 0.9, 0.4),   # depth 3: yeşil
+        (0.0, 0.8, 0.9),   # depth 4: turkuaz
+        (0.3, 0.3, 0.9),   # depth 5: mavi
+        (0.6, 0.2, 0.8),   # depth 6: mor
+    ]
+    color = color_palette[current_depth % len(color_palette)]
+
+    # Ana küreyi çiz
+    draw_sphere(
+        ax,
+        center=center,
+        radius=radius,
+        color=color,
+        alpha=0.7 + 0.05 * current_depth,  # iç katmanlar daha az saydam
+        edgecolor='none'
+    )
+
+    if depth == 0:
+        return
+
+    # Çocuk küreler: ebeveynin içine, iç yüzeye teğet
+    child_radius = radius * scale_factor
+    directions = get_icosahedron_vertices()[:num_children]
+    # Merkezden mesafe = R_ebeveyn - R_çocuk → iç teğet
+    distance_from_center = radius - child_radius
+
+    for d in directions:
+        child_center = np.array(center) + distance_from_center * d
+        draw_kececi_internal_fractal_3d(
+            ax,
+            center=tuple(child_center),
+            radius=child_radius,
+            depth=depth - 1,
+            num_children=num_children,
+            scale_factor=scale_factor,
+            min_radius=min_radius,
+            current_depth=current_depth + 1
+        )
+
+def draw_kececi_internal_fractal_3d(
+    ax,
+    center=(0, 0, 0),
+    radius=1.0,
+    depth=3,
+    num_children=8,
+    scale_factor=0.4,
+    min_radius=0.02,
+    current_depth=0
+):
+    if depth < 0 or radius < min_radius:
+        return
+
+    color = HIGH_CONTRAST_COLORS[current_depth % len(HIGH_CONTRAST_COLORS)]
+
+    draw_sphere(
+        ax,
+        center=center,
+        radius=radius,
+        color=color,
+        alpha=0.30,
+        edgecolor='none'
+    )
+
+    if depth == 0:
+        return
+
+    child_radius = radius * scale_factor
+    directions = get_icosahedron_vertices()[:num_children]
+    distance_from_center = radius - child_radius
+
+    for d in directions:
+        child_center = np.array(center) + distance_from_center * d
+        draw_kececi_internal_fractal_3d(
+            ax,
+            center=tuple(child_center),
+            radius=child_radius,
+            depth=depth - 1,
+            num_children=num_children,
+            scale_factor=scale_factor,
+            min_radius=min_radius,
+            current_depth=current_depth + 1
+        )
+
+def draw_kececi_external_fractal3d(
+    ax,
+    center=(0, 0, 0),
+    radius=1.0,
+    depth=3,
+    num_children=8,
+    scale_factor=0.45,
+    min_radius=0.02,
+    current_depth=0
+):
+    """
+    🌀 Keçeci External Fractal (3D)
+    - Küreler dışa doğru büyür.
+    - Her seviye belirgin renkle gösterilir.
+    - Fiziksel olarak tutarlı (katı cisimler çarpışmaz).
+    """
+    if depth < 0 or radius < min_radius:
+        return
+
+    # Belirgin renk paleti (derinliğe göre)
+    color_palette = [
+        (0.1, 0.2, 0.8),   # depth 0: koyu mavi
+        (0.0, 0.8, 0.9),   # depth 1: turkuaz
+        (0.2, 0.9, 0.4),   # depth 2: parlak yeşil
+        (0.9, 0.9, 0.2),   # depth 3: sarı
+        (0.9, 0.3, 0.2),   # depth 4: turuncu-kırmızı
+        (0.6, 0.1, 0.6),   # depth 5: mor
+    ]
+    color = color_palette[current_depth % len(color_palette)]
+
+    # Ana küreyi çiz
+    draw_sphere(
+        ax, center, radius,
+        color=color,
+        alpha=0.75,
+        edgecolor='none'
+    )
+
+    if depth == 0:
+        return  # yaprak düğüm
+
+    # Çocuk küreler: dışa doğru
+    child_radius = radius * scale_factor
+    directions = get_icosahedron_vertices()[:num_children]
+    distance = radius + child_radius  # dışa temas
+
+    for d in directions:
+        child_center = np.array(center) + distance * d
+        draw_kececi_external_fractal_3d(
+            ax,
+            center=tuple(child_center),
+            radius=child_radius,
+            depth=depth - 1,
+            num_children=num_children,
+            scale_factor=scale_factor,
+            min_radius=min_radius,
+            current_depth=current_depth + 1
+        )
+
+def draw_kececi_external_fractal_3d(
+    ax,
+    center=(0, 0, 0),
+    radius=1.0,
+    depth=3,
+    num_children=8,
+    scale_factor=0.45,
+    min_radius=0.02,
+    current_depth=0
+):
+    """
+    🌀 Keçeci External Fractal (3D)
+    - Küreler dışa doğru büyür.
+    - Her seviye belirgin renkle gösterilir.
+    - Fiziksel olarak tutarlı (katı cisimler çarpışmaz).
+    """
+    if depth < 0 or radius < min_radius:
+        return
+
+    color = HIGH_CONTRAST_COLORS[current_depth % len(HIGH_CONTRAST_COLORS)]
+
+    # Ana küreyi çiz
+    draw_sphere(
+        ax, center, radius,
+        color=color,
+        alpha=0.75,
+        edgecolor='none'
+    )
+
+    if depth == 0:
+        return  # yaprak düğüm
+
+    # Çocuk küreler: dışa doğru
+    child_radius = radius * scale_factor
+    directions = get_icosahedron_vertices()[:num_children]
+    distance = radius + child_radius  # dışa temas
+
+    for d in directions:
+        child_center = np.array(center) + distance * d
+        draw_kececi_external_fractal_3d(
+            ax,
+            center=tuple(child_center),
+            radius=child_radius,
+            depth=depth - 1,
+            num_children=num_children,
+            scale_factor=scale_factor,
+            min_radius=min_radius,
+            current_depth=current_depth + 1
+        )
+
+# ==============================================================================
+# ÖRNEK KULLANIM FONKSİYONLARI (isteğe bağlı)
+# ==============================================================================
+def example_multiple_fractals():
+    """
+    Çoklu fraktal karşılaştırması örneği.
+
+    Returns:
+    --------
+    matplotlib.figure.Figure or None
+        Oluşturulan figür veya hata durumunda None
+    """
+    if not HAS_3D:
+        print("Hata: 3D grafik desteği yok.")
+        return None
+
+    try:
+        import matplotlib.pyplot as plt
+
+        # Ana figür oluştur
+        fig, axes = plt.subplots(
+            2, 2, figsize=(15, 12), subplot_kw={"projection": "3d"}
+        )
+        fig.patch.set_facecolor("#111111")
+
+        # Farklı parametre kombinasyonları
+        configs = [
+            {
+                "num_children": 4,
+                "max_level": 2,
+                "color_scheme": "viridis",
+                "title": "Küçük Fraktal",
+            },
+            {
+                "num_children": 8,
+                "max_level": 3,
+                "color_scheme": "plasma",
+                "title": "Orta Fraktal",
+            },
+            {
+                "num_children": 12,
+                "max_level": 3,
+                "color_scheme": "summer",
+                "title": "Yoğun Fraktal",
+            },
+            {
+                "num_children": 6,
+                "max_level": 4,
+                "color_scheme": "cool",
+                "title": "Derin Fraktal",
+            },
+        ]
+
+        # Her fraktalı doğrudan kendi ekseninde oluştur
+        for idx, (ax, config) in enumerate(zip(axes.flat, configs)):
+            try:
+                generate_fractal_directly(ax, config)
+
+                # Eksen görünüm ayarları
+                ax.set_title(
+                    config["title"],
+                    fontsize=11,
+                    fontweight="bold",
+                    color="white",
+                    pad=15,
+                )
+                ax.set_facecolor("#0a0a0a")
+                ax.grid(True, alpha=0.15)
+                ax.set_xticks([])
+                ax.set_yticks([])
+                ax.set_zticks([])
+
+            except Exception as e:
+                print(f"Fraktal {config['title']} oluşturulurken hata: {e}")
+                # Hata durumunda boş bir metin göster
+                ax.text(0.5, 0.5, 0.5, "Hata", color="red", ha="center", va="center")
+
+        plt.suptitle(
+            "Farklı 3D Keçeci Fraktal Çeşitleri",
+            fontsize=16,
+            fontweight="bold",
+            color="white",
+            y=0.95,
+        )
+        plt.tight_layout()
+
+        return fig
+
+    except Exception as e:
+        print(f"Çoklu fraktal örneği oluşturulurken hata: {e}")
+        return None
+
+
+def example_view_angles():
+    """
+    Farklı görünüm açıları örneği.
+
+    Returns:
+    --------
+    matplotlib.figure.Figure or None
+        Oluşturulan figür veya hata durumunda None
+    """
+    if not HAS_3D:
+        print("Hata: 3D grafik desteği yok.")
+        return None
+
+    try:
+        import matplotlib.pyplot as plt
+
+        # Tek bir fraktal oluştur ve farklı açılardan göster
+        fig = plt.figure(figsize=(12, 8))
+        fig.patch.set_facecolor("#111111")
+
+        # Fraktal parametreleri
+        fractal_params = {
+            "num_children": 8,
+            "max_level": 3,
+            "scale_factor": 0.4,
+            "color_scheme": "hot",
         }
 
-    # ---------- 2. ÖRNEK BÖLME SEÇ ----------
-    example_min_bits = min_parts[0]
-    example_max_bits = max_parts[0]
+        # Tüm alt eksenlerde aynı fraktalı oluştur
+        view_angles = [
+            (30, 0, "Ön Görünüm"),
+            (30, 90, "Sağ Görünüm"),
+            (30, 180, "Arka Görünüm"),
+            (30, 270, "Sol Görünüm"),
+        ]
 
-    # ---------- 3. YARDIMCI FONKSİYONLAR ----------
-    def map_to_cylinder(pos_2d, radius=1, height=1):
-        pos_3d = {}
-        for node, (x, y) in pos_2d.items():
-            theta = 2 * np.pi * x
-            pos_3d[node] = (radius * np.cos(theta),
-                            radius * np.sin(theta),
-                            height * (y - 0.5) * 2)
-        return pos_3d
+        for idx, (elev, azim, title) in enumerate(view_angles, 1):
+            ax = fig.add_subplot(2, 2, idx, projection="3d")
 
-    def map_to_sphere(pos_2d, radius=1):
-        pos_3d = {}
-        for node, (x, y) in pos_2d.items():
-            theta = 2 * np.pi * x
-            phi = np.pi * y
-            pos_3d[node] = (radius * np.sin(phi) * np.cos(theta),
-                            radius * np.sin(phi) * np.sin(theta),
-                            radius * np.cos(phi))
-        return pos_3d
+            # Fraktalı bu eksende oluştur
+            try:
+                generate_simple_3d_fractal(
+                    ax,
+                    num_children=fractal_params["num_children"],
+                    max_level=fractal_params["max_level"],
+                    color_scheme=fractal_params["color_scheme"],
+                    scale_factor=fractal_params["scale_factor"],
+                    elev=elev,
+                    azim=azim,
+                    title=f"{title}\n(elev={elev}°, azim={azim}°)",
+                    title_size=10,
+                    show_axis_labels=False,
+                )
 
-    def map_to_ellipsoid(pos_2d, a=2, b=1, c=0.5):
-        pos_3d = {}
-        for node, (x, y) in pos_2d.items():
-            theta = 2 * np.pi * x
-            phi = np.pi * y
-            pos_3d[node] = (a * np.sin(phi) * np.cos(theta),
-                            b * np.sin(phi) * np.sin(theta),
-                            c * np.cos(phi))
-        return pos_3d
+                # Ek ayarlar
+                ax.set_facecolor("#0a0a0a")
+                ax.grid(True, alpha=0.1)
 
-    def map_to_torus(pos_2d, R=2, r=0.5):
-        pos_3d = {}
-        for node, (x, y) in pos_2d.items():
-            theta = 2 * np.pi * x
-            phi = 2 * np.pi * y
-            pos_3d[node] = ((R + r * np.cos(phi)) * np.cos(theta),
-                            (R + r * np.cos(phi)) * np.sin(theta),
-                            r * np.sin(phi))
-        return pos_3d
+            except Exception as e:
+                print(f"Görünüm açısı {title} oluşturulurken hata: {e}")
+                ax.text(0.5, 0.5, 0.5, "Hata", color="red", ha="center", va="center")
 
-    def kececi_layout_extended(G, layout='2d', style='standard', edge_aware=True,
-                               expanding=True, primary_spacing=1.0, secondary_spacing=1.0,
-                               primary_direction='top_down', secondary_start='right'):
-        if edge_aware:
-            base = kececi_layout_edge(
-                G, primary_spacing=primary_spacing, secondary_spacing=secondary_spacing,
-                primary_direction=primary_direction, secondary_start=secondary_start,
-                expanding=expanding, edge=True
-            )
+        plt.suptitle(
+            "3D Keçeci Fraktalı - Farklı Görünüm Açıları",
+            fontsize=14,
+            fontweight="bold",
+            color="white",
+            y=0.95,
+        )
+        plt.tight_layout()
+
+        return fig
+
+    except Exception as e:
+        print(f"Görünüm açıları örneği oluşturulurken hata: {e}")
+        return None
+
+
+def example_simple_fractal():
+    """
+    Basit fraktal örneği.
+
+    Returns:
+    --------
+    matplotlib.figure.Figure or None
+        Oluşturulan figür veya hata durumunda None
+    """
+    if not HAS_3D:
+        print("Hata: 3D grafik desteği yok.")
+        return None
+
+    try:
+        import matplotlib.pyplot as plt
+
+        # Yeni bir figür oluştur
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(111, projection="3d")
+
+        # Fraktalı oluştur
+        generate_simple_3d_fractal(
+            ax,
+            num_children=7,
+            max_level=4,
+            color_scheme="coolwarm",
+            title="Basit 3D Keçeci Fraktalı",
+            show_axis_labels=True,
+            xlabel="X Ekseni",
+            ylabel="Y Ekseni",
+            zlabel="Z Ekseni",
+        )
+
+        # Figür arkaplan rengi
+        fig.patch.set_facecolor("#111111")
+        plt.tight_layout()
+
+        return fig
+
+    except Exception as e:
+        print(f"Basit fraktal örneği oluşturulurken hata: {e}")
+        return None
+
+class KececiFractalOpenCL:
+    def __init__(self):
+        platform = select_opencl_platform()
+        self.device = platform.get_devices()[0]
+        self.ctx = cl.Context([self.device])
+        self.queue = cl.CommandQueue(self.ctx)
+        self._compile_kernel()
+        self.max_circles = 0
+        self.circles_buf = None
+        self.output_buf = None
+        self.max_output_floats = 0
+
+    def _compile_kernel(self):
+        kernel_src = """
+        typedef struct { float cx, cy, r; float r_col, g_col, b_col; } Circle;
+        __kernel void circle_fractal(
+            __global float* output, const int width, const int height,
+            __global const Circle* circles, const int num_circles, const float limit)
+        {
+            int px = get_global_id(0), py = get_global_id(1);
+            if (px >= width || py >= height) return;
+            float x = -limit + 2.0f * limit * px / (float)(width - 1);
+            float y = -limit + 2.0f * limit * py / (float)(height - 1);
+            int best_idx = -1; float best_r = 1e9f;
+            for (int i = 0; i < num_circles; i++) {
+                Circle c = circles[i];
+                float dx = x - c.cx, dy = y - c.cy;
+                if (dx*dx + dy*dy <= c.r * c.r) {
+                    if (c.r < best_r) { best_r = c.r; best_idx = i; }
+                }
+            }
+            int idx = (py * width + px) * 3;
+            if (best_idx >= 0) {
+                Circle c = circles[best_idx];
+                output[idx] = c.r_col; output[idx+1] = c.g_col; output[idx+2] = c.b_col;
+            } else { output[idx] = 0.0f; output[idx+1]=0.0f; output[idx+2]=0.0f; }
+        }
+        """
+        self.prg = cl.Program(self.ctx, kernel_src).build()
+        self.knl = self.prg.circle_fractal
+
+    def generate_circles_with_colors(self, base_radius, scale_factor,
+                                     initial_children, recursive_children,
+                                     max_level, min_size_factor, main_color):
+        circles = []
+        min_r = base_radius * min_size_factor
+        def add(cx, cy, r, col):
+            circles.append((cx, cy, r, col[0], col[1], col[2]))
+        add(0.0, 0.0, base_radius, main_color)
+        def recurse(cx, cy, r, level):
+            if level > max_level: return
+            cr = r * scale_factor
+            if cr < min_r: return
+            dist = r - cr
+            n = initial_children if level == 1 else recursive_children
+            for i in range(n):
+                ang = 2 * np.pi * i / n
+                ix = cx + dist * np.cos(ang)
+                iy = cy + dist * np.sin(ang)
+                col = random_soft_color() if random_soft_color else (random.uniform(0.4,0.95) for _ in range(3))
+                if not isinstance(col, tuple): col = tuple(col)
+                add(ix, iy, cr, col)
+                recurse(ix, iy, cr, level+1)
+        if max_level >= 1: recurse(0.0, 0.0, base_radius, 1)
+        return circles
+
+    def render_gpu(self, circles, width, height, limit):
+        num_circles = len(circles)
+        output_floats = width * height * 3
+        # buffer yönetimi
+        if self.circles_buf is None or num_circles > self.max_circles:
+            if self.circles_buf: del self.circles_buf
+            self.max_circles = max(num_circles, 1024)
+            self.circles_buf = cl.Buffer(self.ctx, cl.mem_flags.READ_WRITE, self.max_circles * 6 * 4)
+        if self.output_buf is None or output_floats > self.max_output_floats:
+            if self.output_buf: del self.output_buf
+            self.max_output_floats = output_floats
+            self.output_buf = cl.Buffer(self.ctx, cl.mem_flags.READ_WRITE, output_floats * 4)
+
+        circles_arr = np.array(circles, dtype=np.float32).flatten()
+        cl.enqueue_copy(self.queue, self.circles_buf, circles_arr).wait()
+
+        self.knl(self.queue, (width, height), None,
+                 self.output_buf,
+                 np.int32(width), np.int32(height),
+                 self.circles_buf,
+                 np.int32(num_circles),
+                 np.float32(limit))
+        output = np.zeros((height, width, 3), dtype=np.float32)
+        cl.enqueue_copy(self.queue, output, self.output_buf).wait()
+        return output
+
+    def kececifractals_circle_gpu(self,
+                              initial_children: int = 3,
+                              recursive_children: int = 3,
+                              text: str = "Keçeci Fractals",
+                              font_size: int = 14,
+                              font_color: str = "black",
+                              font_style: str = "bold",
+                              font_family: str = "Arial",
+                              max_level: int = 4,
+                              min_size_factor: float = 0.001,
+                              scale_factor: float = 0.5,
+                              base_radius: float = 12.0,
+                              background_color=None,
+                              initial_circle_color=None,
+                              output_mode: str = "show",
+                              filename: str = "kececi_fractal_circle_gpu",
+                              dpi: int = 300,
+                              width: int = 1024,
+                              height: int = 1024,
+                              view_limit: float = None):   # <-- YENİ
+        if not isinstance(max_level, int) or max_level < 0:
+            print("Error: max_level must be a non-negative integer.", file=sys.stderr)
+            return
+        if not (0 < scale_factor < 1):
+            print("Error: scale_factor must be between 0 and 1.", file=sys.stderr)
+            return
+
+        # Ana daire rengi
+        from matplotlib.colors import to_rgb
+        if initial_circle_color is not None:
+            main_color = to_rgb(initial_circle_color) if isinstance(initial_circle_color, str) else initial_circle_color
         else:
-            base = kececi_layout(
-                G, primary_spacing=primary_spacing, secondary_spacing=secondary_spacing,
-                primary_direction=primary_direction, secondary_start=secondary_start,
-                expanding=expanding
-            )
-        if layout == '2d':
-            return base, False
-        elif layout == 'cylindrical':
-            return map_to_cylinder(base), True
-        elif layout == 'cubic':
-            sorted_nodes = sorted(G.nodes())
-            pos3 = {}
-            for i, node in enumerate(sorted_nodes):
-                x, y = base[node]
-                z = i * primary_spacing - (len(sorted_nodes)-1)*primary_spacing/2
-                pos3[node] = (x, y, z)
-            return pos3, True
-        elif layout == 'spherical':
-            return map_to_sphere(base), True
-        elif layout == 'elliptical':
-            return map_to_ellipsoid(base), True
-        elif layout == 'toric':
-            return map_to_torus(base), True
+            main_color = random_soft_color()
+    
+        # Daireleri oluştur
+        circles = self.generate_circles_with_colors(
+            base_radius, scale_factor, initial_children, recursive_children,
+            max_level, min_size_factor, main_color
+        )
+    
+        # --- LİMİT HESAPLAMA ---
+        if view_limit is not None:
+            limit = view_limit
         else:
-            raise ValueError(f"Geçersiz layout: {layout}")
+            limit = base_radius + 1.0
+            if text and isinstance(text, str) and len(text) > 0:
+                text_radius = base_radius + 0.8
+                limit = max(limit, text_radius + font_size * 0.1)
+            if circles:
+                circles_arr = np.array(circles, dtype=np.float32)
+                max_ext = circles_arr[:, 0:2].max() + circles_arr[:, 2].max()
+                limit = max(limit, max_ext * 1.05)
+    
+        img = self.render_gpu(circles, width, height, limit)
 
-    # ---------- 4. ÇİZİM FONKSİYONU (DÜZELTİLMİŞ) ----------
-    def draw_partition(ax, G, pos, bits, title, is_3d=False):
-        color_0 = "#e41a1c"
-        color_1 = "#377eb8"
-        for node in G.nodes():
-            if is_3d:
-                x, y, z = pos[node]
-                col = color_0 if bits[nodes.index(node)] == 0 else color_1
-                ax.scatter(x, y, z, c=col, s=200, edgecolors='black', linewidth=0.8)
-            else:
-                x, y = pos[node]
-                col = color_0 if bits[nodes.index(node)] == 0 else color_1
-                ax.scatter(x, y, c=col, s=200, edgecolors='black', linewidth=0.8)
-        for u, v in edges:
-            if bits[nodes.index(u)] != bits[nodes.index(v)]:
-                edge_color = '#e41a1c'
-            else:
-                edge_color = 'gray'
-            if is_3d:
-                xu, yu, zu = pos[u]
-                xv, yv, zv = pos[v]
-                ax.plot([xu, xv], [yu, yv], [zu, zv], color=edge_color, linewidth=2, alpha=0.8)
-            else:
-                xu, yu = pos[u]
-                xv, yv = pos[v]
-                ax.plot([xu, xv], [yu, yv], color=edge_color, linewidth=2, alpha=0.8)
-        ax.set_title(title, fontsize=9)
-        if not is_3d:
-            ax.set_aspect('equal')
+        # Arka plan rengini uygula
+        if background_color:
+            bg_rgb = to_rgb(background_color) if isinstance(background_color, str) else background_color
+            mask = (img[:,:,0] == 0) & (img[:,:,1] == 0) & (img[:,:,2] == 0)
+            img[mask] = bg_rgb
+
+        # Çizim
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.imshow(img, extent=[-limit, limit, -limit, limit], origin='lower')
+        ax.set_xlim(-limit, limit)
+        ax.set_ylim(-limit, limit)
+        ax.set_aspect('equal')
         ax.axis('off')
 
-    # ---------- 5. HİSTOGRAM ----------
-    fig_hist, ax_hist = plt.subplots(figsize=(7, 4))
-    bins = np.arange(min_cut - 0.5, max_cut + 1.5, 1)
-    ax_hist.hist(cuts, bins=bins, edgecolor='black', color='steelblue', alpha=0.8)
-    ax_hist.set_xlabel('Cut Size')
-    ax_hist.set_ylabel('Bölme Sayısı')
-    ax_hist.set_title(f'Cut Dağılımı (Min={min_cut}, Maks={max_cut})')
-    ax_hist.set_xticks(range(min_cut, max_cut+1))
-    ax_hist.axvline(min_cut, color='green', linestyle='--', linewidth=2, label=f'Min ({min_cut})')
-    ax_hist.axvline(max_cut, color='red', linestyle='--', linewidth=2, label=f'Maks ({max_cut})')
-    ax_hist.legend()
-    plt.tight_layout()
-    plt.show()
-    plt.close(fig_hist)
+        # Metin
+        if text and isinstance(text, str) and len(text) > 0:
+            text_radius = base_radius + 0.8
+            fc = to_rgb(font_color) if isinstance(font_color, str) else (0,0,0)
+            for i, char in enumerate(text):
+                angle_deg = (360 / len(text) * i) - 90
+                angle_rad = np.deg2rad(angle_deg)
+                x_text = text_radius * np.cos(angle_rad)
+                y_text = text_radius * np.sin(angle_rad)
+                ax.text(x_text, y_text, char,
+                        fontsize=font_size, ha="center", va="center",
+                        color=fc, fontweight=font_style, fontfamily=font_family,
+                        rotation=angle_deg + 90)
 
-    # ---------- 6. ÇİZİM ANA DÖNGÜSÜ (complement destekli) ----------
-    layouts = ['2d', 'cylindrical', 'spherical', 'elliptical', 'toric']
+        plot_title = f"Keçeci Fractals GPU ({text})" if text else "Keçeci Circle Fractal GPU"
+        plt.title(plot_title, fontsize=16)
 
-    for layout_name in layouts:
-        pos_min, is3d_min = kececi_layout_extended(
-            graph, layout=layout_name, style='standard', edge_aware=True
-        )
-        pos_max, is3d_max = kececi_layout_extended(
-            graph, layout=layout_name, style='standard', edge_aware=True
-        )
-
-        if show_complement:
-            bits_list = [
-                (example_min_bits, f"Min Cut = {min_cut}\n{example_min_bits}"),
-                (tuple(1 - b for b in example_min_bits), f"Min Complement\n{tuple(1 - b for b in example_min_bits)}"),
-                (example_max_bits, f"Maks Cut = {max_cut}\n{example_max_bits}"),
-                (tuple(1 - b for b in example_max_bits), f"Maks Complement\n{tuple(1 - b for b in example_max_bits)}")
-            ]
-            ncols = 4
-        else:
-            bits_list = [
-                (example_min_bits, f"Min Cut = {min_cut}\n{example_min_bits}"),
-                (example_max_bits, f"Maks Cut = {max_cut}\n{example_max_bits}")
-            ]
-            ncols = 2
-
-        if is3d_min or is3d_max:
-            # 3D: hepsi aynı figürde yan yana
-            fig = plt.figure(figsize=(4 * ncols, 4))
-            for idx, (bits, title) in enumerate(bits_list, start=1):
-                ax = fig.add_subplot(1, ncols, idx, projection='3d')
-                pos = pos_min if "Min" in title else pos_max
-                draw_partition(ax, graph, pos, bits, title, is_3d=True)
-            fig.suptitle(f"Layout: {layout_name}", fontsize=14)
-            plt.tight_layout()
+        output_mode = output_mode.lower().strip()
+        if output_mode == "show":
             plt.show()
-            plt.close(fig)
+        elif output_mode in ["png", "jpg", "jpeg", "svg"]:
+            output_filename = f"{filename}.{output_mode}"
+            plt.savefig(output_filename, dpi=dpi, bbox_inches='tight')
+            print(f"Fractal saved to: {output_filename}")
+            plt.close()
         else:
-            # 2D: yan yana subplot
-            fig, axes = plt.subplots(1, ncols, figsize=(5 * ncols, 5))
-            if ncols == 2:
-                ax1, ax2 = axes
-                draw_partition(ax1, graph, pos_min, example_min_bits,
-                               f"Min Cut = {min_cut}\n{example_min_bits}")
-                draw_partition(ax2, graph, pos_max, example_max_bits,
-                               f"Maks Cut = {max_cut}\n{example_max_bits}")
-            else:
-                for idx, (bits, title) in enumerate(bits_list):
-                    pos = pos_min if "Min" in title else pos_max
-                    draw_partition(axes[idx], graph, pos, bits, title)
-            fig.suptitle(f"Layout: {layout_name}", fontsize=14)
-            plt.tight_layout()
+            print(f"Invalid output_mode: {output_mode}")
+            plt.close()
+
+class KececiFractalGPU:
+    def __init__(self, prefer_rusticl=True):
+        """ Bütün işletim sistemleri için ortaktır"""
+        platform = select_opencl_platform(prefer_rusticl)
+        self.device = platform.get_devices()[0]
+        self.ctx = cl.Context([self.device])
+        self.queue = cl.CommandQueue(self.ctx)
+        self._compile_kernel()
+        self.max_circles = 0
+        self.circles_buf = None
+        self.output_buf = None
+        self.max_output_floats = 0
+
+    """
+    def __init__(self, platform_name="rusticl"):
+        #Sadece Linux için
+        platform = next(p for p in cl.get_platforms() if p.name.lower().startswith(platform_name))
+        self.device = platform.get_devices()[0]
+        self.ctx = cl.Context([self.device])
+        self.queue = cl.CommandQueue(self.ctx)
+        self._compile_kernel()
+    """
+
+    def _compile_kernel(self):
+        kernel_src = """
+        typedef struct {
+            float cx, cy, r;
+            float r_col, g_col, b_col;
+        } Circle;
+
+        __kernel void circle_fractal(
+            __global float* output,
+            const int width, const int height,
+            __global const Circle* circles,
+            const int num_circles,
+            const float limit)
+        {
+            int px = get_global_id(0);
+            int py = get_global_id(1);
+            if (px >= width || py >= height) return;
+
+            float x = -limit + 2.0f * limit * px / (float)(width - 1);
+            float y = -limit + 2.0f * limit * py / (float)(height - 1);
+
+            int best_idx = -1;
+            float best_r = 1e9f;
+            for (int i = 0; i < num_circles; i++) {
+                Circle c = circles[i];
+                float dx = x - c.cx;
+                float dy = y - c.cy;
+                if (dx*dx + dy*dy <= c.r * c.r) {
+                    if (c.r < best_r) {
+                        best_r = c.r;
+                        best_idx = i;
+                    }
+                }
+            }
+
+            int idx = (py * width + px) * 3;
+            if (best_idx >= 0) {
+                Circle c = circles[best_idx];
+                output[idx]   = c.r_col;
+                output[idx+1] = c.g_col;
+                output[idx+2] = c.b_col;
+            } else {
+                output[idx] = 0.0f; output[idx+1] = 0.0f; output[idx+2] = 0.0f;
+            }
+        }
+        """
+        self.prg = cl.Program(self.ctx, kernel_src).build()
+        self.knl = self.prg.circle_fractal
+
+    def generate_circles_with_colors(self, base_radius, scale_factor,
+                                     initial_children, recursive_children,
+                                     max_level, min_size_factor, main_color):
+        circles = []
+        min_r = base_radius * min_size_factor
+
+        def add_circle(cx, cy, r, color):
+            circles.append((cx, cy, r, color[0], color[1], color[2]))
+
+        add_circle(0.0, 0.0, base_radius, main_color)
+
+        def recurse(cx, cy, radius, level):
+            if level > max_level:
+                return
+            child_radius = radius * scale_factor
+            if child_radius < min_r:
+                return
+            distance = radius - child_radius
+            n = initial_children if level == 1 else recursive_children
+            for i in range(n):
+                angle = 2 * np.pi * i / n
+                ix = cx + distance * np.cos(angle)
+                iy = cy + distance * np.sin(angle)
+                child_color = random_soft_color()
+                add_circle(ix, iy, child_radius, child_color)
+                recurse(ix, iy, child_radius, level + 1)
+
+        if max_level >= 1:
+            recurse(0.0, 0.0, base_radius, 1)
+        return circles
+
+    def render_gpu(self, circles, width, height, limit):
+        circles_arr = np.array(circles, dtype=np.float32)
+        circles_buf = cl.Buffer(self.ctx, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR,
+                                hostbuf=circles_arr)
+        output = np.zeros((height, width, 3), dtype=np.float32)
+        out_buf = cl.Buffer(self.ctx, cl.mem_flags.WRITE_ONLY, output.nbytes)
+
+        self.knl(self.queue, (width, height), None,
+                 out_buf,
+                 np.int32(width), np.int32(height),
+                 circles_buf,
+                 np.int32(len(circles)),
+                 np.float32(limit))
+        cl.enqueue_copy(self.queue, output, out_buf).wait()
+        return output
+
+    def kececifractals_circle_gpu(self,
+                              initial_children: int = 3,
+                              recursive_children: int = 3,
+                              text: str = "Keçeci Fractals",
+                              font_size: int = 14,
+                              font_color: str = "black",
+                              font_style: str = "bold",
+                              font_family: str = "Arial",
+                              max_level: int = 4,
+                              min_size_factor: float = 0.001,
+                              scale_factor: float = 0.5,
+                              base_radius: float = 12.0,
+                              background_color=None,
+                              initial_circle_color=None,
+                              output_mode: str = "show",
+                              filename: str = "kececi_fractal_circle_gpu",
+                              dpi: int = 300,
+                              width: int = 1024,
+                              height: int = 1024,
+                              view_limit: float = None):   # <-- YENİ
+        if not isinstance(max_level, int) or max_level < 0:
+            print("Error: max_level must be a non-negative integer.", file=sys.stderr)
+            return
+        if not (0 < scale_factor < 1):
+            print("Error: scale_factor must be between 0 and 1.", file=sys.stderr)
+            return
+
+        # Ana daire rengi
+        from matplotlib.colors import to_rgb
+        if initial_circle_color is not None:
+            main_color = to_rgb(initial_circle_color) if isinstance(initial_circle_color, str) else initial_circle_color
+        else:
+            main_color = random_soft_color()
+    
+        # Daireleri oluştur
+        circles = self.generate_circles_with_colors(
+            base_radius, scale_factor, initial_children, recursive_children,
+            max_level, min_size_factor, main_color
+        )
+    
+        # --- LİMİT HESAPLAMA ---
+        if view_limit is not None:
+            limit = view_limit
+        else:
+            limit = base_radius + 1.0
+            if text and isinstance(text, str) and len(text) > 0:
+                text_radius = base_radius + 0.8
+                limit = max(limit, text_radius + font_size * 0.1)
+            if circles:
+                circles_arr = np.array(circles, dtype=np.float32)
+                max_ext = circles_arr[:, 0:2].max() + circles_arr[:, 2].max()
+                limit = max(limit, max_ext * 1.05)
+    
+        img = self.render_gpu(circles, width, height, limit)
+
+        # Arka plan rengini uygula
+        if background_color:
+            bg_rgb = to_rgb(background_color) if isinstance(background_color, str) else background_color
+            mask = (img[:,:,0] == 0) & (img[:,:,1] == 0) & (img[:,:,2] == 0)
+            img[mask] = bg_rgb
+
+        # Çizim
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.imshow(img, extent=[-limit, limit, -limit, limit], origin='lower')
+        ax.set_xlim(-limit, limit)
+        ax.set_ylim(-limit, limit)
+        ax.set_aspect('equal')
+        ax.axis('off')
+
+        # Metin
+        if text and isinstance(text, str) and len(text) > 0:
+            text_radius = base_radius + 0.8
+            fc = to_rgb(font_color) if isinstance(font_color, str) else (0,0,0)
+            for i, char in enumerate(text):
+                angle_deg = (360 / len(text) * i) - 90
+                angle_rad = np.deg2rad(angle_deg)
+                x_text = text_radius * np.cos(angle_rad)
+                y_text = text_radius * np.sin(angle_rad)
+                ax.text(x_text, y_text, char,
+                        fontsize=font_size, ha="center", va="center",
+                        color=fc, fontweight=font_style, fontfamily=font_family,
+                        rotation=angle_deg + 90)
+
+        plot_title = f"Keçeci Fractals GPU ({text})" if text else "Keçeci Circle Fractal GPU"
+        plt.title(plot_title, fontsize=16)
+
+        output_mode = output_mode.lower().strip()
+        if output_mode == "show":
             plt.show()
-            plt.close(fig)
+        elif output_mode in ["png", "jpg", "jpeg", "svg"]:
+            output_filename = f"{filename}.{output_mode}"
+            plt.savefig(output_filename, dpi=dpi, bbox_inches='tight')
+            print(f"Fractal saved to: {output_filename}")
+            plt.close()
+        else:
+            print(f"Invalid output_mode: {output_mode}")
+            plt.close()
+"""
+## Kullanım
+kf_gpu = KececiFractalGPU()
 
-    return {
-        'min_cut': min_cut, 'max_cut': max_cut,
-        'min_partitions': min_parts, 'max_partitions': max_parts,
-        'all_partitions': partitions
-    }
+kf_gpu.kececifractals_circle_gpu(
+    text="Keçeci Fractals with GPU",
+    max_level=3,
+    background_color="#9a0a1a",
+    output_mode="show",
+    width=800, height=800,
+    base_radius=12.0,      # büyük ana daire
+    view_limit=14.0         # görüntü sınırını sabitle → daire ekranı doldurur
+)
+"""
 
-def max_cut_qaoa_optimization(
-    graph: Union[rx.PyGraph, rx.PyDiGraph, nx.Graph, nx.DiGraph],
-    reps: int = 2,
-    backend = None,
-    optimizer: str = "COBYLA",
-    tol: float = 1e-2,
-    maxiter: int = 100,
-    plot_convergence: bool = True,
-    draw_final_circuit: bool = True
-):
-    """
-    Max‑Cut QAOA optimizasyonu (Qiskit 2.0 uyumlu) + devre çizimi.
+class KececiFractalOpenGL:
+    def __init__(self):
+        # EGL bağlamını oluştur
+        self._setup_egl()
+        self._compile_shader()
+        self.max_circles = 0
+        self.circles_ssbo = None
+        self.output_ssbo = None
+        self.max_output_size = 0
 
-    Parametreler:
-        graph    : Çizge (rustworkx / NetworkX)
-        reps     : QAOA katman sayısı
-        backend  : None → ideal simülasyon (StatevectorEstimator)
-                   Backend → gürültülü simülasyon (BackendEstimatorV2)
-        optimizer: Klasik optimizasyon yöntemi
-        tol      : Tolerans
-        maxiter  : Maksimum iterasyon
-        plot_convergence : Maliyet grafiğini çiz
-        draw_final_circuit : True → optimize edilmiş devreyi çizdir
+    def _setup_egl(self):
+        """EGL ile headless OpenGL bağlamı oluşturur."""
+        display = eglGetDisplay(EGL_DEFAULT_DISPLAY)
+        if display == EGL_NO_DISPLAY:
+            raise RuntimeError("EGL display alınamadı.")
 
-    Dönüş:
-        result, optimized_circuit
-    """
-    from qiskit.quantum_info import SparsePauliOp
-    from qiskit.circuit.library import QAOAAnsatz
-    from scipy.optimize import minimize
+        if not eglInitialize(display, None, None):
+            raise RuntimeError("EGL başlatılamadı.")
 
-    # ---------- 1. Pauli terimleri ----------
-    if isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):
-        edges = list(graph.edge_list())
-        num_nodes = graph.num_nodes()
-        def get_weight(u, v):
-            return graph.get_edge_data(u, v)
-    elif isinstance(graph, (nx.Graph, nx.DiGraph)):
-        edges = list(graph.edges())
-        num_nodes = graph.number_of_nodes()
-        def get_weight(u, v):
-            return graph[u][v].get('weight', 1.0)
-    else:
-        raise TypeError("Graf rustworkx ya da NetworkX türünde olmalıdır.")
+        if not eglBindAPI(EGL_OPENGL_API):
+            raise RuntimeError("EGL'ye OpenGL API bağlanamadı.")
 
-    pauli_list = []
-    for u, v in edges:
-        w = get_weight(u, v)
-        if w is None:
-            w = 1.0
-        pauli_list.append(("ZZ", [int(u), int(v)], float(w)))
+        # Yapılandırma özellikleri
+        config_attribs = [
+            EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
+            EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+            EGL_RED_SIZE, 8,
+            EGL_GREEN_SIZE, 8,
+            EGL_BLUE_SIZE, 8,
+            EGL_ALPHA_SIZE, 8,
+            EGL_DEPTH_SIZE, 24,
+            EGL_STENCIL_SIZE, 8,
+            EGL_NONE
+        ]
+        config_attribs = (ctypes.c_int * len(config_attribs))(*config_attribs)
+        num_configs = ctypes.c_int()
+        configs = (ctypes.c_void_p * 1)()
 
-    cost_hamiltonian = SparsePauliOp.from_sparse_list(pauli_list, num_qubits=num_nodes)
+        if not eglChooseConfig(display, config_attribs, configs, 1, num_configs):
+            raise RuntimeError("EGL yapılandırması seçilemedi.")
+        config = configs[0]
 
-    # ---------- 2. QAOA devresi (measurement YOK) ----------
-    circuit = QAOAAnsatz(cost_operator=cost_hamiltonian, reps=reps)
+        # PBuffer yüzeyi
+        pbuffer_attribs = [
+            EGL_WIDTH, 1,
+            EGL_HEIGHT, 1,
+            EGL_NONE
+        ]
+        pbuffer_attribs = (ctypes.c_int * len(pbuffer_attribs))(*pbuffer_attribs)
+        surface = eglCreatePbufferSurface(display, config, pbuffer_attribs)
+        if surface == EGL_NO_SURFACE:
+            raise RuntimeError("EGL Pbuffer yüzeyi oluşturulamadı.")
 
-    # ---------- 3. Estimator seçimi ----------
-    if backend is None:
-        from qiskit.primitives import StatevectorEstimator
-        estimator = StatevectorEstimator()
-    else:
-        from qiskit.primitives import BackendEstimatorV2
-        estimator = BackendEstimatorV2(backend)
+        # Bağlam oluştur
+        context_attribs = [
+            EGL_CONTEXT_MAJOR_VERSION, 4,
+            EGL_CONTEXT_MINOR_VERSION, 3,
+            EGL_NONE
+        ]
+        context_attribs = (ctypes.c_int * len(context_attribs))(*context_attribs)
+        context = eglCreateContext(display, config, EGL_NO_CONTEXT, context_attribs)
+        if context == EGL_NO_CONTEXT:
+            raise RuntimeError("EGL bağlamı oluşturulamadı.")
 
-    # ---------- 4. Maliyet fonksiyonu ----------
-    objective_values = []
+        # Aktif yap
+        if not eglMakeCurrent(display, surface, surface, context):
+            raise RuntimeError("EGL bağlamı aktif yapılamadı.")
 
-    def cost_func(params):
-        job = estimator.run([(circuit, cost_hamiltonian, list(params))])
-        result = job.result()[0]
-        evs = result.data.evs
-        objective_values.append(evs)
-        return evs
+        # Nesne referanslarını sakla
+        self.egl_display = display
+        self.egl_surface = surface
+        self.egl_context = context
 
-    # ---------- 5. Başlangıç parametreleri ----------
-    init_params = np.array(
-        [np.pi/2] * reps + [np.pi] * reps  # betalar sonra gammalar
+    def _compile_shader(self):
+        compute_src = """
+        #version 430
+        layout(local_size_x = 16, local_size_y = 16) in;
+
+        struct Circle {
+            float cx, cy, r;
+            float r_col, g_col, b_col;
+        };
+
+        layout(std430, binding = 0) buffer CircleBuffer {
+            Circle circles[];
+        };
+
+        layout(std430, binding = 1) buffer OutputBuffer {
+            float outBuffer[];
+        };
+
+        uniform int u_width;
+        uniform int u_height;
+        uniform int u_num_circles;
+        uniform float u_limit;
+
+        void main() {
+            uint px = gl_GlobalInvocationID.x;
+            uint py = gl_GlobalInvocationID.y;
+            if (px >= u_width || py >= u_height) return;
+
+            float x = -u_limit + 2.0f * u_limit * float(px) / float(u_width - 1);
+            float y = -u_limit + 2.0f * u_limit * float(py) / float(u_height - 1);
+
+            int best_idx = -1;
+            float best_r = 1e9f;
+            for (int i = 0; i < u_num_circles; i++) {
+                Circle c = circles[i];
+                float dx = x - c.cx;
+                float dy = y - c.cy;
+                if (dx*dx + dy*dy <= c.r * c.r) {
+                    if (c.r < best_r) {
+                        best_r = c.r;
+                        best_idx = i;
+                    }
+                }
+            }
+
+            uint idx = (py * u_width + px) * 3;
+            if (best_idx >= 0) {
+                Circle c = circles[best_idx];
+                outBuffer[idx]   = c.r_col;
+                outBuffer[idx+1] = c.g_col;
+                outBuffer[idx+2] = c.b_col;
+            } else {
+                outBuffer[idx]   = 0.0;
+                outBuffer[idx+1] = 0.0;
+                outBuffer[idx+2] = 0.0;
+            }
+        }
+        """
+        shader = shaders.compileShader(compute_src, GL.GL_COMPUTE_SHADER)
+        self.program = shaders.compileProgram(shader)
+        self.loc_width = GL.glGetUniformLocation(self.program, "u_width")
+        self.loc_height = GL.glGetUniformLocation(self.program, "u_height")
+        self.loc_num = GL.glGetUniformLocation(self.program, "u_num_circles")
+        self.loc_limit = GL.glGetUniformLocation(self.program, "u_limit")
+
+    def _ensure_buffers(self, num_circles, output_floats):
+        if self.circles_ssbo is None or num_circles > self.max_circles:
+            if self.circles_ssbo:
+                GL.glDeleteBuffers(1, [self.circles_ssbo])
+            self.max_circles = max(num_circles, 1024)
+            self.circles_ssbo = GL.glGenBuffers(1)
+            GL.glBindBuffer(GL.GL_SHADER_STORAGE_BUFFER, self.circles_ssbo)
+            GL.glBufferData(GL.GL_SHADER_STORAGE_BUFFER,
+                            self.max_circles * 6 * 4, None, GL.GL_DYNAMIC_DRAW)
+
+        if self.output_ssbo is None or output_floats > self.max_output_size:
+            if self.output_ssbo:
+                GL.glDeleteBuffers(1, [self.output_ssbo])
+            self.max_output_size = output_floats
+            self.output_ssbo = GL.glGenBuffers(1)
+            GL.glBindBuffer(GL.GL_SHADER_STORAGE_BUFFER, self.output_ssbo)
+            GL.glBufferData(GL.GL_SHADER_STORAGE_BUFFER,
+                            output_floats * 4, None, GL.GL_DYNAMIC_READ)
+
+    def generate_circles_with_colors(self, base_radius, scale_factor,
+                                     initial_children, recursive_children,
+                                     max_level, min_size_factor, main_color):
+        circles = []
+        min_r = base_radius * min_size_factor
+
+        def add_circle(cx, cy, r, color):
+            circles.append((cx, cy, r, color[0], color[1], color[2]))
+
+        add_circle(0.0, 0.0, base_radius, main_color)
+
+        def recurse(cx, cy, radius, level):
+            if level > max_level:
+                return
+            child_radius = radius * scale_factor
+            if child_radius < min_r:
+                return
+            distance = radius - child_radius
+            n = initial_children if level == 1 else recursive_children
+            for i in range(n):
+                angle = 2 * np.pi * i / n
+                ix = cx + distance * np.cos(angle)
+                iy = cy + distance * np.sin(angle)
+                child_color = random_soft_color()
+                add_circle(ix, iy, child_radius, child_color)
+                recurse(ix, iy, child_radius, level + 1)
+
+        if max_level >= 1:
+            recurse(0.0, 0.0, base_radius, 1)
+        return circles
+
+    def render_opengl(self, circles, width, height, limit):
+        num_circles = len(circles)
+        output_floats = width * height * 3
+        self._ensure_buffers(num_circles, output_floats)
+
+        circles_arr = np.array(circles, dtype=np.float32).flatten()
+        GL.glBindBuffer(GL.GL_SHADER_STORAGE_BUFFER, self.circles_ssbo)
+        GL.glBufferSubData(GL.GL_SHADER_STORAGE_BUFFER, 0, circles_arr.nbytes, circles_arr)
+
+        GL.glUseProgram(self.program)
+        GL.glUniform1i(self.loc_width, width)
+        GL.glUniform1i(self.loc_height, height)
+        GL.glUniform1i(self.loc_num, num_circles)
+        GL.glUniform1f(self.loc_limit, limit)
+
+        GL.glBindBufferBase(GL.GL_SHADER_STORAGE_BUFFER, 0, self.circles_ssbo)
+        GL.glBindBufferBase(GL.GL_SHADER_STORAGE_BUFFER, 1, self.output_ssbo)
+
+        gx = (width + 15) // 16
+        gy = (height + 15) // 16
+        GL.glDispatchCompute(gx, gy, 1)
+        GL.glMemoryBarrier(GL.GL_SHADER_STORAGE_BARRIER_BIT)
+        GL.glFinish()
+
+        GL.glBindBuffer(GL.GL_SHADER_STORAGE_BUFFER, self.output_ssbo)
+        output_raw = GL.glGetBufferSubData(GL.GL_SHADER_STORAGE_BUFFER, 0, output_floats * 4)
+        output = np.frombuffer(output_raw, dtype=np.float32).reshape((height, width, 3))
+        return output
+
+    def kececifractals_circle_opengl(self,
+                                     initial_children: int = 4,
+                                     recursive_children: int = 4,
+                                     text: str = "Keçeci Fractals",
+                                     font_size: int = 14,
+                                     font_color: str = "black",
+                                     font_style: str = "bold",
+                                     font_family: str = "Arial",
+                                     max_level: int = 4,
+                                     min_size_factor: float = 0.001,
+                                     scale_factor: float = 0.5,
+                                     base_radius: float = 12.0,
+                                     background_color=None,
+                                     initial_circle_color=None,
+                                     output_mode: str = "show",
+                                     filename: str = "kececi_fractal_circle_opengl",
+                                     dpi: int = 300,
+                                     width: int = 1024,
+                                     height: int = 1024,
+                                     view_limit: float = None):
+        if not isinstance(max_level, int) or max_level < 0:
+            print("Error: max_level must be a non-negative integer.", file=sys.stderr)
+            return
+        if not (0 < scale_factor < 1):
+            print("Error: scale_factor must be between 0 and 1.", file=sys.stderr)
+            return
+
+        from matplotlib.colors import to_rgb
+        if initial_circle_color is not None:
+            main_color = to_rgb(initial_circle_color) if isinstance(initial_circle_color, str) else initial_circle_color
+        else:
+            main_color = random_soft_color()
+
+        circles = self.generate_circles_with_colors(
+            base_radius, scale_factor, initial_children, recursive_children,
+            max_level, min_size_factor, main_color
+        )
+
+        if view_limit is not None:
+            limit = view_limit
+        else:
+            limit = base_radius + 1.0
+            if text and isinstance(text, str) and len(text) > 0:
+                text_radius = base_radius + 0.8
+                limit = max(limit, text_radius + font_size * 0.1)
+            if circles:
+                circles_arr = np.array(circles, dtype=np.float32)
+                max_ext = circles_arr[:, 0:2].max() + circles_arr[:, 2].max()
+                limit = max(limit, max_ext * 1.05)
+
+        img = self.render_opengl(circles, width, height, limit)
+
+        if background_color:
+            bg_rgb = to_rgb(background_color) if isinstance(background_color, str) else background_color
+            mask = (img[:,:,0] == 0) & (img[:,:,1] == 0) & (img[:,:,2] == 0)
+            img[mask] = bg_rgb
+
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.imshow(img, extent=[-limit, limit, -limit, limit], origin='lower')
+        ax.set_xlim(-limit, limit)
+        ax.set_ylim(-limit, limit)
+        ax.set_aspect('equal')
+        ax.axis('off')
+
+        if text and isinstance(text, str) and len(text) > 0:
+            text_radius = base_radius + 0.8
+            fc = to_rgb(font_color) if isinstance(font_color, str) else (0,0,0)
+            for i, char in enumerate(text):
+                angle_deg = (360 / len(text) * i) - 90
+                angle_rad = np.deg2rad(angle_deg)
+                x_text = text_radius * np.cos(angle_rad)
+                y_text = text_radius * np.sin(angle_rad)
+                ax.text(x_text, y_text, char,
+                        fontsize=font_size, ha="center", va="center",
+                        color=fc, fontweight=font_style, fontfamily=font_family,
+                        rotation=angle_deg + 90)
+
+        plot_title = f"Keçeci Fractals OpenGL ({text})" if text else "Keçeci Circle Fractal OpenGL"
+        plt.title(plot_title, fontsize=16)
+
+        output_mode = output_mode.lower().strip()
+        if output_mode == "show":
+            plt.show()
+        elif output_mode in ["png", "jpg", "jpeg", "svg"]:
+            output_filename = f"{filename}.{output_mode}"
+            plt.savefig(output_filename, dpi=dpi, bbox_inches='tight')
+            print(f"Fractal saved to: {output_filename}")
+            plt.close()
+        else:
+            print(f"Invalid output_mode: {output_mode}")
+            plt.close()
+
+    def __del__(self):
+        if hasattr(self, 'egl_display'):
+            eglDestroyContext(self.egl_display, self.egl_context)
+            eglDestroySurface(self.egl_display, self.egl_surface)
+            eglTerminate(self.egl_display)
+
+"""
+#%matplotlib inline
+
+ogl = KececiFractalOpenGL()
+ogl.kececifractals_circle_opengl(
+    text="OpenGL EGL",
+    max_level=5,
+    background_color="#8a0a1a",
+    output_mode="show",
+    width=800, height=800,
+    base_radius=12.0,
+    view_limit=14.0
+)
+"""
+
+class KececiFractalVulkan:
+    def __init__(self):
+        self._setup_vulkan()
+        self.max_circles = 0
+        self.circles_buf = None
+        self.circles_mem = None
+        self.output_buf = None
+        self.output_mem = None
+        self.max_output_floats = 0
+
+    def _setup_vulkan(self):
+        app_info = vk.VkApplicationInfo(
+            sType=vk.VK_STRUCTURE_TYPE_APPLICATION_INFO,
+            pApplicationName="KececiFractal",
+            applicationVersion=vk.VK_MAKE_VERSION(1,0,0),
+            apiVersion=vk.VK_API_VERSION_1_0,
+        )
+        instance_info = vk.VkInstanceCreateInfo(
+            sType=vk.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+            pApplicationInfo=app_info,
+        )
+        self.instance = vk.vkCreateInstance(instance_info, None)
+
+        phys_devices = vk.vkEnumeratePhysicalDevices(self.instance)
+        if not phys_devices:
+            raise RuntimeError("Vulkan uyumlu cihaz bulunamadı.")
+        self.phys_device = phys_devices[0]
+
+        queue_family_index = 0
+        queue_priority = 1.0
+        device_queue_create_info = vk.VkDeviceQueueCreateInfo(
+            sType=vk.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            queueFamilyIndex=queue_family_index,
+            queueCount=1,
+            pQueuePriorities=[queue_priority],
+        )
+        device_create_info = vk.VkDeviceCreateInfo(
+            sType=vk.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+            queueCreateInfoCount=1,
+            pQueueCreateInfos=[device_queue_create_info],
+        )
+        self.device = vk.vkCreateDevice(self.phys_device, device_create_info, None)
+        self.queue = vk.vkGetDeviceQueue(self.device, queue_family_index, 0)
+
+        pool_info = vk.VkCommandPoolCreateInfo(
+            sType=vk.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            queueFamilyIndex=queue_family_index,
+        )
+        self.cmd_pool = vk.vkCreateCommandPool(self.device, pool_info, None)
+
+        # Descriptor set layout
+        bindings = [
+            vk.VkDescriptorSetLayoutBinding(
+                binding=0, descriptorType=vk.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                descriptorCount=1, stageFlags=vk.VK_SHADER_STAGE_COMPUTE_BIT,
+            ),
+            vk.VkDescriptorSetLayoutBinding(
+                binding=1, descriptorType=vk.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                descriptorCount=1, stageFlags=vk.VK_SHADER_STAGE_COMPUTE_BIT,
+            ),
+        ]
+        layout_info = vk.VkDescriptorSetLayoutCreateInfo(
+            sType=vk.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            bindingCount=2, pBindings=bindings,
+        )
+        self.desc_set_layout = vk.vkCreateDescriptorSetLayout(self.device, layout_info, None)
+
+        # Push constant: 4 adet int32 (hizalama için hepsi int)
+        push_range = vk.VkPushConstantRange(
+            stageFlags=vk.VK_SHADER_STAGE_COMPUTE_BIT,
+            offset=0,
+            size=16,
+        )
+        pipeline_layout_info = vk.VkPipelineLayoutCreateInfo(
+            sType=vk.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            setLayoutCount=1, pSetLayouts=[self.desc_set_layout],
+            pushConstantRangeCount=1, pPushConstantRanges=[push_range],
+        )
+        self.pipeline_layout = vk.vkCreatePipelineLayout(self.device, pipeline_layout_info, None)
+
+        # Shader – limit'i float olarak alıp int push constant'tan dönüştürüyoruz
+        glsl_src = """
+        #version 450
+        layout(local_size_x = 16, local_size_y = 16) in;
+
+        struct Circle {
+            float cx, cy, r;
+            float r_col, g_col, b_col;
+        };
+
+        layout(std430, binding = 0) buffer CircleBuffer { Circle circles[]; };
+        layout(std430, binding = 1) buffer OutputBuffer { float outBuffer[]; };
+
+        layout(push_constant) uniform PushConstants {
+            int width;
+            int height;
+            int num_circles;
+            int limit_int;         // float yerine int gönderiyoruz
+        } pc;
+
+        void main() {
+            uint px = gl_GlobalInvocationID.x;
+            uint py = gl_GlobalInvocationID.y;
+            if (px >= pc.width || py >= pc.height) return;
+
+            float limit = float(pc.limit_int);
+            float x = -limit + 2.0f * limit * float(px) / float(pc.width - 1);
+            float y = -limit + 2.0f * limit * float(py) / float(pc.height - 1);
+
+            int best_idx = -1;
+            float best_r = 1e9f;
+            for (int i = 0; i < pc.num_circles; i++) {
+                Circle c = circles[i];
+                float dx = x - c.cx;
+                float dy = y - c.cy;
+                if (dx*dx + dy*dy <= c.r * c.r) {
+                    if (c.r < best_r) {
+                        best_r = c.r;
+                        best_idx = i;
+                    }
+                }
+            }
+            uint idx = (py * pc.width + px) * 3;
+            if (best_idx >= 0) {
+                Circle c = circles[best_idx];
+                outBuffer[idx]   = c.r_col;
+                outBuffer[idx+1] = c.g_col;
+                outBuffer[idx+2] = c.b_col;
+            } else {
+                outBuffer[idx]   = 0.0; outBuffer[idx+1]=0.0; outBuffer[idx+2]=0.0;
+            }
+        }
+        """
+        spirv = self._compile_to_spirv(glsl_src)
+        shader_info = vk.VkShaderModuleCreateInfo(
+            sType=vk.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+            codeSize=len(spirv), pCode=spirv,
+        )
+        self.shader_module = vk.vkCreateShaderModule(self.device, shader_info, None)
+
+        stage_info = vk.VkPipelineShaderStageCreateInfo(
+            sType=vk.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            stage=vk.VK_SHADER_STAGE_COMPUTE_BIT, module=self.shader_module, pName="main",
+        )
+        pipeline_info = vk.VkComputePipelineCreateInfo(
+            sType=vk.VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+            stage=stage_info, layout=self.pipeline_layout,
+        )
+        self.pipeline = vk.vkCreateComputePipelines(
+            self.device, vk.VK_NULL_HANDLE, 1, [pipeline_info], None,
+        )[0]
+
+        # Descriptor pool
+        pool_size = vk.VkDescriptorPoolSize(type=vk.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, descriptorCount=2)
+        pool_info = vk.VkDescriptorPoolCreateInfo(
+            sType=vk.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+            maxSets=1, poolSizeCount=1, pPoolSizes=[pool_size],
+        )
+        self.desc_pool = vk.vkCreateDescriptorPool(self.device, pool_info, None)
+
+        alloc_info = vk.VkDescriptorSetAllocateInfo(
+            sType=vk.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            descriptorPool=self.desc_pool, descriptorSetCount=1,
+            pSetLayouts=[self.desc_set_layout],
+        )
+        self.desc_set = vk.vkAllocateDescriptorSets(self.device, alloc_info)[0]
+
+    def _compile_to_spirv(self, glsl_source):
+        with tempfile.NamedTemporaryFile(suffix=".comp", delete=False) as f:
+            f.write(glsl_source.encode())
+            tmp_in = f.name
+        tmp_out = tmp_in + ".spv"
+        try:
+            subprocess.run(
+                ["glslangValidator", "-V", tmp_in, "-o", tmp_out],
+                check=True,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            with open(tmp_out, "rb") as f:
+                return f.read()
+        finally:
+            os.unlink(tmp_in)
+            if os.path.exists(tmp_out):
+                os.unlink(tmp_out)
+
+    def _find_memory_type(self, type_filter, properties):
+        mem_props = vk.vkGetPhysicalDeviceMemoryProperties(self.phys_device)
+        for i in range(mem_props.memoryTypeCount):
+            if (type_filter & (1 << i)) and (mem_props.memoryTypes[i].propertyFlags & properties) == properties:
+                return i
+        return None
+
+    def _create_buffer(self, size, usage, mem_properties):
+        buf_info = vk.VkBufferCreateInfo(
+            sType=vk.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            size=size, usage=usage, sharingMode=vk.VK_SHARING_MODE_EXCLUSIVE,
+        )
+        buf = vk.vkCreateBuffer(self.device, buf_info, None)
+        mem_reqs = vk.vkGetBufferMemoryRequirements(self.device, buf)
+        mem_type = self._find_memory_type(mem_reqs.memoryTypeBits, mem_properties)
+        if mem_type is None:
+            raise RuntimeError("Uygun bellek türü bulunamadı")
+        alloc = vk.VkMemoryAllocateInfo(
+            sType=vk.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            allocationSize=mem_reqs.size, memoryTypeIndex=mem_type,
+        )
+        mem = vk.vkAllocateMemory(self.device, alloc, None)
+        vk.vkBindBufferMemory(self.device, buf, mem, 0)
+        return buf, mem
+
+    def _ensure_buffers(self, num_circles, output_floats):
+        if self.circles_buf is None or num_circles > self.max_circles:
+            if self.circles_buf:
+                vk.vkDestroyBuffer(self.device, self.circles_buf, None)
+                vk.vkFreeMemory(self.device, self.circles_mem, None)
+            self.max_circles = max(num_circles, 1024)
+            self.circles_buf, self.circles_mem = self._create_buffer(
+                self.max_circles * 6 * 4,
+                vk.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | vk.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            )
+        if self.output_buf is None or output_floats > self.max_output_floats:
+            if self.output_buf:
+                vk.vkDestroyBuffer(self.device, self.output_buf, None)
+                vk.vkFreeMemory(self.device, self.output_mem, None)
+            self.max_output_floats = output_floats
+            self.output_buf, self.output_mem = self._create_buffer(
+                output_floats * 4,
+                vk.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | vk.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            )
+
+        # Descriptor set'i güncelle
+        circle_desc = vk.VkDescriptorBufferInfo(buffer=self.circles_buf, offset=0, range=num_circles*6*4)
+        out_desc = vk.VkDescriptorBufferInfo(buffer=self.output_buf, offset=0, range=output_floats*4)
+        writes = [
+            vk.VkWriteDescriptorSet(
+                sType=vk.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                dstSet=self.desc_set, dstBinding=0, descriptorCount=1,
+                descriptorType=vk.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                pBufferInfo=circle_desc,
+            ),
+            vk.VkWriteDescriptorSet(
+                sType=vk.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                dstSet=self.desc_set, dstBinding=1, descriptorCount=1,
+                descriptorType=vk.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                pBufferInfo=out_desc,
+            ),
+        ]
+        vk.vkUpdateDescriptorSets(self.device, 2, writes, 0, None)
+
+    def generate_circles_with_colors(self, base_radius, scale_factor,
+                                     initial_children, recursive_children,
+                                     max_level, min_size_factor, main_color):
+        circles = []
+        min_r = base_radius * min_size_factor
+        def add_circle(cx, cy, r, color):
+            circles.append((cx, cy, r, color[0], color[1], color[2]))
+        add_circle(0.0, 0.0, base_radius, main_color)
+
+        def recurse(cx, cy, radius, level):
+            if level > max_level:
+                return
+            child_radius = radius * scale_factor
+            if child_radius < min_r:
+                return
+            distance = radius - child_radius
+            n = initial_children if level == 1 else recursive_children
+            for i in range(n):
+                angle = 2 * np.pi * i / n
+                ix = cx + distance * np.cos(angle)
+                iy = cy + distance * np.sin(angle)
+                child_color = random_soft_color()
+                add_circle(ix, iy, child_radius, child_color)
+                recurse(ix, iy, child_radius, level + 1)
+
+        if max_level >= 1:
+            recurse(0.0, 0.0, base_radius, 1)
+        return circles
+
+    def render_vulkan(self, circles, width, height, limit):
+        num_circles = len(circles)
+        output_floats = width * height * 3
+        self._ensure_buffers(num_circles, output_floats)
+
+        # Daire verisini yaz
+        circles_arr = np.array(circles, dtype=np.float32).flatten()
+        mapped = vk.vkMapMemory(self.device, self.circles_mem, 0, circles_arr.nbytes, 0)
+        ffi.memmove(mapped, circles_arr.tobytes(), circles_arr.nbytes)
+        vk.vkUnmapMemory(self.device, self.circles_mem)
+
+        # Komut tamponu
+        alloc_info = vk.VkCommandBufferAllocateInfo(
+            sType=vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            commandPool=self.cmd_pool, level=vk.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            commandBufferCount=1,
+        )
+        cmd = vk.vkAllocateCommandBuffers(self.device, alloc_info)[0]
+
+        begin_info = vk.VkCommandBufferBeginInfo(sType=vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
+        vk.vkBeginCommandBuffer(cmd, begin_info)
+
+        vk.vkCmdBindPipeline(cmd, vk.VK_PIPELINE_BIND_POINT_COMPUTE, self.pipeline)
+        vk.vkCmdBindDescriptorSets(cmd, vk.VK_PIPELINE_BIND_POINT_COMPUTE, self.pipeline_layout,
+                                   0, 1, [self.desc_set], 0, None)
+
+        # Push constants – 4 int
+        push_data = np.array([width, height, num_circles, int(limit)], dtype=np.int32)
+        push_ptr = ffi.new("int[]", push_data.tolist())
+        vk.vkCmdPushConstants(cmd, self.pipeline_layout, vk.VK_SHADER_STAGE_COMPUTE_BIT,
+                              0, push_data.nbytes, push_ptr)
+
+        vk.vkCmdDispatch(cmd, (width + 15) // 16, (height + 15) // 16, 1)
+        vk.vkEndCommandBuffer(cmd)
+
+        submit = vk.VkSubmitInfo(sType=vk.VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                                 commandBufferCount=1, pCommandBuffers=[cmd])
+        vk.vkQueueSubmit(self.queue, 1, submit, vk.VK_NULL_HANDLE)
+        vk.vkQueueWaitIdle(self.queue)
+
+        vk.vkFreeCommandBuffers(self.device, self.cmd_pool, 1, [cmd])
+
+        # Çıktıyı oku ve kopyala
+        mapped = vk.vkMapMemory(self.device, self.output_mem, 0, output_floats * 4, 0)
+        raw = bytes(mapped[:output_floats * 4])
+        img = np.frombuffer(raw, dtype=np.float32).reshape((height, width, 3)).copy()
+        vk.vkUnmapMemory(self.device, self.output_mem)
+        return img
+
+    # ---------- test (tamamen kırmızı) ----------
+    def render_test_red(self, width=512, height=512):
+        """Bütün pikselleri kırmızı yaparak Vulkan boru hattının çalıştığını test eder."""
+        output_floats = width * height * 3
+        self._ensure_buffers(1, output_floats)  # en az 1 daire için buffer ayır
+
+        alloc_info = vk.VkCommandBufferAllocateInfo(
+            sType=vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            commandPool=self.cmd_pool, level=vk.VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            commandBufferCount=1,
+        )
+        cmd = vk.vkAllocateCommandBuffers(self.device, alloc_info)[0]
+
+        begin_info = vk.VkCommandBufferBeginInfo(sType=vk.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
+        vk.vkBeginCommandBuffer(cmd, begin_info)
+
+        vk.vkCmdBindPipeline(cmd, vk.VK_PIPELINE_BIND_POINT_COMPUTE, self.pipeline)
+        vk.vkCmdBindDescriptorSets(cmd, vk.VK_PIPELINE_BIND_POINT_COMPUTE, self.pipeline_layout,
+                                   0, 1, [self.desc_set], 0, None)
+
+        push_data = np.array([width, height, 0, 1], dtype=np.int32)  # num_circles=0, limit=1
+        push_ptr = ffi.new("int[]", push_data.tolist())
+        vk.vkCmdPushConstants(cmd, self.pipeline_layout, vk.VK_SHADER_STAGE_COMPUTE_BIT,
+                              0, push_data.nbytes, push_ptr)
+
+        vk.vkCmdDispatch(cmd, (width + 15) // 16, (height + 15) // 16, 1)
+        vk.vkEndCommandBuffer(cmd)
+
+        submit = vk.VkSubmitInfo(sType=vk.VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                                 commandBufferCount=1, pCommandBuffers=[cmd])
+        vk.vkQueueSubmit(self.queue, 1, submit, vk.VK_NULL_HANDLE)
+        vk.vkQueueWaitIdle(self.queue)
+
+        vk.vkFreeCommandBuffers(self.device, self.cmd_pool, 1, [cmd])
+
+        mapped = vk.vkMapMemory(self.device, self.output_mem, 0, output_floats * 4, 0)
+        raw = bytes(mapped[:output_floats * 4])
+        img = np.frombuffer(raw, dtype=np.float32).reshape((height, width, 3)).copy()
+        vk.vkUnmapMemory(self.device, self.output_mem)
+        return img
+
+    def kececifractals_circle_vulkan(self,
+                                     initial_children=5, recursive_children=5,
+                                     text="Keçeci Fractals", font_size=14,
+                                     font_color="black", font_style="bold",
+                                     font_family="Arial", max_level=4,
+                                     min_size_factor=0.001, scale_factor=0.5,
+                                     base_radius=12.0, background_color=None,
+                                     initial_circle_color=None,
+                                     output_mode="show",
+                                     filename="kececi_fractal_circle_vulkan",
+                                     dpi=300, width=1024, height=1024,
+                                     view_limit=None):
+        if not isinstance(max_level, int) or max_level < 0:
+            print("Error: max_level must be a non-negative integer.", file=sys.stderr)
+            return
+        if not (0 < scale_factor < 1):
+            print("Error: scale_factor must be between 0 and 1.", file=sys.stderr)
+            return
+
+        from matplotlib.colors import to_rgb
+        if initial_circle_color:
+            main_color = to_rgb(initial_circle_color) if isinstance(initial_circle_color, str) else initial_circle_color
+        else:
+            main_color = random_soft_color()
+
+        circles = self.generate_circles_with_colors(
+            base_radius, scale_factor, initial_children, recursive_children,
+            max_level, min_size_factor, main_color,
+        )
+
+        if view_limit is not None:
+            limit = view_limit
+        else:
+            limit = base_radius + 1.0
+            if text:
+                text_radius = base_radius + 0.8
+                limit = max(limit, text_radius + font_size * 0.1)
+            if circles:
+                arr = np.array(circles, dtype=np.float32)
+                max_ext = arr[:, 0:2].max() + arr[:, 2].max()
+                limit = max(limit, max_ext * 1.05)
+
+        img = self.render_vulkan(circles, width, height, limit)
+
+        if background_color:
+            bg = to_rgb(background_color) if isinstance(background_color, str) else background_color
+            mask = (img[:, :, 0] == 0) & (img[:, :, 1] == 0) & (img[:, :, 2] == 0)
+            img[mask] = bg
+
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.imshow(img, extent=[-limit, limit, -limit, limit], origin='lower')
+        ax.set_xlim(-limit, limit); ax.set_ylim(-limit, limit)
+        ax.set_aspect('equal'); ax.axis('off')
+
+        if text:
+            text_radius = base_radius + 0.8
+            fc = to_rgb(font_color) if isinstance(font_color, str) else (0, 0, 0)
+            for i, ch in enumerate(text):
+                angle = (360 / len(text) * i) - 90
+                rad = np.deg2rad(angle)
+                x = text_radius * np.cos(rad)
+                y = text_radius * np.sin(rad)
+                ax.text(x, y, ch, fontsize=font_size, ha='center', va='center',
+                        color=fc, fontweight=font_style, fontfamily=font_family,
+                        rotation=angle + 90)
+
+        title = f"Keçeci Fractals Vulkan ({text})" if text else "Keçeci Circle Fractal Vulkan"
+        plt.title(title, fontsize=16)
+
+        if output_mode == "show":
+            plt.show()
+        elif output_mode in ["png", "jpg", "jpeg", "svg"]:
+            fname = f"{filename}.{output_mode}"
+            plt.savefig(fname, dpi=dpi, bbox_inches='tight')
+            print(f"Fractal saved to: {fname}")
+            plt.close()
+        else:
+            print(f"Invalid output_mode: {output_mode}")
+            plt.close()
+
+"""
+vkf = KececiFractalVulkan()
+red = vkf.render_test_red(512, 512)
+plt.imshow(red)
+plt.show()
+"""
+"""
+vkf = KececiFractalVulkan()
+vkf.kececifractals_circle_vulkan(
+    text="Keçeci Fraktals with Vulkan",
+    max_level=2,
+    background_color="#9a9a1a",
+    output_mode="show",
+    width=800, height=800,
+    base_radius=12.0,
+    view_limit=14.0
+)
+"""
+
+# -------------------- Otomatik Seçim Sınıfı --------------------
+class KececiFractalAuto:
+    def __init__(self, prefer=None):
+        self.backend = None
+        self.backend_name = None
+
+        candidates = [prefer.lower()] if prefer else ["vulkan", "opencl", "opengl", "cpu"]
+
+        for candidate in candidates:
+            if candidate == "vulkan" and KececiFractalVulkan is not None:
+                try:
+                    self.backend = KececiFractalVulkan()
+                    # küçük test
+                    img = self.backend.render_test_red(64,64) if hasattr(self.backend, 'render_test_red') else None
+                    if img is not None and img.shape == (64,64,3):
+                        self.backend_name = "Vulkan"
+                        break
+                except: pass
+            elif candidate == "opencl" and KececiFractalOpenCL is not None:
+                try:
+                    self.backend = KececiFractalOpenCL()
+                    circles = self.backend.generate_circles_with_colors(1.0,0.5,3,3,0,0.001,(1,0,0))
+                    img = self.backend.render_gpu(circles, 64,64, 2.0)
+                    if img is not None and img.shape == (64,64,3):
+                        self.backend_name = "OpenCL"
+                        break
+                except: pass
+            elif candidate == "opengl" and KececiFractalOpenGL is not None:
+                try:
+                    self.backend = KececiFractalOpenGL()
+                    circles = self.backend.generate_circles_with_colors(1.0,0.5,3,3,0,0.001,(1,0,0))
+                    img = self.backend.render_opengl(circles, 64,64, 2.0)
+                    if img is not None and img.shape == (64,64,3):
+                        self.backend_name = "OpenGL (EGL)"
+                        break
+                except: pass
+            elif candidate == "cpu":
+                if kececifractals_circle is not None:
+                    self.backend = None
+                    self.backend_name = "CPU (kececifractals)"
+                    break
+
+        if self.backend_name is None:
+            raise RuntimeError("Hiçbir uygun arka uç bulunamadı.")
+
+    def show(self, **kwargs):
+        """
+        Kullanıcıdan gelen tüm parametreleri seçilen arka uca aktarır.
+        CPU için özel olarak kececifractals_circle fonksiyonunu çağırır.
+        """
+        if self.backend_name.startswith("CPU"):
+            kececifractals_circle(**kwargs)
+        elif self.backend_name == "Vulkan":
+            self.backend.kececifractals_circle_vulkan(**kwargs)
+        elif self.backend_name == "OpenCL":
+            self.backend.kececifractals_circle_gpu(**kwargs)
+        elif self.backend_name.startswith("OpenGL"):
+            self.backend.kececifractals_circle_opengl(**kwargs)
+        else:
+            raise RuntimeError("Bilinmeyen arka uç")
+            method(**kwargs)
+
+    @property
+    def active_backend(self):
+        return self.backend_name
+
+"""
+kf = KececiFractalAuto()   # otomatik en iyiyi seçer
+
+kf.show(
+    initial_children=5,
+    recursive_children=2,
+    text="Keçeci Fractals with GPU",
+    max_level=5,
+    background_color="#8a8a1a",
+    output_mode="show",
+    width=800, height=800,
+    base_radius=12.0,
+    view_limit=14.0
+)
+"""
+# ==============================================================================
+# PART 5: MODULE TESTS
+# ==============================================================================
+
+if __name__ == "__main__":
+    # Get current script name safely
+    script_name = (
+        os.path.basename(sys.argv[0]) if len(sys.argv) > 0 else "kececifractals.py"
+    )
+    print(f"--- Running Test Cases for {script_name} ---")
+
+    # --- General-Purpose Fractal Tests ---
+    print("\n--- PART 1: General-Purpose Fractal Tests ---")
+    print("\n[Test 1.1: Displaying fractal on screen (show)]")
+    kececifractals_circle(
+        initial_children=5,
+        recursive_children=4,
+        text="Keçeci Fractals",
+        max_level=3,
+        output_mode="show",
     )
 
-    # ---------- 6. Optimizasyon ----------
-    result = minimize(
-        cost_func,
-        init_params,
-        method=optimizer,
-        tol=tol,
-        options={'maxiter': maxiter}
+    print("\n[Test 1.2: Saving fractal as PNG]")
+    kececifractals_circle(
+        initial_children=7,
+        recursive_children=3,
+        text="Test PNG Save",
+        background_color="#101030",  # Now accepts hex strings!
+        initial_circle_color="yellow",  # Now accepts color names!
+        output_mode="png",
+        filename="test_fractal_generic",
     )
 
-    # ---------- 7. Konsol çıktısı ----------
-    print("=" * 60)
-    print("  MAX‑CUT QAOA OPTİMİZASYONU (Qiskit 2.0)")
-    print("=" * 60)
-    print(f"Hamiltonyen boyutu : {cost_hamiltonian.num_qubits} qubit")
-    print(f"QAOA katman sayısı : {reps}")
-    print(f"Optimizasyon       : {optimizer}")
-    print(f"Başarı durumu      : {result.success}")
-    print(f"Bulunan maliyet    : {result.fun:.4f}")
-    print(f"Optimal parametreler:\n{result.x}")
-    print("-" * 60)
-
-    # ---------- 8. Yakınsama grafiği ----------
-    if plot_convergence:
-        plt.figure(figsize=(7, 4))
-        plt.plot(objective_values, 'o-', color='teal')
-        plt.xlabel('İterasyon')
-        plt.ylabel('Beklenen Değer (Maliyet)')
-        plt.title(f'QAOA Yakınsama (Max‑Cut, {reps} katman)')
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.show()
-
-    # ---------- 9. Optimize edilmiş devreyi çiz ----------
-    optimized_circuit = None
-    if draw_final_circuit:
-        # Optimal parametreleri devreye ata
-        optimized_circuit = circuit.assign_parameters(result.x)
-        # Çizim için ölçüm ekle
-        optimized_circuit.measure_all()
-
-        # Jupyter not defterinde miyiz?
-        try:
-            get_ipython()
-            in_notebook = True
-        except NameError:
-            in_notebook = False
-
-        if in_notebook:
-            from IPython.display import display
-            display(optimized_circuit.draw("mpl", fold=False, idle_wires=False))
-        else:
-            fig = optimized_circuit.draw("mpl", fold=False, idle_wires=False)
-            if fig is not None:
-                plt.figure(fig.number)
-                plt.show()
-            else:
-                plt.show()
-
-    return result, optimized_circuit
-
-def max_cut_qaoa_visualize(
-    graph,
-    reps: int = 2,
-    backend = None,
-    optimizer: str = "COBYLA",
-    tol: float = 1e-2,
-    maxiter: int = 100,
-    plot_convergence: bool = True,
-    draw_final_circuit: bool = False
-):
-    """
-    Max‑Cut QAOA sonucunu histogram ve graf üzerinde görselleştirir.
-
-    Parametreler:
-        graph    : rustworkx ya da NetworkX çizgesi
-        reps     : QAOA katman sayısı
-        backend  : None → ideal simülasyon
-        optimizer: Klasik optimizasyon yöntemi
-        tol      : Tolerans
-        maxiter  : Maksimum iterasyon
-        plot_convergence : Maliyet yakınsama grafiği
-        draw_final_circuit : Optimize edilmiş devreyi çiz
-
-    Dönüş:
-        optimal_bitstring, cut_value
-    """
-    from qiskit.quantum_info import SparsePauliOp
-    from qiskit.circuit.library import QAOAAnsatz
-    from scipy.optimize import minimize
-    from qiskit.primitives import StatevectorEstimator, StatevectorSampler
-
-    # ---------- 1. Pauli terimleri ----------
-    if isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):
-        edges = list(graph.edge_list())
-        num_nodes = graph.num_nodes()
-        def get_weight(u, v):
-            return graph.get_edge_data(u, v)
-    elif isinstance(graph, (nx.Graph, nx.DiGraph)):
-        edges = list(graph.edges())
-        num_nodes = graph.number_of_nodes()
-        def get_weight(u, v):
-            return graph[u][v].get('weight', 1.0)
-    else:
-        raise TypeError("Graf rustworkx ya da NetworkX türünde olmalıdır.")
-
-    pauli_list = []
-    for u, v in edges:
-        w = get_weight(u, v)
-        if w is None:
-            w = 1.0
-        pauli_list.append(("ZZ", [int(u), int(v)], float(w)))
-
-    cost_hamiltonian = SparsePauliOp.from_sparse_list(pauli_list, num_qubits=num_nodes)
-
-    # ---------- 2. QAOA devresi ----------
-    circuit = QAOAAnsatz(cost_operator=cost_hamiltonian, reps=reps)
-
-    # ---------- 3. Estimator ----------
-    if backend is None:
-        estimator = StatevectorEstimator()
-    else:
-        from qiskit.primitives import BackendEstimatorV2
-        estimator = BackendEstimatorV2(backend)
-
-    # ---------- 4. Maliyet fonksiyonu ----------
-    objective_values = []
-
-    def cost_func(params):
-        job = estimator.run([(circuit, cost_hamiltonian, list(params))])
-        result = job.result()[0]
-        evs = result.data.evs
-        objective_values.append(evs)
-        return evs
-
-    # ---------- 5. Optimizasyon ----------
-    init_params = np.array([np.pi/2]*reps + [np.pi]*reps)
-    result = minimize(cost_func, init_params, method=optimizer,
-                      tol=tol, options={'maxiter': maxiter})
-
-    if plot_convergence:
-        plt.figure(figsize=(7,4))
-        plt.plot(objective_values, 'o-', color='teal')
-        plt.xlabel('İterasyon'), plt.ylabel('Beklenen Değer')
-        plt.title(f'QAOA Yakınsama (Max‑Cut, {reps} katman)')
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.show()
-
-    # ---------- 6. Optimize edilmiş devreyi örnekle ----------
-    optimized_circuit = circuit.assign_parameters(result.x)
-    # Örnekleme için ölçüm ekle (Sampler kullanacağız)
-    sampler_circuit = optimized_circuit.copy()
-    sampler_circuit.measure_all()
-
-    sampler = StatevectorSampler() if backend is None else BackendSamplerV2(backend)
-    job_sampler = sampler.run([sampler_circuit], shots=1024)
-    counts = job_sampler.result()[0].data.meas.get_counts()
-
-    # Bitstringleri ve olasılıkları hazırla
-    bitstrings = sorted(counts.keys())
-    probabilities = [counts[bs] / 1024 for bs in bitstrings]
-
-    # Qiskit bit sıralaması: q_{n-1} ... q_0
-    # "reversed" istendiği için ters çeviriyoruz
-    bitstrings_rev = [bs[::-1] for bs in bitstrings]
-
-    # ---------- 7. Histogram ----------
-    plt.figure(figsize=(10, 5))
-    plt.bar(bitstrings_rev, probabilities, color='skyblue', edgecolor='black')
-    plt.title("Result Distribution")
-    plt.xlabel("Bitstrings (reversed)")
-    plt.ylabel("Probability")
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.show()
-
-    # ---------- 8. En yüksek olasılıklı bitstring'i bul ----------
-    optimal_bs = max(counts, key=counts.get)
-    optimal_bs_rev = optimal_bs[::-1]
-    print(f"Optimal bitstring: {optimal_bs_rev}")
-
-    # ---------- 9. Cut değerini hesapla ----------
-    # Bitstring'i partition olarak yorumla: '0' -> küme 0, '1' -> küme 1
-    # Partition (0,1) listesi
-    partition = [int(bit) for bit in optimal_bs]
-    cut_value = 0
-    for u, v in edges:
-        w = get_weight(u, v) or 1.0
-        if partition[u] != partition[v]:
-            cut_value += w
-    print(f"The value of the cut is: {cut_value}")
-
-    # ---------- 10. Grafı çiz ----------
-    G_nx = nx.Graph()
-    G_nx.add_nodes_from(range(num_nodes))
-    for u, v in edges:
-        w = get_weight(u, v) or 1.0
-        G_nx.add_edge(u, v, weight=w)
-
-    # kececi layout
-    pos = kececi_layout_edge(G_nx, edge=True)
-
-    plt.figure(figsize=(6,5))
-    # Düğüm renkleri
-    color_0 = "#e41a1c"
-    color_1 = "#377eb8"
-    node_colors = [color_0 if partition[node] == 0 else color_1 for node in G_nx.nodes()]
-
-    # Kenarları çiz
-    for u, v in G_nx.edges():
-        x_vals = [pos[u][0], pos[v][0]]
-        y_vals = [pos[u][1], pos[v][1]]
-        if partition[u] != partition[v]:
-            # kesen kenar: kırmızı ve kalın
-            plt.plot(x_vals, y_vals, color='red', linewidth=2.5, alpha=0.8, zorder=2)
-        else:
-            plt.plot(x_vals, y_vals, color='gray', linewidth=1.2, alpha=0.6, zorder=1)
-
-    # Düğümler
-    nx.draw_networkx_nodes(G_nx, pos, node_color=node_colors, node_size=600,
-                           edgecolors='black', linewidths=1.2)
-    # Etiketler
-    nx.draw_networkx_labels(G_nx, pos, font_weight='bold')
-    # Kenar ağırlıkları
-    edge_labels = {(u,v): G_nx[u][v]['weight'] for u,v in G_nx.edges()}
-    nx.draw_networkx_edge_labels(G_nx, pos, edge_labels=edge_labels)
-
-    plt.title(f"Max‑Cut = {cut_value}\nBitstring: {optimal_bs_rev}")
-    plt.axis('off')
-    plt.tight_layout()
-    plt.show()
-
-    return optimal_bs_rev, cut_value
-
-# ---------- Uyarıları tamamen bastır ----------
-warnings.filterwarnings("ignore", category=UserWarning)          # Qiskit ve diğer UserWarning'ler
-warnings.filterwarnings("ignore", category=RuntimeWarning)
-warnings.filterwarnings("ignore", category=FutureWarning)
-# Seyrek matris uyarılarını özel olarak yakala
-try:
-    from scipy.sparse import SparseEfficiencyWarning
-    warnings.filterwarnings("ignore", category=SparseEfficiencyWarning)
-except ImportError:
-    pass
-# scipy.optimize uyarıları
-from scipy.optimize import OptimizeWarning
-warnings.filterwarnings("ignore", category=OptimizeWarning)
-
-def max_cut_qaoa_benchmark(
-    graph: Union[rx.PyGraph, rx.PyDiGraph, nx.Graph, nx.DiGraph],
-    reps: int = 2,
-    methods: Optional[List[str]] = None,
-    n_starts: int = 3,
-    shots: int = 1024,
-    plot: bool = False
-):
-    """
-    QAOA Max‑Cut için türev gerektirmeyen optimizasyon yöntemlerini karşılaştırır.
-    Çoklu başlangıçla başarı oranını artırır.
-
-    Parametreler:
-        graph    : Çizge (rustworkx / NetworkX)
-        reps     : QAOA katman sayısı
-        methods  : Denenecek yöntemler (None → türevsiz liste)
-        n_starts : Her yöntem için başlangıç sayısı
-        shots    : Örnekleme sayısı
-        plot     : Her başlangıç için yakınsama grafiği çizer
-
-    Dönüş:
-        pd.DataFrame
-    """
-    from qiskit.quantum_info import SparsePauliOp
-    from qiskit.circuit.library import QAOAAnsatz
-    from qiskit.primitives import StatevectorEstimator, StatevectorSampler
-    from scipy.optimize import minimize
-
-    # ---------- 1. Graf bilgileri ----------
-    if isinstance(graph, (rx.PyGraph, rx.PyDiGraph)):
-        edges = list(graph.edge_list())
-        num_nodes = graph.num_nodes()
-        def get_weight(u, v):
-            return graph.get_edge_data(u, v)
-    else:
-        edges = list(graph.edges())
-        num_nodes = graph.number_of_nodes()
-        def get_weight(u, v):
-            return graph[u][v].get('weight', 1.0)
-
-    # Brute‑force optimal cut
-    best_cut = 0
-    for bits in itertools.product([0, 1], repeat=num_nodes):
-        if sum(bits) == 0 or sum(bits) == num_nodes:
-            continue
-        cut = 0
-        for u, v in edges:
-            w = get_weight(u, v) or 1.0
-            if bits[u] != bits[v]:
-                cut += w
-        if cut > best_cut:
-            best_cut = cut
-    print(f"Optimal cut (brute‑force): {best_cut}")
-
-    # ---------- 2. Hamiltonian (işaret ters: beklenti = -cut) ----------
-    pauli_list = []
-    for u, v in edges:
-        w = get_weight(u, v) or 1.0
-        pauli_list.append(("ZZ", [int(u), int(v)], 0.5 * w))   # +0.5 w ZᵢZⱼ
-    cost_hamiltonian = SparsePauliOp.from_sparse_list(pauli_list, num_qubits=num_nodes)
-
-    circuit = QAOAAnsatz(cost_operator=cost_hamiltonian, reps=reps)
-
-    # Türevsiz yöntemler
-    derivative_free_methods = [
-        'Nelder-Mead', 'Powell', 'COBYLA', 'COBYQA', 'SLSQP'
-    ]
-    if methods is None:
-        methods = derivative_free_methods
-    else:
-        methods = [m for m in methods if m in derivative_free_methods]
-
-    results = []
-
-    for method in methods:
-        print(f"\n=== {method} ===")
-        best_cut_found = 0
-        best_expectation = None
-        best_bs = None
-        best_nit = None
-
-        for start_idx in range(n_starts):
-            rng = np.random.default_rng(start_idx)
-            init_params = rng.uniform(0, 2 * np.pi, size=2 * reps)
-
-            options = {'maxiter': 200}
-            if method == 'COBYLA':
-                options = {'maxiter': 200, 'rhobeg': 0.5}
-            elif method == 'COBYQA':
-                options = {'maxiter': 200}
-
-            try:
-                estimator = StatevectorEstimator()
-                values = []
-
-                def cost_func(params):
-                    job = estimator.run([(circuit, cost_hamiltonian, list(params))])
-                    res = job.result()[0]
-                    evs = res.data.evs          # = -cut
-                    values.append(-evs)
-                    return evs
-
-                res = minimize(cost_func, init_params, method=method,
-                               tol=1e-4, options=options)
-
-                # Örnekle
-                opt_circuit = circuit.assign_parameters(res.x)
-                samp_circ = opt_circuit.copy()
-                samp_circ.measure_all()
-                sampler = StatevectorSampler()
-                job_samp = sampler.run([samp_circ], shots=shots)
-                counts = job_samp.result()[0].data.meas.get_counts()
-                best_bs_local = max(counts, key=counts.get)
-                partition = [int(b) for b in best_bs_local]
-                cut_val = 0
-                for u, v in edges:
-                    w = get_weight(u, v) or 1.0
-                    if partition[u] != partition[v]:
-                        cut_val += w
-
-                if cut_val > best_cut_found:
-                    best_cut_found = cut_val
-                    best_expectation = res.fun
-                    best_bs = best_bs_local[::-1]
-                    best_nit = getattr(res, 'nit', None)   # Güvenli erişim
-
-                if plot:
-                    plt.figure()
-                    plt.plot(values, 'o-')
-                    plt.title(f'{method} start {start_idx+1}')
-                    plt.xlabel('İterasyon')
-                    plt.ylabel('Cut (negatif maliyet)')
-                    plt.grid(True, alpha=0.3)
-                    plt.show()
-
-            except Exception as e:
-                # Hata mesajını yazdırmak yerine sadece geç (veya kısa bir uyarı)
-                # print(f"  Başlangıç {start_idx+1} hata: {e}")   # istenirse aktif edilebilir
-                pass
-
-        results.append({
-            'Method': method,
-            'Best Cut': best_cut_found,
-            'Best Expectation': best_expectation,
-            'Iterations': best_nit,
-            'Best Bitstring': best_bs,
-            'Approx. Ratio': best_cut_found / best_cut if best_cut else 0.0
-        })
-
-    df = pd.DataFrame(results).sort_values(by='Approx. Ratio', ascending=False, na_position='last')
-
-    print("\n" + "="*80)
-    print("  QAOA MAX‑CUT BENCHMARK (Türevsiz Yöntemler)")
-    print("="*80)
-    print(f"Optimal cut (brute‑force): {best_cut}")
-    print(df.to_string(index=False))
-    print("-"*80)
-    best_rows = df[df['Approx. Ratio'] == df['Approx. Ratio'].max()]
-    print("En yüksek başarı oranına sahip yöntemler:")
-    for _, row in best_rows.iterrows():
-        print(f"  {row['Method']}: Approx. Ratio = {row['Approx. Ratio']:.4f} (Cut = {row['Best Cut']})")
-
-    return df
-
-
-def bipartite_kececi_layout(graph, left_nodes=None, right_nodes=None, 
-                        spacing=1.0, left_right_offset=1.5):
-    """
-    Bipartite grafiği Keçeci stilinde sağ-sol ayrımı ile konumlandırır.
-    İlk düğüm ortada kalmaz, soldaki partisyona yerleşir.
-    """
-    # Partisyonları otomatik bul
-    if left_nodes is None or right_nodes is None:
-        try:
-            left_nodes, right_nodes = bipartite.sets(graph)
-        except:
-            raise ValueError("Graf bipartite değil veya partisyonlar verilmedi.")
-
-    left_nodes = sorted(left_nodes)
-    right_nodes = sorted(right_nodes)
-
-    pos = {}
-
-    # Sol taraftaki düğümler (yukarıdan aşağıya)
-    for i, node in enumerate(left_nodes):
-        # x ekseninde sola kaydır, y ekseninde eşit aralıkla sırala
-        x = -left_right_offset
-        # Düğümleri ortadan başlayarak simetrik yerleştir
-        y = (len(left_nodes) - 1) / 2.0 - i
-        pos[node] = (x, y * spacing)
-
-    # Sağ taraftaki düğümler (yukarıdan aşağıya)
-    for i, node in enumerate(right_nodes):
-        x = left_right_offset
-        y = (len(right_nodes) - 1) / 2.0 - i
-        pos[node] = (x, y * spacing)
-
-    return pos
-
-
-def show_menu():
-    """
-    KEÇECİ Layout Menüsü – Tüm fonksiyonlar eksiksiz, ardışık numaralar, 
-    grafikler otomatik gösterilir.
-    """
-    # -------------------------------------------------------------------------
-    # Yardımcılar
-    # -------------------------------------------------------------------------
-    def _test_graph_nx(n=15, p=0.25):
-        """Bağlı rastgele graf oluşturur."""
-        for _ in range(100):
-            G = nx.gnp_random_graph(n, p, seed=random.randint(1, 9999))
-            if nx.is_connected(G):
-                return G
-        return nx.path_graph(n)
-
-    def _draw_curved(G, primary_direction='left-to-right', secondary_start='up', expanding=True):
-        pos = kececi_layout(G, primary_direction=primary_direction,
-                            secondary_start=secondary_start, expanding=expanding)
-        plt.figure(figsize=(10, 8))
-        nx.draw(G, pos, with_labels=True, node_color='#1f78b4', node_size=700,
-                font_color='white', connectionstyle='arc3,rad=0.2', arrows=True)
-        plt.title("Keçeci Curved Style")
-        plt.show()
-
-    def _draw_transparent(G, primary_direction='top_down', secondary_start='right', expanding=True):
-        pos = kececi_layout(G, primary_direction=primary_direction,
-                            secondary_start=secondary_start, expanding=expanding)
-        plt.figure(figsize=(10, 8))
-        nx.draw_networkx_nodes(G, pos, node_color='#2ca02c', node_size=700)
-        nx.draw_networkx_labels(G, pos, font_color='white')
-        edge_lengths = {e: np.linalg.norm(np.array(pos[e[0]]) - np.array(pos[e[1]]))
-                        for e in G.edges()}
-        max_len = max(edge_lengths.values()) if edge_lengths else 1.0
-        for edge, length in edge_lengths.items():
-            alpha = 0.15 + 0.85 * (1 - length / max_len)
-            nx.draw_networkx_edges(G, pos, edgelist=[edge], width=1.5,
-                                   edge_color='black', alpha=alpha)
-        plt.title("Keçeci Transparent Style")
-        plt.show()
-
-    def _draw_3d_helix(G):
-        pos = _kececi_layout_3d_helix(G)
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection='3d')
-        for node, (x, y, z) in pos.items():
-            ax.scatter([x], [y], [z], s=200, c='#d62728', depthshade=True)
-            ax.text(x, y, z, f'  {node}', size=10, zorder=1, color='k')
-        for u, v in G.edges():
-            coords = np.array([pos[u], pos[v]])
-            ax.plot(coords[:, 0], coords[:, 1], coords[:, 2], color='gray', alpha=0.8)
-        ax.set_title("Keçeci 3D Helix")
-        ax.set_axis_off()
-        ax.view_init(elev=20, azim=-60)
-        plt.show()
-
-    def _draw_3d_generic(G, pos, title):
-        fig = plt.figure(figsize=(10,8))
-        ax = fig.add_subplot(111, projection='3d')
-        for node, (x,y,z) in pos.items():
-            ax.scatter(x,y,z, s=100, c='orange')
-            ax.text(x,y,z, str(node), size=8)
-        for u,v in G.edges():
-            ax.plot([pos[u][0],pos[v][0]], [pos[u][1],pos[v][1]], [pos[u][2],pos[v][2]],
-                    color='gray', alpha=0.5)
-        ax.set_title(title)
-        ax.set_axis_off()
-        plt.show()
-
-    def circuit_to_digraph_full(circuit: QuantumCircuit) -> nx.DiGraph:
-        """
-        Qiskit QuantumCircuit → NetworkX DiGraph (tüm bileşenler).
-        Qiskit 1.2+ uyumlu, hiçbir deprecation uyarısı içermez.
-        """
-        G = nx.DiGraph()
-        qubit_count = circuit.num_qubits
-        clbit_count = circuit.num_clbits
-
-        # Başlangıç düğümleri
-        qubit_nodes = {i: f"q{i}" for i in range(qubit_count)}
-        clbit_nodes = {i: f"c{i}" for i in range(clbit_count)}
-        for i in range(qubit_count):
-            G.add_node(qubit_nodes[i], type='qubit')
-        for i in range(clbit_count):
-            G.add_node(clbit_nodes[i], type='clbit')
-
-        current_q = dict(qubit_nodes)
-        current_c = dict(clbit_nodes)
-        gate_idx = 0
-
-        def _add_standard_gate(op, qubits, label=None):
-            nonlocal gate_idx
-            name = op.name
-            if label is None:
-                label = name
-                if op.params:
-                    p_str = ','.join(
-                        f'{p:.2f}' if isinstance(p, float) else str(p)
-                        for p in op.params
-                    )
-                    label += f"({p_str})"
-            node = f"{name}_{gate_idx}"
-            G.add_node(node, type='gate', label=label)
-            gate_idx += 1
-            for q in qubits:
-                q_idx = circuit.find_bit(q).index
-                G.add_edge(current_q[q_idx], node)
-            for q in qubits:
-                q_idx = circuit.find_bit(q).index
-                new_q = f"q{q_idx}_{gate_idx}"
-                G.add_node(new_q, type='qubit')
-                G.add_edge(node, new_q)
-                current_q[q_idx] = new_q
-
-        def _add_measure(qubit, clbit):
-            nonlocal gate_idx
-            q_idx = circuit.find_bit(qubit).index
-            c_idx = circuit.find_bit(clbit).index
-            meas_node = f"meas_{gate_idx}"
-            G.add_node(meas_node, type='measure', label='M')
-            gate_idx += 1
-            G.add_edge(current_q[q_idx], meas_node)
-            new_c = f"c{c_idx}_{gate_idx}"
-            G.add_node(new_c, type='clbit')
-            G.add_edge(meas_node, new_c)
-            current_c[c_idx] = new_c
-
-        def _add_reset(qubit):
-            nonlocal gate_idx
-            q_idx = circuit.find_bit(qubit).index
-            reset_node = f"reset_{gate_idx}"
-            G.add_node(reset_node, type='reset', label='|0⟩')
-            gate_idx += 1
-            G.add_edge(current_q[q_idx], reset_node)
-            new_q = f"q{q_idx}_{gate_idx}"
-            G.add_node(new_q, type='qubit')
-            G.add_edge(reset_node, new_q)
-            current_q[q_idx] = new_q
-
-        def _process_block(block, parent_node=None):
-            nonlocal gate_idx
-            for inst in block:
-                op = inst.operation
-                name = op.name
-                qubits = inst.qubits
-                clbits = inst.clbits
-
-                if name == 'barrier':
-                    continue
-                if name == 'measure':
-                    if qubits and clbits:
-                        _add_measure(qubits[0], clbits[0])
-                    continue
-                if name == 'reset':
-                    for q in qubits:
-                        _add_reset(q)
-                    continue
-                if name == 'initialize':
-                    _add_standard_gate(op, qubits, label=f"init({op.params[0]})")
-                    continue
-
-                # --- IfElseOp ---
-                if isinstance(op, IfElseOp):
-                    cond = op.condition
-                    reg, val = cond
-                    cond_node = f"if_{gate_idx}"
-                    lbl = f"if({reg.name}=={val})"
-                    G.add_node(cond_node, type='condition', label=lbl)
-                    gate_idx += 1
-                    for idx_in_reg in range(reg.size):
-                        clbit = reg[idx_in_reg]
-                        c_idx = circuit.find_bit(clbit).index
-                        G.add_edge(current_c[c_idx], cond_node)
-                    if parent_node:
-                        G.add_edge(parent_node, cond_node)
-                    _process_block(op.blocks[0], parent_node=cond_node)
-                    if len(op.blocks) > 1:
-                        _process_block(op.blocks[1], parent_node=cond_node)
-                    continue
-
-                # --- SwitchCaseOp ---
-                if isinstance(op, SwitchCaseOp):
-                    target = op.target
-                    if hasattr(target, 'name'):
-                        lbl = f"switch({target.name})"
-                    else:
-                        lbl = f"switch(c{circuit.find_bit(target).index})"
-                    switch_node = f"switch_{gate_idx}"
-                    G.add_node(switch_node, type='switch', label=lbl)
-                    gate_idx += 1
-                    if parent_node:
-                        G.add_edge(parent_node, switch_node)
-
-                    case_values = op.cases()
-                    for case_val, case_block in zip(case_values, op.blocks):
-                        case_node = f"case_{case_val}_{gate_idx}"
-                        G.add_node(case_node, type='case', label=f"case {case_val}")
-                        G.add_edge(switch_node, case_node)
-                        gate_idx += 1
-                        _process_block(case_block, parent_node=case_node)
-                    continue
-
-                # --- ForLoopOp (güvenli, sadece tür düğümü) ---
-                if isinstance(op, ForLoopOp):
-                    loop_node = f"for_{gate_idx}"
-                    # Fazla detaya girmeden sadece "for" yazalım
-                    G.add_node(loop_node, type='loop', label='for')
-                    gate_idx += 1
-                    if parent_node:
-                        G.add_edge(parent_node, loop_node)
-                    # İç bloğu işle
-                    for inner_block in op.blocks:
-                        _process_block(inner_block, parent_node=loop_node)
-                    continue
-
-                # --- WhileLoopOp (güvenli, koşul bilgisiyle) ---
-                if isinstance(op, WhileLoopOp):
-                    cond = op.condition
-                    reg, val = cond
-                    loop_node = f"while_{gate_idx}"
-                    lbl = f"while({reg.name}=={val})"
-                    G.add_node(loop_node, type='loop', label=lbl)
-                    gate_idx += 1
-                    if parent_node:
-                        G.add_edge(parent_node, loop_node)
-                    for inner_block in op.blocks:
-                        _process_block(inner_block, parent_node=loop_node)
-                    continue
-
-                # --- Standart kapı ---
-                _add_standard_gate(op, qubits)
-
-        _process_block(circuit.data)
-        return G
-
-    # -------------------------------------------------------------------------
-    # Demo fonksiyonları (menü içinde kullanılan)
-    # -------------------------------------------------------------------------
-    def _edge_aware_demo():
-        G = nx.complete_bipartite_graph(3, 3)
-        for i in range(6, 12):
-            G.add_node(i)
-            if i % 2 == 0: G.add_edge(i, i-1)
-            else: G.add_edge(i, i-2)
-        pos_basic = kececi_layout_edge(G, edge=False)
-        pos_aware = kececi_layout_edge(G, edge=True)
-        edges = list(G.edges())
-        cb, ca = count_edge_crossings(pos_basic, edges), count_edge_crossings(pos_aware, edges)
-        lb, la = avg_edge_length(pos_basic, edges), avg_edge_length(pos_aware, edges)
-        print(f"Basic   | crossings={cb}, avg_length={lb:.3f}")
-        print(f"EdgeAware | crossings={ca}, avg_length={la:.3f}")
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12,5))
-        nx.draw(G, pos_basic, ax=ax1, with_labels=True, node_color='lightblue')
-        ax1.set_title("Basic Layout")
-        nx.draw(G, pos_aware, ax=ax2, with_labels=True, node_color='lightgreen')
-        ax2.set_title("Edge‑Aware Layout")
-        plt.show()
-
-    def _bayesian_demo():
-        opt = KececiBayesianOptimizer()
-        graphs = opt.generate_test_suite(8)
-        history = opt.optimize_kececi_bayes(graphs, n_iters=15)
-        opt.visualize_bayesian_learning(history)
-
-    def _barbell_demo():
-        G = nx.barbell_graph(5, 2)
-        pos = kececi_barbell_layout(G, debug=True)
-        draw_kececi(G, pos=pos)
-        plt.show()   # <-- EKLENDİ
-
-    def _expanding_demo():
-        G = _test_graph_nx(12, 0.3)
-        fig, (ax1, ax2) = plt.subplots(1,2, figsize=(14,6))
-        pos1 = kececi_layout_2d(G, expanding=True, primary_direction='left-to-right')
-        nx.draw(G, pos1, ax=ax1, with_labels=True, node_color='lightblue')
-        ax1.set_title("expanding=True")
-        pos2 = kececi_layout_2d(G, expanding=False, primary_direction='left-to-right')
-        nx.draw(G, pos2, ax=ax2, with_labels=True, node_color='lightgreen')
-        ax2.set_title("expanding=False (paralel)")
-        plt.show()
-
-    def _direction_demo():
-        G = _test_graph_nx(10, 0.3)
-        directions = ['top_down', 'bottom_up', 'left-to-right', 'right-to-left']
-        starts = ['right', 'left', 'up', 'down']
-        fig, axes = plt.subplots(2,2, figsize=(12,10))
-        for ax, d, s in zip(axes.flat, directions, starts):
-            pos = kececi_layout_2d(G, primary_direction=d, secondary_start=s)
-            nx.draw(G, pos, ax=ax, with_labels=True, node_size=300)
-            ax.set_title(f"{d}\nsecondary_start={s}")
-        plt.tight_layout()
-        plt.show()
-
-    def _secondary_start_demo():
-        G = _test_graph_nx(10, 0.3)
-        fig, (ax1, ax2) = plt.subplots(1,2, figsize=(12,5))
-        pos1 = kececi_layout_2d(G, primary_direction='top_down', secondary_start='left')
-        nx.draw(G, pos1, ax=ax1, with_labels=True, node_color='lightblue')
-        ax1.set_title("secondary_start='left'")
-        pos2 = kececi_layout_2d(G, primary_direction='top_down', secondary_start='right')
-        nx.draw(G, pos2, ax=ax2, with_labels=True, node_color='lightgreen')
-        ax2.set_title("secondary_start='right'")
-        plt.show()
-
-    def _spacing_demo():
-        G = _test_graph_nx(10, 0.3)
-        params = [(1.0,1.0), (2.0,0.5), (0.5,2.0)]
-        fig, axes = plt.subplots(1,3, figsize=(15,5))
-        for ax, (ps, ss) in zip(axes, params):
-            pos = kececi_layout_2d(G, primary_spacing=ps, secondary_spacing=ss)
-            nx.draw(G, pos, ax=ax, with_labels=True, node_size=300)
-            ax.set_title(f"ps={ps}, ss={ss}")
-        plt.tight_layout()
-        plt.show()
-
-    def _helix_param_demo():
-        G = nx.path_graph(20)
-        combos = [(3,10), (5,10), (5,15)]
-        for r, h in combos:
-            pos = kececi_layout_cylindrical(G, radius=r, height=h)
-            fig = plt.figure(figsize=(8,6))
-            ax = fig.add_subplot(111, projection='3d')
-            for node, (x,y,z) in pos.items():
-                ax.scatter(x,y,z, s=50)
-                ax.text(x,y,z, str(node), size=8)
-            for u,v in G.edges():
-                ax.plot([pos[u][0],pos[v][0]], [pos[u][1],pos[v][1]], [pos[u][2],pos[v][2]],
-                        color='gray', alpha=0.5)
-            ax.set_title(f"Cylindrical: r={r}, h={h}")
-            ax.set_axis_off()
-            plt.show()
-
-    def _cylindrical_demo():
-        G = _test_graph_nx(15, 0.2)
-        pos = kececi_layout_cylindrical(G, radius=5, height=10)
-        _draw_3d_generic(G, pos, "Silindirik Layout")  # içinde plt.show() var
-
-    def _cubic_demo():
-        G = _test_graph_nx(27, 0.15)
-        pos = kececi_layout_cubic(G, size=3)
-        _draw_3d_generic(G, pos, "Kübik Layout")
-
-    def _spherical_demo():
-        G = _test_graph_nx(20, 0.2)
-        pos = kececi_layout_spherical(G, radius=5)
-        _draw_3d_generic(G, pos, "Küresel Layout")
-
-    def _elliptical_demo():
-        G = _test_graph_nx(15, 0.2)
-        pos = kececi_layout_elliptical(G, a=5, b=3)
-        plt.figure(figsize=(8,8))
-        nx.draw(G, pos, with_labels=True, node_color='gold', edge_color='gray')
-        plt.title("Eliptik Layout")
-        plt.axis('equal')
-        plt.show()
-
-    def _toric_demo():
-        G = _test_graph_nx(20, 0.2)
-        pos = kececi_layout_toric(G, major_radius=5, minor_radius=2)
-        _draw_3d_generic(G, pos, "Torik Layout")
-
-    def _element_info():
-        sym = input("Element sembolü girin (örn: Fe): ").strip()
-        try:
-            info = get_element_info(sym)
-            for k,v in info.items():
-                print(f"{k}: {v}")
-        except Exception as e:
-            print(f"Hata: {e}")
-
-    def _layout_comparison():
-        G = _test_graph_nx(12, 0.3)
-        pos_k = kececi_layout_2d(G, primary_direction='left-to-right', secondary_start='up', expanding=True)
-        pos_kk = nx.kamada_kawai_layout(G)
-        fig, (ax1, ax2) = plt.subplots(1,2, figsize=(14,6))
-        nx.draw(G, pos_k, ax=ax1, with_labels=True, node_color='lightblue')
-        ax1.set_title("Keçeci 2D")
-        nx.draw(G, pos_kk, ax=ax2, with_labels=True, node_color='salmon')
-        ax2.set_title("Kamada‑Kawai")
-        plt.show()
-
-    def _igraph_test():
-        if ig is None:
-            print("igraph kütüphanesi yüklü değil. pip install igraph")
-            return
-        g = ig.Graph.Erdos_Renyi(n=12, p=0.3)
-        pos_list = kececi_layout_ig(g, primary_direction='left-to-right', secondary_start='up')
-        layout = {i: (x,y) for i,(x,y) in enumerate(pos_list)}
-        nx_g = nx.Graph()
-        nx_g.add_nodes_from(range(g.vcount()))
-        nx_g.add_edges_from(g.get_edgelist())
-        plt.figure(figsize=(8,6))
-        nx.draw(nx_g, pos=layout, with_labels=True, node_color='lightblue')
-        plt.title("igraph Graph (Keçeci Layout)")
-        plt.show()
-
-    def _rustworkx_test():
-        if rx is None:
-            print("rustworkx kütüphanesi yüklü değil. pip install rustworkx")
-            return
-        g = generate_random_rx_graph(8, 12, 0.2, 0.4)
-        nx_g = to_networkx(g)
-        draw_kececi(nx_g, layout='2d')
-        plt.show()   # <-- EKLENDİ
-
-    def _networkit_test():
-        if nk is None:
-            print("networkit kütüphanesi yüklü değil. pip install networkit")
-            return
-        G = nk.generators.ErdosRenyiGenerator(12, 0.3, directed=False).generate()
-        nx_g = to_networkx(G)
-        draw_kececi(nx_g, layout='2d')
-        plt.show()   # <-- EKLENDİ
-
-    def _graphillion_test():
-        if gg is None:
-            print("graphillion kütüphanesi yüklü değil.")
-            return
-        universe = [(1, 2), (2, 3), (3, 1), (2, 4)]
-        gg.GraphSet.set_universe(universe)
-        gs = gg.GraphSet()
-        pos = kececi_layout_gg(gs)
-        G_nx = nx.Graph()
-        G_nx.add_edges_from(universe)
-        for u, v in universe:
-            G_nx.add_node(u)
-            G_nx.add_node(v)
-        plt.figure(figsize=(6,6))
-        nx.draw(G_nx, pos, with_labels=True, node_color='lightblue')
-        plt.title("Graphillion Universe (Keçeci Layout)")
-        plt.show()
-
-    def _graphtool_test():
-        if gt is None:
-            print("graph‑tool kütüphanesi yüklü değil veya bu platformda desteklenmiyor.")
-            return
-        g = gt.collection.data["karate"]
-        pos = kececi_layout_gt(g)
-        nx_g = to_networkx(g)
-        plt.figure(figsize=(8,6))
-        nx.draw(nx_g, pos, with_labels=True, node_color='lightblue')
-        plt.title("graph‑tool Graph (Keçeci Layout)")
-        plt.show()
-
-    def _pure_node_demo():
-        nodes = list(range(7))
-        pos = kececi_layout_pure(nodes, primary_direction='left-to-right', secondary_start='up', expanding=True)
-        plt.figure(figsize=(8,6))
-        G = nx.path_graph(7)
-        nx.draw(G, pos, with_labels=True, node_color='lightblue')
-        plt.title("Pure Node List Layout")
-        plt.show()
-
-    def _zz_score_demo():
-        G = _test_graph_nx(20, 0.15)
-        pos = kececi_layout(G, primary_direction='left-to-right', secondary_start='up', expanding=True)
-        res = KececiZigzagValidator().champion_zz_score(G, pos)
-        print("ZZ Score Metrics:")
-        for k,v in res.items():
-            if isinstance(v, float):
-                print(f"  {k}: {v:.4f}")
-            else:
-                print(f"  {k}: {v}")
-        plt.figure(figsize=(8,6))
-        nx.draw(G, pos, with_labels=True, node_color='lightblue')
-        plt.title(f"ZZ Score = {res['zz_score']:.3f}")
-        plt.show()
-
-    def _edge_crossing_demo():
-        G = nx.complete_bipartite_graph(3,3)
-        pos = kececi_layout_edge(G, edge=True)
-        crossings = count_edge_crossings(pos, G.edges())
-        print(f"K(33) edge crossings (edge‑aware): {crossings}")
-        plt.figure(figsize=(6,6))
-        nx.draw(G, pos, with_labels=True, node_color='lightgreen')
-        plt.title(f"Edge crossings = {crossings}")
-        plt.show()
-
-    def _style_gallery():
-        G = _test_graph_nx(10, 0.3)
-        tasks = [
-            lambda: _draw_curved(G),
-            lambda: _draw_transparent(G),
-            lambda: (draw_kececi(G, style='default', layout='2d'), plt.show()),
-            lambda: (draw_kececi(G, style='weighted', layout='2d'), plt.show()),
-            lambda: (draw_kececi(G, style='colored', layout='2d'), plt.show()),
-            lambda: _draw_3d_helix(G),
-        ]
-        for fn in tasks:
-            fn()
-            input("Devam etmek için Enter...")
-
-    # =============================================================================
-    # DAG ve Transitive Reduction Karşılaştırma Demoları (show_menu için)
-    # =============================================================================
-
-    def _dag_2d_comparison():
-        """2B Keçeci Layout ile DAG vs transitive reduced DAG karşılaştırması."""
-        import networkx as nx
-        import matplotlib.pyplot as plt
-
-        # Örnek DAG oluştur (zincir + fazladan kenarlar)
-        G = nx.DiGraph()
-        edges = [(0,1),(0,2),(1,3),(2,3),(3,4),(2,5),(5,6),(3,6),(4,6)]
-        G.add_edges_from(edges)
-        G_red = nx.transitive_reduction(G)
-
-        # Keçeci 2D layout (order‑preserving)
-        pos_full = kececi_layout_2d(G, expanding=True)
-        pos_red = kececi_layout_2d(G_red, expanding=True)
-
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-        nx.draw(G, pos_full, ax=ax1, with_labels=True, node_color='lightblue',
-                edge_color='gray', arrows=True, node_size=600)
-        ax1.set_title(f"Orijinal DAG\n{G.number_of_edges()} kenar")
-
-        nx.draw(G_red, pos_red, ax=ax2, with_labels=True, node_color='lightgreen',
-                edge_color='darkgreen', arrows=True, node_size=600)
-        ax2.set_title(f"Transitive Reduced\n{G_red.number_of_edges()} kenar")
-
-        plt.suptitle("2B Keçeci Layout: DAG vs Transitive Reduction")
-        plt.tight_layout()
-        plt.show()
-
-    def _dag_3d_comparison():
-        """3B silindirik (helix) Keçeci Layout ile DAG vs transitive reduced DAG."""
-        import networkx as nx
-        import matplotlib.pyplot as plt
-        from mpl_toolkits.mplot3d import Axes3D
-
-        G = nx.DiGraph()
-        edges = [(0,1),(0,2),(1,3),(2,3),(3,4),(2,5),(5,6),(3,6),(4,6)]
-        G.add_edges_from(edges)
-        G_red = nx.transitive_reduction(G)
-
-        # 3B layout (silindirik / helix)
-        pos_full = kececi_layout_cylindrical(G, radius=3, height=8)
-        pos_red = kececi_layout_cylindrical(G_red, radius=3, height=8)
-
-        fig = plt.figure(figsize=(14, 6))
-        ax1 = fig.add_subplot(121, projection='3d')
-        for node, (x,y,z) in pos_full.items():
-            ax1.scatter(x, y, z, s=100, c='blue')
-            ax1.text(x, y, z, f'  {node}', size=9)
-        for u,v in G.edges():
-            ax1.plot(*zip(pos_full[u], pos_full[v]), color='gray', alpha=0.6)
-        ax1.set_title(f"3D Orijinal DAG\n{G.number_of_edges()} kenar")
-        ax1.axis('off')
-
-        ax2 = fig.add_subplot(122, projection='3d')
-        for node, (x,y,z) in pos_red.items():
-            ax2.scatter(x, y, z, s=100, c='green')
-            ax2.text(x, y, z, f'  {node}', size=9)
-        for u,v in G_red.edges():
-            ax2.plot(*zip(pos_red[u], pos_red[v]), color='darkgreen', alpha=0.8)
-        ax2.set_title(f"3D Transitive Reduced\n{G_red.number_of_edges()} kenar")
-        ax2.axis('off')
-
-        plt.suptitle("3B Keçeci Layout (Silindirik): DAG vs Transitive Reduction")
-        plt.tight_layout()
-        plt.show()
-
-    def or3_kl():
-        import sys
-        import datetime
-        import matplotlib.pyplot as plt
-        import kececilayout as kl
-        from kececilayout import _kececi_layout_3d_helix, to_networkx, circuit_to_digraph
-        import numpy as np
-        import networkx as nx
-        from qiskit import QuantumCircuit
-        
-        py_version = sys.version.split()[0]
-        run_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        def OR3():
-            devre = QuantumCircuit(4)
-            devre.x(0)
-            devre.x(1)
-            devre.x(2)
-            devre.mcx([0, 1, 2], 3)
-            devre.x(0)
-            devre.x(1)
-            devre.x(2)
-            devre.x(3)
-            return devre
-        
-        # Grafı oluştur
-        G = circuit_to_digraph(OR3())
-        
-        # 3B Helix pozisyonlarını al
-        nx_graph = to_networkx(G)
-        pos_3d = _kececi_layout_3d_helix(nx_graph)  # dict: node -> (x, y, z)
-        
-        # 3B çizim
-        fig = plt.figure(figsize=(12, 10))
-        ax = fig.add_subplot(111, projection='3d')
-        ax.set_facecolor('#0a0a0a')
-        fig.patch.set_facecolor('#0a0a0a')
-        
-        # Düğümleri çiz
-        for node, (x, y, z) in pos_3d.items():
-            ax.scatter(x, y, z, s=200, c='gold', depthshade=True)
-            # Etiketleri manuel ekle
-            ax.text(x, y, z, f'  {node}', color='white', fontsize=14)
-        
-        # Kenarları çiz
-        for u, v in nx_graph.edges():
-            coords = np.array([pos_3d[u], pos_3d[v]])
-            ax.plot(coords[:, 0], coords[:, 1], coords[:, 2],
-                    color='cyan', alpha=0.6, linewidth=0.8)
-        
-        title = (f"OR3 Gate – 3D Helix Sanatsal Temsil\n"
-                 f"Python: {py_version}  Date/Tarih: {run_date}")
-        ax.set_title(title, color='white', fontsize=12, pad=20)
-        ax.set_axis_off()
-        ax.view_init(elev=20, azim=-60)
-        plt.show()
-
-    def or3_kl2():
-        import sys, datetime
-        import matplotlib.pyplot as plt
-        import kececilayout as kl
-
-        py_version = sys.version.split()[0]
-        run_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        def OR3():
-            devre = QuantumCircuit(4)
-            devre.x(0); devre.x(1); devre.x(2)
-            devre.mcx([0, 1, 2], 3)
-            devre.x(0); devre.x(1); devre.x(2)
-            devre.x(3)
-            return devre
-
-        G = circuit_to_digraph(OR3())
-
-        fig, ax = plt.subplots(figsize=(14, 7))
-        draw_kececi(
-            G,
-            style='standard',       # düz kenarlar, temiz görünüm
-            node_size=700,
-            font_size=10,
-            node_color='lightblue',
-            edge_color='gray',
-            edge_width=1.2,
-            with_labels=True,
-            ax=ax
+    # --- QEC Visualization Tests ---
+    print("\n--- PART 2: QEC Visualization Tests ---")
+    print("\n[Test 2.1: Generating an error-free 7-qubit code...]")
+    visualize_qec_fractal(
+        physical_qubits_per_level=7,
+        recursion_level=1,
+        error_qubits=[],
+        filename="QEC_Model_Test_No_Errors",
+    )
+
+    print("\n[Test 2.2: Generating a 7-qubit code with a single error...]")
+    visualize_qec_fractal(
+        physical_qubits_per_level=7,
+        recursion_level=1,
+        error_qubits=[[3]],
+        filename="QEC_Model_Test_Single_Error",
+    )
+
+    print("\n[Test 2.3: Generating a 2-level code with a deep-level error...]")
+    visualize_qec_fractal(
+        physical_qubits_per_level=5,
+        recursion_level=2,
+        error_qubits=[[4, 1]],
+        filename="QEC_Model_Test_Deep_Error",
+    )
+
+    # --- 3D Fractal Tests ---
+    if HAS_3D:
+        print("\n--- PART 3: 3D Keçeci Fractal Tests ---")
+        print("\n[Test 3.1: Generating basic 3D fractal...]")
+        kececifractals_3d(
+            num_children=6,
+            max_level=3,
+            output_mode="png",
+            filename="test_3d_fractal_basic",
         )
 
-        title = (f"OR3 Gate – VEYA(3) Kapısı\n"
-                 f"Keçeci Layout (DAG)\n"
-                 f"Python: {py_version}  Date/Tarih: {run_date}")
-        ax.set_title(title, fontsize=11, pad=18)
-        plt.tight_layout()
-        plt.show()
-
-    def or3_klr1():
-        import sys
-        import datetime
-        import matplotlib.pyplot as plt
-        import kececilayout as kl
-        from kececilayout import _kececi_layout_3d_helix, to_networkx, circuit_to_digraph
-        import numpy as np
-        import networkx as nx
-        from qiskit import QuantumCircuit
-        
-        py_version = sys.version.split()[0]
-        run_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        def OR3():
-            devre = QuantumCircuit(4)
-            devre.x(0)
-            devre.x(1)
-            devre.x(2)
-            devre.mcx([0, 1, 2], 3)
-            devre.x(0)
-            devre.x(1)
-            devre.x(2)
-            devre.x(3)
-            return devre
-        
-        # Grafı oluştur
-        G = circuit_to_digraph_robust(OR3())
-        
-        # 3B Helix pozisyonlarını al
-        nx_graph = to_networkx(G)
-        pos_3d = _kececi_layout_3d_helix(nx_graph)  # dict: node -> (x, y, z)
-        
-        # 3B çizim
-        fig = plt.figure(figsize=(12, 10))
-        ax = fig.add_subplot(111, projection='3d')
-        ax.set_facecolor('#0a0a0a')
-        fig.patch.set_facecolor('#0a0a0a')
-        
-        # Düğümleri çiz
-        for node, (x, y, z) in pos_3d.items():
-            ax.scatter(x, y, z, s=200, c='gold', depthshade=True)
-            # Etiketleri manuel ekle
-            ax.text(x, y, z, f'  {node}', color='white', fontsize=14)
-        
-        # Kenarları çiz
-        for u, v in nx_graph.edges():
-            coords = np.array([pos_3d[u], pos_3d[v]])
-            ax.plot(coords[:, 0], coords[:, 1], coords[:, 2],
-                    color='cyan', alpha=0.6, linewidth=0.8)
-        
-        title = (f"OR3 Gate – 3D Helix Sanatsal Temsil\n"
-                 f"Python: {py_version}  Date/Tarih: {run_date}")
-        ax.set_title(title, color='white', fontsize=12, pad=20)
-        ax.set_axis_off()
-        ax.view_init(elev=20, azim=-60)
-        plt.show()
-
-    def or3_klr2():
-        from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
-        from qiskit.circuit import Parameter
-        import kececilayout as kl
-        import matplotlib.pyplot as plt
-        import sys, datetime
-
-        py_version = sys.version.split()[0]
-        run_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        qr = QuantumRegister(3, 'q')
-        cr = ClassicalRegister(3, 'c')
-        qc = QuantumCircuit(qr, cr)
-
-        theta = Parameter('θ')
-        qc.rz(theta, qr[0])
-        qc.cx(qr[0], qr[1])
-        qc.measure(qr[0], cr[0])
-
-        with qc.if_test((cr, 1)):
-            qc.x(qr[2])
-
-        with qc.switch(cr[1]) as case:
-            with case(0):
-                qc.z(qr[0])
-            with case(1):
-                qc.y(qr[1])
-
-        with qc.for_loop(range(2)):
-            qc.h(qr[0])
-
-        with qc.while_loop((cr, 0)):
-            qc.reset(qr[1])
-
-        qc.measure(qr[2], cr[2])
-
-        G = circuit_to_digraph_full(qc)
-        fig, ax = plt.subplots(figsize=(18, 10))
-        draw_kececi(G, style='standard', node_size=600, font_size=8, ax=ax)
-        ax.set_title(
-            f"Kuantum Devresi – Tüm Kontrol Yapıları\n"
-            f"Python: {py_version}  Date/Tarih: {run_date}",
-            fontsize=12, pad=18
+        print("\n[Test 3.2: Generating complex 3D fractal...]")
+        kececifractals_3d(
+            num_children=12,
+            max_level=4,
+            scale_factor=0.35,
+            color_scheme="viridis",
+            elev=25,
+            azim=60,
+            output_mode="png",
+            filename="test_3d_fractal_complex",
         )
-        plt.tight_layout()
-        plt.show()
+    else:
+        print("\n--- PART 3: 3D Keçeci Fractal Tests (Skipped - 3D not available) ---")
 
-    # -------------------------------------------------------------------------
-    # Menü tanımları (1‑38) – draw_kececi kullananlara plt.show() eklendi
-    # -------------------------------------------------------------------------
-    def _show_after_draw(fn, *args, **kwargs):
-        fn(*args, **kwargs)
-        plt.show()
-
-    def min_max_cut1():
-        # Örnek graf
-        w = np.array([[0,1,1,0],
-                      [1,0,1,1],
-                      [1,1,0,1],
-                      [0,1,1,0]])
-        G = nx.from_numpy_array(w)
-
-        # Analizi çalıştır
-        sonuc = min_max_cut(G, show_plot=True)
-        print("Minimum cut (Tekrarlı, Simetrik):", sonuc['min_cut'])
-        print("Minimum bölmeler:", sonuc['min_partitions'])
-        print("Maksimum cut:", sonuc['max_cut'])
-        print("Maksimum bölmeler (Tekrarlı, Simetrik):", sonuc['max_partitions'])
-
-    def min_max_cut2():
-        # Örnek graf
-        w = np.array([[0,1,1,0],
-                      [1,0,1,1],
-                      [1,1,0,1],
-                      [0,1,1,0]])
-        G = nx.from_numpy_array(w)
-
-        # Analizi çalıştır
-        sonuc = min_max_cut_u(G, show_plot=True, unique_partitions=True)
-        print("Minimum cut (Tekrarsız, Simetrik):", sonuc['min_cut'])
-        print("Minimum bölmeler:", sonuc['min_partitions'])
-        print("Maksimum cut:", sonuc['max_cut'])
-        print("Maksimum bölmeler (Tekrarsız, Simetrik):", sonuc['max_partitions'])
-
-    def min_max_cut3():
-        # Örnek graf
-        w = np.array([[0,1,1,0],
-                      [1,0,1,1],
-                      [1,1,0,1],
-                      [0,1,1,0]])
-        G = nx.from_numpy_array(w)
-
-        # Analizi çalıştır
-        sonuc = min_max_cut_u(G, show_plot=True, unique_partitions=False)
-        print("Minimum cut (Tekrarlı, Simetrik):", sonuc['min_cut'])
-        print("Minimum bölmeler:", sonuc['min_partitions'])
-        print("Maksimum cut:", sonuc['max_cut'])
-        print("Maksimum bölmeler (Tekrarlı, Simetrik):", sonuc['max_partitions'])
-
-    def min_max_cute1():
-        # Örnek graf
-        w = np.array([[0,1,1,0],
-                      [1,0,1,1],
-                      [1,1,0,1],
-                      [0,1,1,0]])
-        G = nx.from_numpy_array(w)
-
-        # Analizi çalıştır
-        sonuc = min_max_cut_extended(G, show_plot=True, unique_partitions=True, show_complement=False)
-        print("Minimum cut (Tekrarsız, Simetrik):", sonuc['min_cut'])
-        print("Minimum bölmeler:", sonuc['min_partitions'])
-        print("Maksimum cut:", sonuc['max_cut'])
-        print("Maksimum bölmeler (Tekrarsız, Simetrik):", sonuc['max_partitions'])
-
-    def min_max_cute2():
-        # Örnek graf
-        w = np.array([[0,1,1,0],
-                      [1,0,1,1],
-                      [1,1,0,1],
-                      [0,1,1,0]])
-        G = nx.from_numpy_array(w)
-
-        # Analizi çalıştır
-        # Complement’leri de göstermek için:
-        sonuc = min_max_cut_extended(G, show_plot=True, unique_partitions=False, show_complement=True)
-        print("Minimum cut (Tekrarlı, Simetrik):", sonuc['min_cut'])
-        print("Minimum bölmeler:", sonuc['min_partitions'])
-        print("Maksimum cut:", sonuc['max_cut'])
-        print("Maksimum bölmeler (Tekrarlı, Simetrik):", sonuc['max_partitions'])
-
-    def min_max_cute3():
-        # Örnek graf
-        w = np.array([[0,1,1,0],
-                      [1,0,1,1],
-                      [1,1,0,1],
-                      [0,1,1,0]])
-        G = nx.from_numpy_array(w)
-
-        # Analizi çalıştır
-        # Complement’leri de göstermek için:
-        sonuc = min_max_cut_extended(G, show_plot=True, unique_partitions=True, show_complement=True)
-        print("Minimum cut (Tekrarsız, Simetrik):", sonuc['min_cut'])
-        print("Minimum bölmeler:", sonuc['min_partitions'])
-        print("Maksimum cut:", sonuc['max_cut'])
-        print("Maksimum bölmeler (Tekrarsız, Simetrik):", sonuc['max_partitions'])
-
-    def max_cut_qaoa_opt():
-        n_small = 5
-        graph = rx.PyGraph()
-        graph.add_nodes_from(range(n_small))
-        edge_list = [
-            (0, 1, 1.0),
-            (0, 2, 1.0),
-            (0, 4, 1.0),
-            (1, 2, 1.0),
-            (2, 3, 1.0),
-            (3, 4, 1.0),
-        ]
-        graph.add_edges_from(edge_list)
-
-        result, opt_circuit = max_cut_qaoa_optimization(
-            graph,
-            reps=2,
-            optimizer='COBYLA',
-            tol=1e-2,
-            maxiter=100,
-            plot_convergence=True,
-            draw_final_circuit=True
-        )
-
-    def max_cut_qaoa_vis():
-        # Örnek graf
-        n_small = 5
-        graph = rx.PyGraph()
-        graph.add_nodes_from(range(n_small))
-        edge_list = [
-            (0, 1, 1.0),
-            (0, 2, 1.0),
-            (0, 4, 1.0),
-            (1, 2, 1.0),
-            (2, 3, 1.0),
-            (3, 4, 1.0),
-        ]
-        graph.add_edges_from(edge_list)
-
-        bitstring, cut_val = max_cut_qaoa_visualize(graph, reps=2, plot_convergence=True)
-
-    def max_cut_qaoa_benc():
-        n_small = 5
-        graph = rx.PyGraph()
-        graph.add_nodes_from(range(n_small))
-        edge_list = [
-            (0, 1, 1.0),
-            (0, 2, 1.0),
-            (0, 4, 1.0),
-            (1, 2, 1.0),
-            (2, 3, 1.0),
-            (3, 4, 1.0),
-        ]
-        graph.add_edges_from(edge_list)
-
-        df = max_cut_qaoa_benchmark(graph, reps=1, n_starts=1, plot=True)
-
-    def bipartite(most_likely='01010'):
-        """
-        Bipartite Örnek: Keçeci Layout ile Bipartite MAX-CUT Grafiği Çizimi
-        """
-        # ---- 1. Grafiği oluştur ----
-        G = nx.Graph()
-        G.add_edges_from([[0,3],[0,4],[1,3],[1,4],[2,3],[2,4]])
-
-        # ---- 3. Örnek veri ----
-        most_likely = '01010'   # Gerçek sonucunuzu buraya yazın
-        # Node renklerini oluştur
-        node_colors = ['#6929C4' if most_likely[node] == '0' else '#20306f' for node in G.nodes()]
-
-        # ---- 4. Layout hesapla ve çiz ----
-        pos = bipartite_kececi_layout(G, left_nodes=[0,1,2], right_nodes=[3,4], spacing=1.0)
-        
-        draw_kececi(
-            G,
-            pos=pos,
-            style='default', # curved
-            node_color=node_colors,
-            node_size=1000,
-            font_size=22,
-            edge_color='#D3D3D3',
-            edge_width=1.0,
-            with_labels=True
-        )
-        plt.show()
-
-    menu = {
-        "1": ("Curved Style", lambda: _draw_curved(_test_graph_nx(10, 0.3))),
-        "2": ("Standart 2D Layout", lambda: (draw_kececi(_test_graph_nx(12, 0.25), style='default', layout='2d'), plt.show())),
-        "3": ("Transparent Kenarlar", lambda: _draw_transparent(_test_graph_nx(15, 0.2))),
-        "4": ("Ağırlıklı Keçeci (Weighted)", lambda: (draw_kececi(_test_graph_nx(8, 0.5), style='weighted', layout='2d'), plt.show())),
-        "5": ("Renkli Düğümler (Colored)", lambda: (draw_kececi(_test_graph_nx(14, 0.3), style='colored', layout='2d'), plt.show())),
-        "6": ("3D Heliks Görünümü", lambda: _draw_3d_helix(_test_graph_nx(12, 0.25))),
-        "7": ("Edge‑Aware vs Basic Karşılaştırması", _edge_aware_demo),
-        "8": ("ZZ Şampiyon Testi", lambda: KececiZigzagValidator().final_champion_test()),
-        "9": ("Bayesian Optimizasyon Demosu", _bayesian_demo),
-        "10": ("expanding=True vs False", _expanding_demo),
-        "11": ("primary_direction Çeşitleri", _direction_demo),
-        "12": ("secondary_start & Aralık Etkisi", _secondary_start_demo),
-        "13": ("Hızlı 3D Periyodik Tablo", lambda: quick_periodic_table_3d()),
-        "14": ("4'lü Karşılaştırma Figürü", lambda: generate_comparison_figure()),
-        "15": ("Demo Serisi (Otomatik)", lambda: demo_periodic_table_visualizations()),
-        "16": ("Özelleştirilmiş Tablo", lambda: custom_visualization()),
-        "17": ("Element Vurgulama (Fe, Au, Hg)", lambda: highlight_elements(["Fe","Au","Hg"])),
-        "18": ("Periyodik Tablo PNG Kaydet", lambda: save_periodic_table_visualization(dpi=150)),
-        "19": ("Element Bilgisi (sembol ile)", _element_info),
-        "20": ("Barbell Layout", _barbell_demo),
-        "21": ("Silindirik Layout (3D)", _cylindrical_demo),
-        "22": ("Kübik Layout (3D)", _cubic_demo),
-        "23": ("Küresel Layout (3D)", _spherical_demo),
-        "24": ("Eliptik Layout (2D)", _elliptical_demo),
-        "25": ("Torik Layout (3D)", _toric_demo),
-        "26": ("igraph Graf Çizimi", _igraph_test),
-        "27": ("Keçeci vs Kamada‑Kawai", _layout_comparison),
-        "28": ("Rastgele Graf Oluştur ve Çiz (NetworkX)", lambda: (draw_kececi(generate_random_graph(8,15,0.2,0.4), layout='2d'), plt.show())),
-        "29": ("Rustworkx Graf Testi", _rustworkx_test),
-        "30": ("NetworKit Graf Testi", _networkit_test),
-        "31": ("Tek Graf ZZ Skoru Hesapla", _zz_score_demo),
-        "32": ("Edge Crossing Analizi (K3,3)", _edge_crossing_demo),
-        "33": ("Graphillion Graf Denemesi", _graphillion_test),
-        "34": ("graph‑tool Desteği (Linux)", _graphtool_test),
-        "35": ("Pure Node Listesi Layout", _pure_node_demo),
-        "36": ("Spacing Parametreleri Geçişi", _spacing_demo),
-        "37": ("3D Heliks Parametre Taraması", _helix_param_demo),
-        "38": ("Tüm Stilleri Sırayla Göster", _style_gallery),
-        "39": ("GNN‑GRU Renkli Karşılaştırma (Tüm Layout'lar)", gnn_gru_colored_comparison),
-        "40": ("Keçeci Labirent (Maze Generator)", lambda: kececi_maze_demo(10, 10)),
-        "41": ("Oyun Ağacı (Satranç/Go) Görselleştirme", lambda: kececi_game_tree_demo(depth=3, branching=2)),
-        "42": ("Satranç Kısa Matlar – 2B Keçeci Layout (Zigzag)", draw_chess_shortest_kececi),
-        "43": ("Satranç Kısa Matlar – 3B Keçeci Layout (Silindirik)", draw_chess_3d_cylindrical),
-        "44": ("Satranç Kısa Matlar – 3B Keçeci Layout (Küresel)", draw_chess_3d_spherical),
-        "45": ("Satranç Kısa Matlar – 3B Keçeci Layout (Torik)", draw_chess_3d_toric),
-        "46": ("python‑chess Oyun Ağacı – 2D Zigzag", chess_engine_2d_demo),
-        "47": ("python‑chess Oyun Ağacı – 3D Silindirik", chess_engine_3d_cyl_demo),
-        "48": ("python‑chess Oyun Ağacı – 3D Küresel", chess_engine_3d_sph_demo),
-        "49": ("python‑chess Oyun Ağacı – 3D Torik", chess_engine_3d_tor_demo),
-        "50": ("Rastgele Satranç Açılış Hamle Sırası", random_chess_opening_moves),
-        "51": ("Termodinamik Kavram Haritası (Keçeci)", thermodynamics_concept_map),
-        "52": ("Kuantum Mekaniği Kavram Haritası (Keçeci)", quantum_mechanics_concept_map),
-        "53": ("Kuantum Alan Teorisi Kavram Haritası (Keçeci)", quantum_field_theory_concept_map),
-        "54": ("2B DAG vs Transitive Reduction (Keçeci)", _dag_2d_comparison),
-        "55": ("3B DAG vs Transitive Reduction (Silindirik)", _dag_3d_comparison),
-        "56": ("OR3 Gate Circuit – VEYA(3) Kapısı Devresi, 3D Helix Sanatsal Temsili", or3_kl),
-        "57": ("OR3 Gate Circuit – VEYA(3) Kapısı Devresi (DAG)", or3_kl2),
-        "58": ("OR3 Gate Circuit – VEYA(3) Kapısı Devresi, 3D Helix Sanatsal Temsili", or3_klr1),
-        "59": ("Quantum Circuit – Kuantum Devresi", or3_klr2),
-        "60": ("Min_Max Cut Problemi, Tekrarlı, Simetrik", min_max_cut1),
-        "61": ("Min_Max Cut Problemi, Tekrarsız, Simetrik", min_max_cut2),
-        "62": ("Min_Max Cut Problemi, Tekrarlı, Simetrik", min_max_cut3),
-        "63": ("Min_Max Cut Problemi/Genişletilmiş, Tekrarsız, Simetrik", min_max_cute1),
-        "64": ("Min_Max Cut Problemi/Genişletilmiş, Tekrarlı, Simetrik, Complementleri de göster", min_max_cute2),
-        "65": ("Min_Max Cut Problemi/Genişletilmiş, Tekrarlı, Simetrik, Complementleri de göster", min_max_cute3),
-        "66": ("Quantum Approximate Optimization Algorithm (QAOA), optimisation", max_cut_qaoa_opt),
-        "67": ("Quantum Approximate Optimization Algorithm (QAOA), visualitasion", max_cut_qaoa_vis),
-        "68": ("Quantum Approximate Optimization Algorithm (QAOA), benchmark", max_cut_qaoa_benc),
-        "69": ("Keçeci Layout ile Bipartite MAX-CUT Grafiği Çizimi", bipartite),
-
-    }
-
-    # -------------------------------------------------------------------------
-    # Grup başlıkları
-    # -------------------------------------------------------------------------
-    groups = [
-        ("TEMEL STİLLER",             range(1, 7)),
-        ("KENAR & PARAMETRE ANALİZ", range(7, 13)),
-        ("PERİYODİK TABLO",           range(13, 20)),
-        ("ALTERNATİF YERLEŞİMLER",    range(20, 26)),
-        ("KÜTÜPHANE DESTEĞİ & KARŞILAŞTIRMALAR", range(26, 31)),
-        ("GELİŞMİŞ ANALİZ & DİĞER",  range(31, 40)),
-        ("SATRANÇ & OYUN AĞAÇLARI", range(41, 51)),  # 41 genel ağaç, 42-45 kısa matlar, 46-51 python-chess
-        ("FİZİKSEL MODELLER", range(51, 54)),   # 51: Termo, 52: Kuantum Mekaniği, 53: QFT
-        ("DAG ANALİZLERİ", range(54, 56)),
-        ("Kuantum Devre Analizleri ve Temsilleri", range(56, 60)),
-        ("Min_Max_Cut Problemi", range(60, 69)),
-        ("bipartite", range(69, 70)),
-    ]
-
-    # -------------------------------------------------------------------------
-    # Ana döngü
-    # -------------------------------------------------------------------------
-    while True:
-        print("\n" + "="*70)
-        print(" "*15 + "Keçeci Layout Visulation Munu (Görselleştirme Menüsü)")
-        print("="*70)
-        for grup_adi, aralik in groups:
-            print(f"\n  {grup_adi}")
-            print("  " + "-"*68)
-            for num in aralik:
-                key = str(num)
-                if key in menu:
-                    desc, _ = menu[key]
-                    print(f"  {num:>2}. {desc}")
-        print("\n  " + "-"*68)
-        print("   0. Çıkış")
-        print("="*70)
-
-        secim = input("Seçiminiz (0‑69): ").strip()
-        if secim == '0':
-            print("Program sonlandırılıyor...")
-            break
-        elif secim in menu:
-            desc, func = menu[secim]
-            print(f"\n{desc} çalıştırılıyor...")
-            try:
-                func()
-            except Exception as e:
-                print(f"Hata oluştu: {e}")
-            input("\nDevam için Enter...")
-        else:
-            print("Geçersiz seçim! Lütfen listeden bir sayı girin.")
-
-# =============================================================================
-# MODULE TEST CODE
-# =============================================================================
-
-if __name__ == '__main__':
-    print("Testing kececilayout.py module...")
-    G_test = nx.gnp_random_graph(12, 0.3, seed=42)
-
-    # graph-tool grafi oluşturma ve test etme
-    if gt:
-        g = gt.Graph()
-        g.add_vertex(12)
-        for u, v in G_test.edges():
-            g.add_edge(g.vertex(u), g.vertex(v))
-        fig_gt = plt.figure(figsize=(10, 8))
-        draw_kececi(g, ax=fig_gt.add_subplot(111), style='curved')
-        plt.title("Keçeci Layout: graph-tool Graph")
-        plt.show()
-
-    # Compare expanding=False (parallel) vs. expanding=True ('v4' style)
-    fig_v4 = plt.figure(figsize=(16, 7))
-    fig_v4.suptitle("Effect of the `expanding` Parameter", fontsize=20)
-    ax_v4_1 = fig_v4.add_subplot(1, 2, 1)
-    draw_kececi(G_test, ax=ax_v4_1, style='curved',
-                primary_direction='left-to-right', secondary_start='up',
-                expanding=False)
-    ax_v4_1.set_title("Parallel Style (expanding=False)", fontsize=16)
-
-    ax_v4_2 = fig_v4.add_subplot(1, 2, 2)
-    draw_kececi(G_test, ax=ax_v4_2, style='curved',
-                primary_direction='left-to-right', secondary_start='up',
-                expanding=True)
-    ax_v4_2.set_title("Expanding 'v4' Style (expanding=True)", fontsize=16)
-    plt.show()
-
-    # Test all advanced drawing styles
-    fig_styles = plt.figure(figsize=(18, 12))
-    fig_styles.suptitle("Advanced Drawing Styles Test", fontsize=20)
-    draw_kececi(G_test, style='curved', ax=fig_styles.add_subplot(2, 2, 1),
-                primary_direction='left-to-right', secondary_start='up', expanding=True)
-    draw_kececi(G_test, style='transparent', ax=fig_styles.add_subplot(2, 2, 2),
-                primary_direction='top_down', secondary_start='left', expanding=True, node_color='purple')
-    draw_kececi(G_test, style='3d', ax=fig_styles.add_subplot(2, 2, (3, 4), projection='3d'))
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.show()
-
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.show()
+    print("\n--- All Tests Completed ---")
