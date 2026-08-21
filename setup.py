@@ -28,8 +28,8 @@ setup(
     long_description_content_type="text/markdown", # Bu satır da önemlidir
     author="Mehmet Keçeci",
     maintainer="Mehmet Keçeci",
-    author_email="bilginomi@yaani.com",
-    maintainer_email="bilginomi@yaani.com",
+    author_email="enfo@tuta.io",
+    maintainer_email="enfo@tuta.io",
     url="https://github.com/WhiteSymmetry/kececilayout",
     packages=find_packages(),
     install_requires=[
