@@ -1,7 +1,7 @@
 # pyproject.toml
 
 [build-system]
-requires = ["setuptools>=82.0.1"]
+requires = ["setuptools>=84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -10,7 +10,7 @@ version = "0.6.9"
 
 # Diğer proje bilgileri (isteğe bağlı ama tavsiye edilir)
 authors = [
-    { name="Mehmet Keçeci", email="mkececi@yaani.com" },
+    { name="Mehmet Keçeci", email="enfo@tuta.io" },
 ]
 description = "Çeşitli graf kütüphaneleri için sıralı-zigzag yerleşimleri sağlayan bir Python paketi."
 readme = "README.md"
