@@ -49,7 +49,7 @@ jobs:
 
       - name: Create a clean environment and install dependencies
         run: |
-          conda create -n test-env -y python=3.11
+          conda create -n test-env -y python=3.14
           conda install -n test-env -y \
             numpy \
             networkx \
@@ -60,7 +60,8 @@ jobs:
             matplotlib-base \
             pycairo \
             cairocffi \
-            cairo
+            cairo \
+            graph-tool
 
       - name: Create a test environment
         run: |
