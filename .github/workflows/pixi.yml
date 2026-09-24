@@ -56,10 +56,10 @@ jobs:
             echo "pixi.lock değişmedi."
           fi
 
-      - name: Format & lint (auto-fix)
-        run: |
-          pixi run fmt
-          pixi run fix || true   # fix edilemeyen uyarılar CI'yı durdurmasın
+      #- name: Format & lint (auto-fix)
+        #run: |
+          #pixi run fmt
+          #pixi run fix || true   # fix edilemeyen uyarılar CI'yı durdurmasın
 
       - name: Commit lint fixes (varsa)
         run: |
