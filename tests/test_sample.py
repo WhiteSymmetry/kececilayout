@@ -37,18 +37,6 @@ try:
     import networkit as nk
 except ImportError:
     nk = None
-try:
-    import graphillion as gg
-except ImportError:
-    gg = None
-# graph-tool sadece Linux'ta import edilsin: conda install conda-forge::graph-tool
-if platform.system() == "Linux":
-    try:
-        import graph_tool.all as gt
-    except ImportError:
-        gt = None
-else:
-    gt = None
 
 # Import the module to be tested
 # Assume the code is in a file named `kececilayout_lib.py` in the same directory
@@ -69,7 +57,6 @@ nx = pytest.importorskip("networkx")
 ig = pytest.importorskip("igraph")
 rx = pytest.importorskip("rustworkx")
 nk = pytest.importorskip("networkit")
-gg = pytest.importorskip("graphillion")
 plt = pytest.importorskip("matplotlib.pyplot")
 
 
