@@ -33,7 +33,7 @@ import inspect
 import warnings
 
 # Paket sürüm numarası
-__version__ = "0.6.9"
+__version__ = "0.6.7"
 
 # =============================================================================
 # OTOMATİK İÇE AKTARMA VE __all__ OLUŞTURMA
@@ -380,7 +380,7 @@ def old_function_placeholder():
         (
             "old_function_placeholder() is deprecated and will be removed in a future version. "
             "Please use the new alternative functions. "
-            "Keçeci Layout should work smoothly on Python 3.7-3.14."
+            "Keçeci Layout should work smoothly on Python 3.11-3.15."
         ),
         category=DeprecationWarning,
         stacklevel=2
