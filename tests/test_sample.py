@@ -12,7 +12,42 @@ import pytest
 import re
 import sys
 from unittest.mock import patch
-import graphillion as gg
+
+# Ana bağımlılıklar (çizim için gerekli)
+try:
+    import networkx as nx
+    #from mpl_toolkits.mplot3d import Axes3D
+except ImportError as e:
+    raise ImportError(
+        "Bu modülün çalışması için 'networkx' ve 'matplotlib' gereklidir. "
+        "Lütfen `pip install networkx matplotlib` ile kurun."
+    ) from e
+
+# Opsiyonel graf kütüphaneleri
+try:
+    import rustworkx as rx
+except ImportError:
+    rx = None
+try:
+    import igraph as ig  # pip install igraph # conda install conda-forge::python-igraph
+except ImportError:
+    ig = None
+try:
+    import networkit as nk
+except ImportError:
+    nk = None
+try:
+    import graphillion as gg
+except ImportError:
+    gg = None
+# graph-tool sadece Linux'ta import edilsin: conda install conda-forge::graph-tool
+if platform.system() == "Linux":
+    try:
+        import graph_tool.all as gt
+    except ImportError:
+        gt = None
+else:
+    gt = None
 
 # Import the module to be tested
 # Assume the code is in a file named `kececilayout_lib.py` in the same directory
