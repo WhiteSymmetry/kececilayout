@@ -57,6 +57,7 @@ nx = pytest.importorskip("networkx")
 ig = pytest.importorskip("igraph")
 rx = pytest.importorskip("rustworkx")
 nk = pytest.importorskip("networkit")
+#gg = pytest.importorskip("graphillion")
 plt = pytest.importorskip("matplotlib.pyplot")
 
 
