@@ -31,12 +31,19 @@ chess = ">=1.11.2"
 seaborn = ">=0.13.2"
 qiskit = ">=2.4.2"
 numba = ">=0.65.1"
+pytest = ">=8.0"
+
+# Geliştirme araçları (sadece dev ortamında)
+[feature.dev.dependencies]
+ruff = ">=0.9.0"
+pytest = ">=8.0"
 
 [tasks]
 build = "python -m build"
 start = "python -c 'import kececilayout; print(kececilayout.__version__)'"
 lint = "ruff check ."
 fmt = "ruff format ."
+fix = "ruff check --fix . || true"
 serve = { cmd = "python -m http.server", cwd = "docs" }
 install-kececilayout = "pip install git+https://github.com/WhiteSymmetry/kececilayout"
 install = "pip install -e ."
