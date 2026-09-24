@@ -2,11 +2,11 @@
 
 package:
   name: kececilayout
-  version: "0.0.0"
+  version: "0.7.0"
 
 source:
-  url: ""
-  blake2b-256: ""
+  url: https://files.pythonhosted.org/packages/c6/59/c8802ae81255dd067d15e3c1143931e32f126d773d3d075722f85f6bb3b2/kececilayout-0.7.0.tar.gz
+  blake2b-256: c659c8802ae81255dd067d15e3c1143931e32f126d773d3d075722f85f6bb3b2
   
 build:
   noarch: python
