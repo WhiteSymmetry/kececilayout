@@ -68,7 +68,7 @@ jobs:
           # Değişiklik yoksa bu adım sessizce geçer
           if ! git diff --quiet; then
             git add -A
-            git commit -m "style: auto-fix ruff lint [skip ci]"
+            #git commit -m "style: auto-fix ruff lint [skip ci]"
             git push
           else
             echo "Lint düzeltmesi gerekmedi."
