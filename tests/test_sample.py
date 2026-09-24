@@ -12,6 +12,7 @@ import pytest
 import re
 import sys
 from unittest.mock import patch
+import graphillion as gg
 
 # Import the module to be tested
 # Assume the code is in a file named `kececilayout_lib.py` in the same directory
