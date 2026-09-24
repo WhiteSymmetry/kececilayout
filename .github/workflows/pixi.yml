@@ -88,7 +88,7 @@ jobs:
       - name: Update recipe version & sha256
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          SHA256=$(curl -sL "https://pypi.org/packages/source/k/kececinumbers/kececinumbers-${VERSION}.tar.gz" | sha256sum | cut -d' ' -f1)
+          SHA256=$(curl -sL "https://pypi.org/packages/source/k/kececilayout/kececilayout-${VERSION}.tar.gz" | sha256sum | cut -d' ' -f1)
           sed -i "s/^version: .*/version: \"${VERSION}\"/" recipe.yaml
           sed -i "s/^sha256: .*/sha256: ${SHA256}/" recipe.yaml
           echo "Version: $VERSION, SHA256: $SHA256"
@@ -113,7 +113,7 @@ jobs:
           for pkg in $(find output -type f \( -name "*.conda" -o -name "*.tar.bz2" \)); do
             echo "Uploading: $pkg"
             rattler-build upload prefix \
-              --channel hesabiniz/kececinumbers \
+              --channel hesabiniz/kececilayout \
               --api-key "$PIXI_TOKEN" \
               "$pkg" || echo "Warning: duplicate, skipping"
           done
@@ -156,7 +156,7 @@ jobs:
       - name: 📤 Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: kececinumbers-dist-${{ matrix.os }}-py${{ matrix.python-version }}
+          name: kececilayout-dist-${{ matrix.os }}-py${{ matrix.python-version }}
           path: dist/
           if-no-files-found: ignore
 
