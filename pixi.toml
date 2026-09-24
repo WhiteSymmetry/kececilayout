@@ -32,6 +32,8 @@ seaborn = ">=0.13.2"
 qiskit = ">=2.4.2"
 numba = ">=0.65.1"
 pytest = ">=8.0"
+graphillion = ">=0.95"
+graph-tool = ">=3.9"
 
 # Geliştirme araçları (sadece dev ortamında)
 [feature.dev.dependencies]
