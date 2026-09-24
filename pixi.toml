@@ -34,10 +34,10 @@ numba = ">=0.65.1"
 pytest = ">=8.0"
 graphillion = ">=0.95"
 graph-tool = ">=3.9"
+ruff = ">=0.9.0"
 
 # Geliştirme araçları (sadece dev ortamında)
 [feature.dev.dependencies]
-ruff = ">=0.9.0"
 pytest = ">=8.0"
 
 [tasks]
