@@ -12,6 +12,7 @@ import pytest
 import re
 import sys
 from unittest.mock import patch
+import platform # graph_tool için
 
 # Ana bağımlılıklar (çizim için gerekli)
 try:
