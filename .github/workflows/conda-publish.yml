@@ -9,10 +9,6 @@ on:
     types: [published] # Yeni release yayınlandığında tetikler
 
 jobs:
-  my-job:
-    permissions:
-      contents: read
-      pull-requests: write
   build-publish:
     runs-on: ubuntu-latest
     # Matrix stratejisini burada tanımlıyoruz
