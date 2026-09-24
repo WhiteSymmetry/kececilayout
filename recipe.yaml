@@ -32,8 +32,8 @@ requirements:
     - setuptools
     - wheel
   run:
-   - python >=3.11  # hypercomplex uyumlu versiyon
-   - numpy  # kececilayout numpy kullanıyor
+   - python >=3.11
+   - numpy
    - pip
    - numpy
    - pandas
@@ -48,6 +48,7 @@ requirements:
    - seaborn
    - qiskit
    - numba
+   - graph-tool
 
 # tests to validate that the package works as expected
 #tests:
