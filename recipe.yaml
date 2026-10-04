@@ -13,8 +13,8 @@ package:
   version: ${{ version }}
 
 source:
-  url: https://pypi.org{{ name }}/${{ name }}/${{ name }}-${{ version }}.tar.gz
-  sha256: 
+  url:
+  sha256:
 
 # build number (should be incremented if a new build is made, but version is not incrementing)
 build:
