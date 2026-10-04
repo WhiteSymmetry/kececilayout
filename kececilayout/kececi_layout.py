@@ -7661,6 +7661,127 @@ def bipartite_kececi_layout(graph, left_nodes=None, right_nodes=None,
 
     return pos
 
+class KececiHyperbolic3D:
+    """
+    kececilayout v0.7.0+ (Deneysel)
+    3D Hiperbolik Poincaré Küresi (Poincaré Ball Manifold) Yerleşim Sınıfı.
+    Gelişmiş kombinatoryal optimizasyon ve kuantum durum şebekelerini 
+    üstel büyüyen non-Euclidean uzayda görselleştirmek için tasarlanmıştır.
+    """
+    def __init__(self, graph, target_partition=None, radius=1.0, angle_freq=0.714):
+        """
+        Parametreler:
+            graph: NetworkX Graph nesnesi
+            target_partition: List veya Dict, düğümlerin küme etiketleri (0 veya 1)
+            radius: Poincaré küresinin sınır yarıçapı (R=1.0 teorik sonsuzluk ufku)
+            angle_freq: Keçeci ideal altın spiral açı frekans sabiti (pi / 2.2)
+        """
+        self.G = graph
+        self.num_nodes = len(graph.nodes)
+        self.edges = list(graph.edges)
+        self.radius = radius
+        self.angle_frequency = angle_freq
+        
+        # Eğer bir bölme etiket listesi verilmediyse varsayılan olarak hepsini 0 yap
+        if target_partition is None:
+            self.target_partition = [0] * self.num_nodes
+        else:
+            self.target_partition = target_partition
+            
+        self.pos_3d = {}
+        self._generate_layout()
+
+    def _generate_layout(self):
+        """Düğümleri Keçeci analitik sıralama kurallarına göre 3B Hiperbolik uzaya dizer."""
+        # Kütüphanenizin edge-aware sıralama fonksiyonunu referans alarak omurgayı kilitliyoruz
+        pos_base = kececi_layout_edge(self.G, primary_spacing=1.0, secondary_spacing=1.0, edge=True)
+        sorted_nodes = sorted(self.G.nodes(), key=lambda n: pos_base[n])
+        
+        for i, node in enumerate(sorted_nodes):
+            # Radyal derinlik: Düğümler sıra diziliminde ilerledikçe kürenin dış ufkuna doğru açılır
+            r_hyperbolic = 0.3 + 0.6 * (i / self.num_nodes)
+            
+            # Küresel koordinat açıları (Fibonacci/Altın Spiral dağılımı)
+            phi = np.arccos(1 - 2 * (i + 0.5) / self.num_nodes)
+            theta = np.pi * (1 + 5**0.5) * (i + 0.5)
+            
+            # QAOA/GNN Max-Cut bölme kümelerini uzayda geometrik olarak ayırmak için faz kayması uyguluyoruz
+            if self.target_partition[node] == 1:
+                theta += np.pi / 4
+            else:
+                theta -= np.pi / 4
+
+            # Hiperbolik kutupsal koordinatları 3B Kartezyen koordinatlara dönüştürme
+            x = r_hyperbolic * np.sin(phi) * np.cos(theta)
+            y = r_hyperbolic * np.sin(phi) * np.sin(theta)
+            z = r_hyperbolic * np.cos(phi)
+            
+            self.pos_3d[node] = (x, y, z)
+
+    def draw(self, figsize=(12, 10), title=None, save_path=None):
+        """Hiperbolik şebeke haritasını ve kesim düzlemlerini 3 boyutlu olarak çizer."""
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(111, projection='3d')
+        
+        if title is None:
+            title = "3D HYPERBOLIC POINCARÉ BALL MANIFOLD (`hyperbolic_3d`)\nKeçeci Geometrik Serileri ile Non-Euclidean Uzay Modellemesi"
+        ax.set_title(title, fontsize=12, fontweight='bold', pad=20, color='midnightblue')
+
+        # Düğüm renk şeması (Grup 0: Mavi, Grup 1: Altın)
+        node_colors = ['#1f77b4' if self.target_partition[node] == 0 else '#ffd700' for node in self.G.nodes()]
+
+        # Kenarları (Edges) kesilen ve kalanlar olarak ayırma
+        cut_edges = [(u, v) for u, v in self.edges if self.target_partition[u] != self.target_partition[v]]
+        uncut_edges = [(u, v) for u, v in self.edges if self.target_partition[u] == self.target_partition[v]]
+
+        # 1. Grup İçi Bağlantıları Çiz (Hafif gri düz çizgiler)
+        for u, v in uncut_edges:
+            ax.plot([self.pos_3d[u][0], self.pos_3d[v][0]], 
+                    [self.pos_3d[u][1], self.pos_3d[v][1]], 
+                    [self.pos_3d[u][2], self.pos_3d[v][2]], color='lightgray', alpha=0.3, lw=1)
+
+        # 2. Kesilen Maksimum Bağlantıları Çiz (Kırmızı kesikli çizgiler)
+        for u, v in cut_edges:
+            ax.plot([self.pos_3d[u][0], self.pos_3d[v][0]], 
+                    [self.pos_3d[u][1], self.pos_3d[v][1]], 
+                    [self.pos_3d[u][2], self.pos_3d[v][2]], color='crimson', alpha=0.8, lw=2.2, linestyle='--')
+
+        # 3. Fiziksel Düğümleri Küre Üzerine Serpştir (Matplotlib hata düzeltmeleri yapılmış haliyle)
+        for node in self.G.nodes():
+            x, y, z = self.pos_3d[node]
+            ax.scatter(x, y, z, color=node_colors[node], s=350, edgecolors='black', zorder=5, alpha=0.95)
+            ax.text(x, y, z, str(node), color='white' if self.target_partition[node]==0 else 'black',
+                    ha='center', va='center', fontsize=8, fontweight='bold', zorder=6)
+
+        # 4. Transparan Poincaré Küresi Ufuk Çizgisi Tel Çerçevesini (Wireframe) Oluştur
+        u_sp, v_sp = np.mgrid[0:2*np.pi:40j, 0:np.pi:40j]
+        x_sp = self.radius * np.cos(u_sp) * np.sin(v_sp)
+        y_sp = self.radius * np.sin(u_sp) * np.sin(v_sp)
+        z_sp = self.radius * np.cos(v_sp)
+        ax.plot_wireframe(x_sp, y_sp, z_sp, color='midnightblue', alpha=0.015, rstride=4, cstride=4, zorder=0)
+
+        # Görünüm ve Perspektif Ayarları (Düzeltilmiş elev parametresi)
+        ax.view_init(elev=20, azim=45) 
+        ax.axis('off')
+
+        # Metrik Bilgi Kutusu Paneli
+        text_info = (f"🌌 Hyperbolic Manifold State:\n"
+                     f"   Nodes Scaled: {self.num_nodes}\n"
+                     f"   Total Connections: {len(self.edges)} Edges\n"
+                     f"   Max-Cut Slices: {len(cut_edges)} Severed Lines\n"
+                     f"   Geometry: Poincaré Boundary R={self.radius}")
+        ax.text2D(0.05, 0.05, text_info, transform=ax.transAxes, fontsize=9, fontweight='bold',
+                  bbox=dict(boxstyle='round,pad=0.5', facecolor='whitesmoke', edgecolor='midnightblue', alpha=0.95))
+
+        plt.tight_layout()
+        
+        if save_path:
+            plt.savefig(save_path, bbox_inches='tight', dpi=300)
+            print(f"💾 Grafik başarıyla kaydedildi: {save_path}")
+            
+        plt.show()
+
+
 
 def show_menu():
     """
@@ -8608,6 +8729,23 @@ def show_menu():
         )
         plt.show()
 
+    def run_hyperbolic_3d_demo():
+        """
+        Wrapper function designed to safely trigger KececiHyperbolic3D 
+        natively inside the parameterless show_menu() runtime loop.
+        """
+        import networkx as nx
+        
+        # 1. Instantiate a standard 16-node target graph framework
+        G_demo = nx.erdos_renyi_graph(n=16, p=0.35, seed=42)
+        
+        # 2. Map the structural 0.89 stability QAOA partition labels discovered previously
+        mock_partition = [0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0]
+        
+        # 3. Instantiate and safely execute the 3D Hyperbolic plotting engine
+        hyperbolic_engine = KececiHyperbolic3D(graph=G_demo, target_partition=mock_partition)
+        hyperbolic_engine.draw()
+
     menu = {
         "1": ("Curved Style", lambda: _draw_curved(_test_graph_nx(10, 0.3))),
         "2": ("Standart 2D Layout", lambda: (draw_kececi(_test_graph_nx(12, 0.25), style='default', layout='2d'), plt.show())),
@@ -8678,6 +8816,8 @@ def show_menu():
         "67": ("Quantum Approximate Optimization Algorithm (QAOA), visualitasion", max_cut_qaoa_vis),
         "68": ("Quantum Approximate Optimization Algorithm (QAOA), benchmark", max_cut_qaoa_benc),
         "69": ("Keçeci Layout ile Bipartite MAX-CUT Grafiği Çizimi", bipartite),
+        "70": ("3D Hiperbolik Poincaré Küresi Yerleşimi (QAOA/GNN)", run_hyperbolic_3d_demo),
+
 
     }
 
@@ -8697,28 +8837,29 @@ def show_menu():
         ("Kuantum Devre Analizleri ve Temsilleri", range(56, 60)),
         ("Min_Max_Cut Problemi", range(60, 69)),
         ("bipartite", range(69, 70)),
+        ("3D Hiperbolik Poincaré Küresi Yerleşimi (QAOA/GNN)", range(70, 71)),
     ]
 
     # -------------------------------------------------------------------------
     # Ana döngü
     # -------------------------------------------------------------------------
     while True:
-        print("\n" + "="*70)
+        print("\n" + "="*71)
         print(" "*15 + "Keçeci Layout Visulation Munu (Görselleştirme Menüsü)")
-        print("="*70)
+        print("="*71)
         for grup_adi, aralik in groups:
             print(f"\n  {grup_adi}")
-            print("  " + "-"*68)
+            print("  " + "-"*70)
             for num in aralik:
                 key = str(num)
                 if key in menu:
                     desc, _ = menu[key]
                     print(f"  {num:>2}. {desc}")
-        print("\n  " + "-"*68)
+        print("\n  " + "-"*70)
         print("   0. Çıkış")
-        print("="*70)
+        print("="*71)
 
-        secim = input("Seçiminiz (0‑69): ").strip()
+        secim = input("Seçiminiz (0‑70): ").strip()
         if secim == '0':
             print("Program sonlandırılıyor...")
             break
