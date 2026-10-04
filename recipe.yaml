@@ -13,7 +13,6 @@ package:
   version: ${{ version }}
 
 source:
-  path: .
   url: https://pypi.org{{ name }}/${{ name }}/${{ name }}-${{ version }}.tar.gz
   sha256: 
 
