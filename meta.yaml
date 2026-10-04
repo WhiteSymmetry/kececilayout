@@ -1,12 +1,12 @@
-{% set version = "0.7.0" %}
+{% set version = "0.7.1" %}
 
 package:
   name: kececilayout
-  version: "0.7.0"
+  version: "0.7.1"
 
 source:
-  url: https://files.pythonhosted.org/packages/c6/59/c8802ae81255dd067d15e3c1143931e32f126d773d3d075722f85f6bb3b2/kececilayout-0.7.0.tar.gz
-  blake2b-256: c659c8802ae81255dd067d15e3c1143931e32f126d773d3d075722f85f6bb3b2
+  url: 
+  blake2b-256: 
   
 build:
   noarch: python
