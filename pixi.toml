@@ -1,14 +1,14 @@
 [workspace]
 preview = ["pixi-build"]
 authors = ["Mehmet Keçeci <enfo@tuta.io>"]
-channels = ["pypi", "https://prefix.dev/conda-forge", "https://conda.modular.com/max-nightly", "conda-forge", "https://repo.prefix.dev/modular-community"]
+channels = ["https://prefix.dev/bilgi", "bilgi", "pypi", "https://prefix.dev/conda-forge", "https://conda.modular.com/max-nightly", "conda-forge", "https://repo.prefix.dev/modular-community"]
 platforms = ["linux-64", "osx-arm64", "osx-64"]
 name = "kececilayout"
-version = "0.7.0"
+version = "0.7.1"
 
 [package]
 name = "kececilayout"
-version = "0.7.0"
+version = "0.7.1"
 license = "AGPL-3.0-or-later"
 
 [dependencies]
