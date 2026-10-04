@@ -9,14 +9,12 @@ context:
 
 # top level package information (name and version)
 package:
-  name: kececilayout
-  version: 0.7.1
+  name: ${{ name }}
+  version: ${{ version }}
 
-# location to get the source from
-#`source` are `url`, `sha256`, `md5`, `patches`, `file_name` and `target_directory`
 source:
   path: .
-  url: 
+  url: https://pypi.org{{ name }}/${{ name }}/${{ name }}-${{ version }}.tar.gz
   sha256: 
 
 # build number (should be incremented if a new build is made, but version is not incrementing)
