@@ -33,7 +33,7 @@ import inspect
 import warnings
 
 # Paket sürüm numarası
-__version__ = "0.7.0"
+__version__ = "0.7.1"
 
 # =============================================================================
 # OTOMATİK İÇE AKTARMA VE __all__ OLUŞTURMA
@@ -52,6 +52,7 @@ from .kececi_layout import (  # Veya fonksiyonların bulunduğu asıl modül
     kececi_layout_3d_helix,
     kececi_layout_3d_helix_parametric,
     kececi_layout_v4,
+    KececiHyperbolic3D,
     
     # Library-specific layout functions
     kececi_layout_nx,
@@ -207,6 +208,7 @@ __all__ = [
     'kececi_layout_v4',
     
     # Library-specific layout functions
+    'KececiHyperbolic3D',
     'kececi_layout_nx',
     'kececi_layout_networkx',
     'kececi_layout_ig',
