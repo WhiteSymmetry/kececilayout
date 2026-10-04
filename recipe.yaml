@@ -13,8 +13,8 @@ package:
   version: ${{ version }}
 
 source:
-  url:
-  sha256:
+  url: https://files.pythonhosted.org/packages/4b/9f/8eb4b0783f669fe4804e61bbc2a084ebbd4c03a4c8cabd76d8c38bbe28a1/kececilayout-0.7.1.tar.gz
+  sha256: 0f7aab92b0c82a3682c865a2b8d67358eb1e9a8c6f729d5e705fb4afc9557e55
 
 # build number (should be incremented if a new build is made, but version is not incrementing)
 build:
