@@ -1,10 +1,10 @@
-{% set version = "0.7.1" %}
 
 package:
   name: kececilayout
-  version: "0.7.1"
+  version: "0.0.0"
 
 source:
+  path: .
   url: 
   blake2b-256: 
   
