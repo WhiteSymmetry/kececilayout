@@ -4,9 +4,8 @@ package:
   version: "0.7.2"
 
 source:
-  path: .
-  url: 
-  blake2b-256: 
+  url: https://files.pythonhosted.org/packages/09/30/535b1ddf94a11d1a5ea9c4f8c5011e0d48fa6c1ec88e458a2683d9f543f4/kececilayout-0.7.2.tar.gz
+  blake2b-256: 0930535b1ddf94a11d1a5ea9c4f8c5011e0d48fa6c1ec88e458a2683d9f543f4
   
 build:
   noarch: python
