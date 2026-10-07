@@ -105,6 +105,8 @@ styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 
 **v0.7.1:** 3D Hiperbolik Poincaré Küresi Yerleşimi (QAOA/GNN)
 
+**v0.7.3:** kececi_draw
+
 ---
 
 Keçeci Layout is a high-performance, deterministic graph visualization library designed for linear, sequential, and highly complex relational network structures. Unlike traditional force-directed algorithms that rely on iterative physical simulations (which choke on large datasets), Keçeci Layout leverages pure analytic geometry and non-iterative functional mappings, offering unprecedented calculation velocities.
@@ -268,6 +270,59 @@ pip install kececilayout
 ---
 
 ### Usage
+
+## 🎨 Görsel Temalar ve Çizim Motoru (Visual Themes & Plotting)
+
+`kececilayout`, grafiklerinizi sadece hesaplamakla kalmaz; üçüncü parti kütüphanelerin çizim şablonlarına bağımlı kalmadan, sıfırdan yazılmış tamamen özgün ve deterministik bir görselleştirme motoru sunar. 
+
+`kececi_draw()` fonksiyonu, Matplotlib'in ham katmanlarını manipüle ederek grafiklerinizin zigzag geometrisini daha rahat analiz edebilmeniz için özel geliştirilmiş **Teknik Izgara (Grid)** ve **Sınır Paneli (Border)** mimarilerini barındırır.
+
+### Desteklenen Temalar (Supported Themes)
+
+Aşağıdaki tablodan projenizin tasarım diline en uygun temayı seçerek `theme` parametresine geçirebilirsiniz:
+
+| Tema Adı (`theme`) | Arka Plan (BG) | Çerçeve & Çizgiler | Karakteristik Özellik | En Uygun Kullanım Alanı |
+| :--- | :--- | :--- | :--- | :--- |
+| **`technical_dark`** | `#121824` (Grafit) | `#2E3A52` | Endüstriyel siber görünüm, yüksek kontrastlı düğümler. | Gece modu, kuantum ve topolojik veri analizleri. |
+| **`blueprint_blue`** | `#0B3C5D` (Ozalit) | `#328CC1` | Klasik mühendislik çizim paftası ve altın sarısı kenarlar. | Akademik sunumlar, mimari ve şematik grafik tasarımları. |
+| **`minimal_light`** | `#F8FAFC` (Soft Beyaz) | `#E2E8F0` | Minimalist, göz yormayan, temiz ve modern yerleşim planı. | Raporlamalar, makaleler ve basılı yayın dökümanları. |
+
+---
+
+### 🚀 Kullanım Kılavuzu (Quick Start Guide)
+
+Harici hiçbir çizim veya dönüşüm kütüphanesi çağırmadan, sadece `kececilayout` fonksiyonlarını kullanarak temalı bir grafik çizdirmek oldukça kolaydır:
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+import kececilayout as kl
+
+# 1. Komşuluk matrisinizi tanımlayın
+w = np.array([
+    [0.0, 1.0, 1.0, 0.0], 
+    [1.0, 0.0, 1.0, 1.0], 
+    [1.0, 1.0, 0.0, 1.0], 
+    [0.0, 1.0, 1.0, 0.0]
+])
+
+# 2. Özgün inşa motoru ile grafiği oluşturun
+G = kl.kececi_from_matrix(w)
+
+# 3. Ardışık-Zigzag (Sequential-Zigzag) koordinatlarını hesaplayın
+layout = kl.kececi_layout(G, primary_spacing=2.0, secondary_spacing=2.0)
+
+# 4. İstediğiniz özgün temayı seçerek grafiğinizi çizin
+# Seçenekler: "technical_dark", "blueprint_blue", "minimal_light"
+plt.figure(figsize=(7, 7))
+kl.kececi_draw(G, layout, node_size=700, theme="technical_dark")
+
+# 5. Geometrik orta nokta (midpoint) hesaplamalı kenar etiketlerini ekleyin
+edge_attrs = kl.kececi_get_edge_weights(G, "weight")
+kl.kececi_draw_edge_labels(G, pos=layout, edge_labels=edge_attrs, font_color="#000000")
+
+plt.show()
+```
 
 #### Example with NetworkX
 
