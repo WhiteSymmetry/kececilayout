@@ -13,8 +13,8 @@ package:
   version: 0.7.2
 
 source:
-  url: 
-  sha256: 
+  url: https://files.pythonhosted.org/packages/09/30/535b1ddf94a11d1a5ea9c4f8c5011e0d48fa6c1ec88e458a2683d9f543f4/kececilayout-0.7.2.tar.gz
+  sha256: 48c1eeaceda09ac5571321a5077ada768ca33bbb805123066194dbd04af2cfd7
 
 # build number (should be incremented if a new build is made, but version is not incrementing)
 build:
