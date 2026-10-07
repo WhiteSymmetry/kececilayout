@@ -4,29 +4,33 @@
 kececilayout - A Python package for sequential-zigzag graph layouts
 and advanced visualizations compatible with multiple graph libraries.
 
-v0.2.7: Curved, transparent, 3D, and `expanding=True` styles supported.
+**v0.2.7**: Curved, transparent, 3D, and `expanding=True` styles supported.
 
-v0.5.0: 
+**v0.5.0:** 
 
 layouts = ['2d', 'cylindrical', 'cubic', 'spherical', 'elliptical', 'toric']
 
 styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 
-v0.5.1: edge (kececi_layout_edge)
+**v0.5.1:** edge (kececi_layout_edge)
 
-v0.6.0: periodic table
+**v0.6.0:** periodic table
 
-v0.6.5: show_menu()
+**v0.6.3:** KececiBayesianOptimizer, kececi_barbell_layout
 
-v0.6.6: DAG & Transitive redused DAG
+**v0.6.5:** show_menu()
 
-v0.6.7: Quantum Circuit: Kuantum Devresi
+**v0.6.6:** DAG & Transitive redused DAG
 
-v0.6.8: Min_Max Cut Problem & Quantum Approximate Optimization Algorithm (QAOA)
+**v0.6.7:** Quantum Circuit: Kuantum Devresi
 
-v0.6.9: Bipartite
+**v0.6.8:** Min_Max Cut Problem & Quantum Approximate Optimization Algorithm (QAOA)
 
-v0.7.2: kececi_draw
+**v0.6.9:** Bipartite
+
+**v0.7.1:** 3D Hiperbolik Poincaré Küresi Yerleşimi (QAOA/GNN)
+
+**v0.7.3:** kececi_draw
 
 
 """
