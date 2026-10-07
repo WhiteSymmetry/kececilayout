@@ -26,6 +26,9 @@ v0.6.8: Min_Max Cut Problem & Quantum Approximate Optimization Algorithm (QAOA)
 
 v0.6.9: Bipartite
 
+v0.7.2: kececi_draw
+
+
 """
 
 from __future__ import annotations
@@ -33,7 +36,7 @@ import inspect
 import warnings
 
 # Paket sürüm numarası
-__version__ = "0.7.1"
+__version__ = "0.7.2"
 
 # =============================================================================
 # OTOMATİK İÇE AKTARMA VE __all__ OLUŞTURMA
@@ -183,6 +186,10 @@ from .kececi_layout import (  # Veya fonksiyonların bulunduğu asıl modül
     max_cut_qaoa_visualize,
     max_cut_qaoa_benchmark,
     bipartite_kececi_layout,
+    kececi_from_matrix,
+    kececi_get_edge_weights,
+    kececi_draw,
+    kececi_draw_edge_labels,
 
     # Menü
     show_menu, # _draw_curved, _draw_transparent, _draw_3d_helix, _draw_3d_generic
@@ -335,7 +342,11 @@ __all__ = [
     'max_cut_qaoa_optimization',
     'max_cut_qaoa_visualize',
     'max_cut_qaoa_benchmark',
-    "bipartite_kececi_layout",
+    'bipartite_kececi_layout',
+    'kececi_from_matrix',
+    'kececi_get_edge_weights',
+    'kececi_draw',
+    'kececi_draw_edge_labels',
 
     # Menü
     'show_menu',
