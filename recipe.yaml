@@ -9,8 +9,8 @@ context:
 
 # top level package information (name and version)
 package:
-  name: ${{ name }}
-  version: ${{ version }}
+  name: kececilayout
+  version: 0.7.2
 
 source:
   url: 
