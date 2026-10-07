@@ -19,11 +19,10 @@ on:
 
 permissions:
   contents: write  # Lock dosyası güncellenirse push edebilmek için
-  id-token: write  # PyPI trusted publishing için
 
 jobs:
   # ────────────────────────────────────────────────────────────
-  # JOB 1: Derleme ve prefix.dev Kanalına Yükleme (Test Adımı Kaldırıldı)
+  # JOB: Derleme ve prefix.dev Kanalına Yükleme (GitHub Kaynaklı)
   # ────────────────────────────────────────────────────────────
   build-and-publish:
     name: Build & Publish conda package
@@ -57,13 +56,21 @@ jobs:
             echo "pixi.lock değişmedi."
           fi
 
-      - name: Update recipe version & sha256
+      - name: Update recipe version & sha256 (GitHub Direct Download)
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          SHA256=$(curl -sL "https://pypi.org/packages/source/k/kececilayout/kececilayout-${VERSION}.tar.gz" | sha256sum | cut -d' ' -f1)
+          # PyPI bağımlılığını kırmak için doğrudan mevcut GitHub tag arşivi (.tar.gz) indirilir ve SHA256'sı hesaplanır
+          GITHUB_URL="https://github.com{{ github.repository }}/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz"
+          SHA256=$(curl -sL "$GITHUB_URL" | sha256sum | cut -d' ' -f1)
+          
+          # recipe.yaml güncellemeleri
           sed -i "s/^version: .*/version: \"${VERSION}\"/" recipe.yaml
           sed -i "s/^sha256: .*/sha256: ${SHA256}/" recipe.yaml
-          echo "Version: $VERSION, SHA256: $SHA256"
+          
+          # Eğer recipe.yaml içinde kaynak URL tanımı varsa onu da GitHub arşivi yapacak şekilde günceller:
+          sed -i "s|url: .*|url: ${GITHUB_URL}|" recipe.yaml || echo "URL alanı bulunamadı veya güncellenmedi."
+          
+          echo "Version: $VERSION, SHA256: $SHA256, URL: $GITHUB_URL"
 
       - name: Build conda package
         uses: prefix-dev/rattler-build-action@v0.2.39
@@ -95,34 +102,3 @@ jobs:
         run: |
           echo "=== DRY RUN — yükleme yapılmadı ==="
           find output -type f \( -name "*.conda" -o -name "*.tar.bz2" \)
-
-  # ────────────────────────────────────────────────────────────
-  # JOB 2: PyPI Üzerinde Yayınlama (Test Adımı Kaldırıldı)
-  # ────────────────────────────────────────────────────────────
-  publish-pypi:
-    name: Publish to PyPI
-    runs-on: ubuntu-latest
-    environment: pypi   # GitHub Environment koruması
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7.0.1
-
-      - name: Setup pixi
-        uses: prefix-dev/setup-pixi@v0.10.2
-        with:
-          pixi-version: v0.81.0
-          cache: false
-
-      - name: 🏗️ Build package (wheel + sdist)
-        run: pixi run build  # python -m build -> dist/ klasörüne yazar
-
-      - name: 📤 Upload build artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: kececilayout-dist-pypi
-          path: dist/
-          if-no-files-found: ignore
-
-      - name: 🏗️ Paket Derle ve prefix.dev'e Yayınla (Trusted Publishing)
-        run: pixi publish --target-channel https://prefix.dev/bilgi
