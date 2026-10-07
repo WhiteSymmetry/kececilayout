@@ -8905,6 +8905,43 @@ def show_menu():
         hyperbolic_engine = KececiHyperbolic3D(graph=G_demo, target_partition=mock_partition)
         hyperbolic_engine.draw()
 
+    def theme_draw():
+        """
+        Menü Seçeneği 71: Kececilayout Özgün Matris Dönüşümü ve Blueprint Temalı Çizim Gösterimi.
+        Kullanıcının yaptığı font rengi (siyah) düzeltmesi entegre edilmiştir.
+        """
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import kececilayout as kl
+
+        print("\n[71] Kececilayout: Blueprint Temalı Grafik Çizimi Başlatılıyor...")
+
+        # 1. Komşuluk matrisinin tanımlanması
+        w = np.array([
+            [0.0, 1.0, 1.0, 0.0], 
+            [1.0, 0.0, 1.0, 1.0], 
+            [1.0, 1.0, 0.0, 1.0], 
+            [0.0, 1.0, 1.0, 0.0]
+        ])
+
+        # 2. Özgün inşa motoru ile grafiğin oluşturulması
+        G = kl.kececi_from_matrix(w)
+
+        # 3. Ardışık-Zigzag (Sequential-Zigzag) koordinatlarının hesaplanması
+        layout = kl.kececi_layout(G, primary_spacing=2.0, secondary_spacing=2.0)
+
+        # 4. Özgün blueprint teması seçilerek grafiğin çizilmesi
+        plt.figure(figsize=(7, 7))
+        kl.kececi_draw(G, layout, node_size=700, theme="blueprint_blue")
+
+        # 5. Geometrik orta nokta hesaplamalı kenar etiketlerinin eklenmesi
+        # Görünürlük sorunu nedeniyle font_color siyah (#000000) olarak ayarlanmıştır.
+        edge_attrs = kl.kececi_get_edge_weights(G, "weight")
+        kl.kececi_draw_edge_labels(G, pos=layout, edge_labels=edge_attrs, font_color="#000000")
+
+        print("-> Grafik penceresi açıldı. Kapatıldığında menüye dönülecektir.")
+        plt.show()
+
     menu = {
         "1": ("Curved Style", lambda: _draw_curved(_test_graph_nx(10, 0.3))),
         "2": ("Standart 2D Layout", lambda: (draw_kececi(_test_graph_nx(12, 0.25), style='default', layout='2d'), plt.show())),
@@ -8976,6 +9013,7 @@ def show_menu():
         "68": ("Quantum Approximate Optimization Algorithm (QAOA), benchmark", max_cut_qaoa_benc),
         "69": ("Keçeci Layout ile Bipartite MAX-CUT Grafiği Çizimi", bipartite),
         "70": ("3D Hiperbolik Poincaré Küresi Yerleşimi (QAOA/GNN)", run_hyperbolic_3d_demo),
+        "71": ("Kececilayout Özgün Matris Dönüşümü ve Blueprint Temalı Çizim Gösterimi", theme_draw),
 
 
     }
@@ -8997,28 +9035,29 @@ def show_menu():
         ("Min_Max_Cut Problemi", range(60, 69)),
         ("bipartite", range(69, 70)),
         ("3D Hiperbolik Poincaré Küresi Yerleşimi (QAOA/GNN)", range(70, 71)),
+        ("Theme", range(71, 72)),
     ]
 
     # -------------------------------------------------------------------------
     # Ana döngü
     # -------------------------------------------------------------------------
     while True:
-        print("\n" + "="*71)
+        print("\n" + "="*72)
         print(" "*15 + "Keçeci Layout Visulation Munu (Görselleştirme Menüsü)")
-        print("="*71)
+        print("="*72)
         for grup_adi, aralik in groups:
             print(f"\n  {grup_adi}")
-            print("  " + "-"*70)
+            print("  " + "-"*72)
             for num in aralik:
                 key = str(num)
                 if key in menu:
                     desc, _ = menu[key]
                     print(f"  {num:>2}. {desc}")
-        print("\n  " + "-"*70)
+        print("\n  " + "-"*72)
         print("   0. Çıkış")
-        print("="*71)
+        print("="*72)
 
-        secim = input("Seçiminiz (0‑70): ").strip()
+        secim = input("Seçiminiz (0‑71): ").strip()
         if secim == '0':
             print("Program sonlandırılıyor...")
             break
