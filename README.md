@@ -254,6 +254,12 @@ KEÇECİ Layout GÖRSELLEŞTİRME MENÜSÜ
   69. Keçeci Layout ile Bipartite MAX-CUT Grafiği Çizimi
 
   --------------------------------------------------------------------
+  70. 3D Hiperbolik Poincaré Küresi Yerleşimi (QAOA/GNN)
+      
+  --------------------------------------------------------------------
+  72. Kececilayout Özgün Matris Dönüşümü ve Blueprint Temalı Çizim Gösterimi
+
+  --------------------------------------------------------------------
    0. Çıkış
 
 ---
