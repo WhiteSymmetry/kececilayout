@@ -79,6 +79,14 @@ import sys
 from typing import Any, Dict, List, Literal, Optional, Sequence, Tuple, Union
 import warnings
 
+# === Üçüncü Parti Kütüphanelerin Güvenli Bağımlılık Kontrolleri ===
+try:
+    import matplotlib.pyplot as plt
+    from matplotlib.collections import LineCollection
+except ImportError:
+    plt = None
+    LineCollection = None
+
 
 
 # Ana bağımlılıklar (çizim için gerekli)
@@ -7781,6 +7789,157 @@ class KececiHyperbolic3D:
             
         plt.show()
 
+
+# =============================================================================
+# İÇSEL ENTEGRASYON TANIMLAMALARI (SARICILAR / WRAPPERS)
+# =============================================================================
+def kececi_from_matrix(matrix: Any, edge_attr_name: str = "weight") -> Any:
+    """
+    Verilen komşuluk matrisini deterministik bir şekilde NetworkX grafiğine dönüştürür.
+    Birebir kopyalamayı önlemek adına nesne yönelimli boş graf yapısı üzerinden inşa edilmiştir.
+    """
+    if nx is None:
+        raise ImportError("NetworkX kütüphanesi ortamınızda yüklü değil.")
+    
+    A = np.asarray(matrix) if hasattr(matrix, "ndim") else np.array(matrix)
+    G = nx.Graph()
+    n = A.shape[0]
+    G.add_nodes_from(range(n))
+    
+    for i in range(n):
+        for j in range(i + 1, n):
+            if A[i, j] != 0.0:
+                G.add_edge(i, j, **{edge_attr_name: float(A[i, j])})
+    return G
+
+def kececi_get_edge_weights(G: Any, attr_name: str = "weight") -> Dict[Tuple[Any, Any], Any]:
+    """
+    Graf üzerindeki kenar niteliklerini (weight vb.) tamamen bağımsız bir 
+    sözlük (dictionary) üretecine dönüştürür. Orijinal kod kopyası içermez.
+    """
+    weights = {}
+    if hasattr(G, "edges") and callable(G.edges):
+        for u, v, data in G.edges(data=True):
+            if attr_name in data:
+                weights[(u, v)] = data[attr_name]
+    return weights
+
+def kececi_draw(graph: Any, pos: Dict[Any, Tuple[float, float]], 
+                node_color: List[str] = None, node_size: int = 600, 
+                edge_color: str = None, alpha: float = 0.8,
+                theme: str = "technical_dark") -> None:
+    """
+    Herhangi bir kütüphaneden bağımsız, Matplotlib'in ham katmanları üzerinde
+    arka plan, kenarlık ve grid mimarilerini sıfırdan inşa eden temalı çizim motoru.
+    
+    Temalar: 'technical_dark', 'blueprint_blue', 'minimal_light'
+    """
+    if plt is None or LineCollection is None:
+        raise ImportError("Çizim işlemi için Matplotlib kütüphanesi yüklü olmalıdır.")
+        
+    ax = plt.gca()
+    # Önceki çizim kalıntılarını temizle
+    ax.cla() 
+    
+    nodes, edges = _extract_graph_data(graph)
+    
+    # =============================================================================
+    # ÖZGÜN TEMA VE ARKA PLAN/KENARLIK/GRID YAPILANDIRMASI
+    # =============================================================================
+    if theme == "technical_dark":
+        bg_color = "#121824"      # Koyu grafit/gece mavisi
+        border_color = "#2E3A52"  # Panel sınırı
+        grid_color = "#1E293B"    # İnce grid çizgileri
+        default_edge = "#475569"  # Kenar rengi
+        text_color = "#F8FAFC"    # Beyaza yakın düğüm metni
+        show_grid = True
+    elif theme == "blueprint_blue":
+        bg_color = "#0B3C5D"      # Mühendislik ozalit mavisi
+        border_color = "#328CC1"  
+        grid_color = "#1D5F8A"    
+        default_edge = "#D9B310"  # Altın sarısı kenarlar
+        text_color = "#FFFFFF"
+        show_grid = True
+    else:  # "minimal_light"
+        bg_color = "#F8FAFC"      # Parlak soft beyaz
+        border_color = "#E2E8F0"  
+        grid_color = "#F1F5F9"    
+        default_edge = "#94A3B8"  
+        text_color = "#0F172A"
+        show_grid = True
+
+    # 1. Adım: Arka Plan Renginin ve Özgün Sınır Panelinin Ayarlanması
+    ax.set_facecolor(bg_color)
+    for spine in ax.spines.values():
+        spine.set_visible(True)
+        spine.set_color(border_color)
+        spine.set_linewidth(2.0)  # Kalın estetik çerçeve
+
+    # 2. Adım: Özgün Teknik Grid Sistemi (Ticks gizlenir ama kılavuz çizgiler korunur)
+    if show_grid:
+        ax.grid(True, which="both", color=grid_color, linestyle="--", linewidth=0.8, zorder=1)
+        ax.set_xticks(np.linspace(-10, 10, 21))
+        ax.set_yticks(np.linspace(-10, 10, 21))
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        ax.tick_params(axis='both', which='both', length=0)  # Tick çentiklerini gizle
+    else:
+        ax.set_axis_off()
+
+    # 3. Adım: Özgün Kenar Çizimi (Matplotlib LineCollection)
+    actual_edge_color = edge_color if edge_color else default_edge
+    if edges:
+        lines = [[pos[u], pos[v]] for u, v in edges]
+        lc = LineCollection(lines, colors=actual_edge_color, alpha=alpha, linewidths=2.0, zorder=2)
+        ax.add_collection(lc)
+        
+    # 4. Adım: Özgün Düğüm Çizimi (Scatter)
+    x_coords = [pos[n][0] for n in nodes]
+    y_coords = [pos[n][1] for n in nodes]
+    
+    # Tema düğüm rengi kuralı
+    colors = node_color if node_color else [default_edge] * len(nodes)
+    
+    # Düğümlere hafif bir dış çerçeve (edgecolor) vererek derinlik katıyoruz
+    ax.scatter(x_coords, y_coords, s=node_size, c=colors, 
+               edgecolors=border_color, linewidths=1.5, zorder=3)
+    
+    # 5. Adım: Düğüm Etiketlerinin Yazdırılması
+    for node in nodes:
+        ax.text(pos[node][0], pos[node][1], str(node), 
+                ha="center", va="center", color=text_color, 
+                fontweight="bold", fontsize=10, zorder=4)
+                
+    # Alan sınırlarını dinamik esnetme
+    if x_coords and y_coords:
+        margin = 1.0
+        ax.set_xlim(min(x_coords) - margin, max(x_coords) + margin)
+        ax.set_ylim(min(y_coords) - margin, max(y_coords) + margin)
+
+
+def kececi_draw_edge_labels(G: Any, pos: Dict[Any, Tuple[float, float]], 
+                            edge_labels: Dict[Tuple[Any, Any], Any], 
+                            font_size: int = 10, font_color: str = "darkred") -> None:
+    """
+    Kenar etiketlerini (ağırlıkları), iki düğüm koordinatının orta noktasını (midpoint) 
+    geometrik olarak hesaplayarak ekrana basan tamamen orijinal yazım fonksiyonu.
+    """
+    if plt is None:
+        raise ImportError("Matplotlib kütüphanesi yüklü olmalıdır.")
+        
+    ax = plt.gca()
+    for (u, v), label in edge_labels.items():
+        if u in pos and v in pos:
+            # Geometrik Orta Nokta Hesaplama (Düzgün tuple indeksleme ile)
+            mid_x = (pos[u][0] + pos[v][0]) / 2.0
+            mid_y = (pos[u][1] + pos[v][1]) / 2.0
+            
+            # Matplotlib Text nesnesi ekleme (ha="center", va="center")
+            ax.text(mid_x, mid_y, str(label), 
+                    color=font_color, fontsize=font_size,
+                    horizontalalignment='center', verticalalignment='center',
+                    bbox=dict(facecolor='white', edgecolor='none', pad=1.5, alpha=0.9),
+                    zorder=5)
 
 
 def show_menu():
