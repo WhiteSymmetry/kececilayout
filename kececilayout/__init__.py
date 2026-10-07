@@ -32,7 +32,6 @@ styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 
 **v0.7.3:** kececi_draw
 
-
 """
 
 from __future__ import annotations
