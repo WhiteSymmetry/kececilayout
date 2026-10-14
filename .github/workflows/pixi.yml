@@ -35,7 +35,7 @@ jobs:
           fetch-depth: 0   # Tam git geçmişi (gerekirse lock commit için)
 
       - name: Setup pixi
-        uses: prefix-dev/setup-pixi@v0.10.2
+        uses: prefix-dev/setup-pixi@v0.11.0
         with:
           pixi-version: v0.81.0
           cache: false
