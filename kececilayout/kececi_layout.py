@@ -34,6 +34,10 @@ v0.6.8: Min_Max Cut Problem & Quantum Approximate Optimization Algorithm (QAOA)
 
 v0.6.9: Bipartite
 
+v0.7.1: 3D Hiperbolik Poincaré Küresi Yerleşimi (QAOA/GNN)
+
+v0.7.2: kececi_draw
+
 """
 
 import chess # pip install -U chess
