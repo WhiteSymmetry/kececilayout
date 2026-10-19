@@ -105,7 +105,7 @@ styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 
 **v0.7.1:** 3D Hiperbolik Poincaré Küresi Yerleşimi (QAOA/GNN)
 
-**v0.7.3:** kececi_draw
+**v0.7.2:** kececi_draw
 
 ---
 
