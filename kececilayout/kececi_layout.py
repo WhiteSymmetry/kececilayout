@@ -38,6 +38,8 @@ v0.7.1: 3D Hiperbolik Poincaré Küresi Yerleşimi (QAOA/GNN)
 
 v0.7.2: kececi_draw
 
+v0.7.3: Hubbard Model, Hubbard-Holstein
+
 """
 
 import chess # pip install -U chess
@@ -45,6 +47,7 @@ from collections import defaultdict, deque
 import datetime
 import graphillion as gg
 import igraph as ig
+from itertools import combinations, product # Hubbard Model
 import itertools # Graphillion için eklendi
 import math
 from matplotlib.collections import LineCollection
@@ -7946,6 +7949,901 @@ def kececi_draw_edge_labels(G: Any, pos: Dict[Any, Tuple[float, float]],
                     zorder=5)
 
 
+class HubbardPlaquette:
+    """
+    Dört konumlu, açık sınırlı t-t'-U Hubbard kümesi.
+
+    Konum düzeni:
+        0 --- 1
+        |     |
+        2 --- 3
+
+    Kenarlar:
+        (0, 1), (0, 2), (2, 3), (1, 3)
+
+    Köşegenler:
+        (0, 3), (1, 2)
+
+    Spin-orbital sırası:
+        0↑, 1↑, 2↑, 3↑, 0↓, 1↓, 2↓, 3↓
+    """
+
+    n_sites = 4
+
+    nearest_edges = (
+        (0, 1),
+        (0, 2),
+        (2, 3),
+        (1, 3),
+    )
+
+    diagonal_edges = (
+        (0, 3),
+        (1, 2),
+    )
+
+    def __init__(
+        self,
+        t=1.0,
+        t_prime=0.3,
+        U=0.01,
+        n_up=2,
+        n_down=2,
+    ):
+        self.t = float(t)
+        self.t_prime = float(t_prime)
+        self.U = float(U)
+
+        if not np.all(
+            np.isfinite([self.t, self.t_prime, self.U])
+        ):
+            raise ValueError("t, t_prime ve U sonlu olmalı.")
+
+        if not isinstance(n_up, (int, np.integer)):
+            raise TypeError("n_up tam sayı olmalı.")
+
+        if not isinstance(n_down, (int, np.integer)):
+            raise TypeError("n_down tam sayı olmalı.")
+
+        if not 0 <= n_up <= self.n_sites:
+            raise ValueError("n_up, 0 ile 4 arasında olmalı.")
+
+        if not 0 <= n_down <= self.n_sites:
+            raise ValueError("n_down, 0 ile 4 arasında olmalı.")
+
+        self.n_up = int(n_up)
+        self.n_down = int(n_down)
+
+        self.basis = self._make_basis()
+        self.basis_index = {
+            state: index
+            for index, state in enumerate(self.basis)
+        }
+
+    @property
+    def dimension(self):
+        return len(self.basis)
+
+    def _make_basis(self):
+        basis = []
+
+        for up_sites in combinations(
+            range(self.n_sites), self.n_up
+        ):
+            up_bits = sum(
+                1 << site for site in up_sites
+            )
+
+            for down_sites in combinations(
+                range(self.n_sites), self.n_down
+            ):
+                down_bits = sum(
+                    1 << (self.n_sites + site)
+                    for site in down_sites
+                )
+                basis.append(up_bits | down_bits)
+
+        return basis
+
+    @staticmethod
+    def _hop(state, destination, source):
+        """
+        c†_destination c_source etkisini uygula.
+
+        Dönüş:
+            (yeni durum, fermiyonik işaret)
+        veya
+            None
+        """
+
+        if not ((state >> source) & 1):
+            return None
+
+        if (state >> destination) & 1:
+            return None
+
+        occupied_before_source = (
+            state & ((1 << source) - 1)
+        ).bit_count()
+
+        sign = -1 if occupied_before_source % 2 else 1
+
+        intermediate = state ^ (1 << source)
+
+        occupied_before_destination = (
+            intermediate & ((1 << destination) - 1)
+        ).bit_count()
+
+        if occupied_before_destination % 2:
+            sign *= -1
+
+        new_state = intermediate | (1 << destination)
+
+        return new_state, sign
+
+    def _double_occupancy_count(self, state):
+        return sum(
+            ((state >> site) & 1)
+            * ((state >> (self.n_sites + site)) & 1)
+            for site in range(self.n_sites)
+        )
+
+    def hamiltonian(self, t_prime=None):
+        """Elektronik Hubbard Hamiltonyenini oluştur."""
+
+        tp = (
+            self.t_prime
+            if t_prime is None
+            else float(t_prime)
+        )
+
+        if not np.isfinite(tp):
+            raise ValueError("t_prime sonlu olmalı.")
+
+        H = np.zeros(
+            (self.dimension, self.dimension),
+            dtype=float,
+        )
+
+        bond_groups = (
+            (self.nearest_edges, self.t),
+            (self.diagonal_edges, tp),
+        )
+
+        for column, state in enumerate(self.basis):
+            H[column, column] = (
+                self.U * self._double_occupancy_count(state)
+            )
+
+            for edges, hopping in bond_groups:
+                if hopping == 0.0:
+                    continue
+
+                for i, j in edges:
+                    for offset in (
+                        0,
+                        self.n_sites,
+                    ):
+                        for destination, source in (
+                            (i + offset, j + offset),
+                            (j + offset, i + offset),
+                        ):
+                            transition = self._hop(
+                                state,
+                                destination,
+                                source,
+                            )
+
+                            if transition is None:
+                                continue
+
+                            new_state, sign = transition
+                            row = self.basis_index[new_state]
+
+                            H[row, column] -= hopping * sign
+
+        np.testing.assert_allclose(
+            H,
+            H.conj().T,
+            rtol=1e-12,
+            atol=1e-12,
+        )
+
+        return H
+
+    def solve(self):
+        """Elektronik tam çözümü hesapla."""
+
+        H = self.hamiltonian()
+        energies, eigenvectors = np.linalg.eigh(H)
+
+        E0 = float(energies[0])
+        psi0 = eigenvectors[:, 0]
+
+        double_counts = np.array([
+            self._double_occupancy_count(state)
+            for state in self.basis
+        ])
+
+        probabilities = np.abs(psi0) ** 2
+        double_total = float(probabilities @ double_counts)
+
+        return {
+            "hamiltonian": H,
+            "energies": energies,
+            "eigenvectors": eigenvectors,
+            "E0": E0,
+            "psi0": psi0,
+            "double_occupancy_total": double_total,
+            "double_occupancy_per_site": (
+                double_total / self.n_sites
+            ),
+            "residual": float(
+                np.linalg.norm(H @ psi0 - E0 * psi0)
+            ),
+        }
+
+    def graph(self):
+        """Sıfırdan farklı sıçramaları içeren grafı oluştur."""
+
+        G = nx.Graph()
+        G.add_nodes_from(range(self.n_sites))
+
+        for edges, hopping, kind in (
+            (self.nearest_edges, self.t, "nearest"),
+            (self.diagonal_edges, self.t_prime, "diagonal"),
+        ):
+            if hopping == 0.0:
+                continue
+
+            for i, j in edges:
+                G.add_edge(
+                    i,
+                    j,
+                    weight=hopping,
+                    hopping=hopping,
+                    kind=kind,
+                )
+
+        return G
+
+    def draw_graph(
+        self,
+        theme="technical_dark",
+        node_size=900,
+        show=True,
+        **layout_options,
+    ):
+        """Keçeci Layout ve kececi_draw ile grafı çiz."""
+
+        G = self.graph()
+
+        options = {
+            "primary_spacing": 2.0,
+            "secondary_spacing": 1.2,
+        }
+        options.update(layout_options)
+
+        pos = kececi_layout(G, **options)
+
+        kececi_draw(
+            G,
+            pos,
+            node_size=node_size,
+            theme=theme,
+        )
+
+        if show:
+            plt.show()
+
+        return G, pos
+
+    def plot_spectrum(self, compare_without_diagonals=False):
+        """Elektronik enerji spektrumunu çiz.
+
+        Parameters
+        ----------
+        compare_without_diagonals : bool, optional
+            True ise, köşegen sıçramaların olmadığı t'=0 referans
+            spektrumu da aynı grafikte gösterilir.
+        """
+
+        result = self.solve()
+        energies = result["energies"]
+        indices = np.arange(self.dimension)
+
+        fig, ax = plt.subplots(
+            figsize=(8, 4.5),
+            constrained_layout=True,
+        )
+
+        if compare_without_diagonals:
+            reference = np.linalg.eigvalsh(
+                self.hamiltonian(t_prime=0.0)
+            )
+
+            ax.plot(
+                indices,
+                reference,
+                "o",
+                markersize=5,
+                alpha=0.7,
+                label="Without diagonals: t′ = 0",
+            )
+
+        ax.plot(
+            indices,
+            energies,
+            "x",
+            markersize=6,
+            label="Exact spectrum",
+        )
+
+        if "E0" in result:
+            ax.axhline(
+                result["E0"],
+                color="tab:red",
+                linestyle="--",
+                label=f"E0 = {result['E0']:.6f}",
+            )
+
+        ax.set(
+            xlabel="Eigenvalue index",
+            ylabel="Energy",
+            title=(
+                "Four-site Hubbard spectrum\n"
+                f"t={self.t:g}, t′={self.t_prime:g}, "
+                f"U={self.U:g}, "
+                f"N↑={self.n_up}, N↓={self.n_down}"
+            ),
+        )
+
+        ax.grid(alpha=0.3)
+        ax.legend()
+        plt.show()
+
+        return fig, ax
+
+    def report(self):
+        """Elektronik çözümü yazdır ve döndür."""
+
+        result = self.solve()
+        G = self.graph()
+
+        print(f"Konum sayısı: {self.n_sites}")
+        print(
+            "Sıfırdan farklı sıçrama bağı sayısı: "
+            f"{G.number_of_edges()}"
+        )
+        print(f"Hilbert uzayı boyutu: {self.dimension}")
+        print(
+            f"Temel durum enerjisi: "
+            f"{result['E0']:.12f}"
+        )
+        print(
+            "Toplam çift doluluk beklentisi: "
+            f"{result['double_occupancy_total']:.12f}"
+        )
+        print(
+            "Konum başına ortalama çift doluluk: "
+            f"{result['double_occupancy_per_site']:.12f}"
+        )
+        print(
+            "Özvektör artık normu: "
+            f"{result['residual']:.3e}"
+        )
+
+        return result
+
+
+class HubbardHolsteinPlaquette(HubbardPlaquette):
+    """
+    Dört konumlu Hubbard-Holstein kümesi.
+
+    Her konumda bir Einstein fononu vardır:
+
+        H_ph = omega Σ_i b_i† b_i
+
+    Elektron-fonon bağlaşımı Holstein türündedir:
+
+        H_ep = g Σ_i (n_i↑ + n_i↓)(b_i† + b_i)
+
+    Fonon sayıları 0, 1, ..., n_phonon_max ile kesilir.
+    """
+
+    def __init__(
+        self,
+        t=1.0,
+        t_prime=0.3,
+        U=0.01,
+        n_up=2,
+        n_down=2,
+        omega=1.0,
+        g=0.2,
+        n_phonon_max=2,
+    ):
+        super().__init__(
+            t=t,
+            t_prime=t_prime,
+            U=U,
+            n_up=n_up,
+            n_down=n_down,
+        )
+
+        self.omega = float(omega)
+        self.g = float(g)
+        self.n_phonon_max = int(n_phonon_max)
+
+        if not np.isfinite(self.omega) or self.omega <= 0:
+            raise ValueError("omega pozitif ve sonlu olmalı.")
+
+        if not np.isfinite(self.g):
+            raise ValueError("g sonlu olmalı.")
+
+        if self.n_phonon_max < 0:
+            raise ValueError(
+                "n_phonon_max en az 0 olmalı."
+            )
+
+        self.phonon_basis = list(
+            product(
+                range(self.n_phonon_max + 1),
+                repeat=self.n_sites,
+            )
+        )
+
+        self.phonon_basis_index = {
+            state: index
+            for index, state in enumerate(
+                self.phonon_basis
+            )
+        }
+
+    @property
+    def phonon_dimension(self):
+        return len(self.phonon_basis)
+
+    @property
+    def total_dimension(self):
+        return self.dimension * self.phonon_dimension
+
+    def _electron_number(self, electronic_state):
+        return sum(
+            ((electronic_state >> site) & 1)
+            + ((electronic_state >> (self.n_sites + site)) & 1)
+            for site in range(self.n_sites)
+        )
+
+    def hamiltonian(self, t_prime=None):
+        """
+        Hubbard-Holstein Hamiltonyenini oluştur.
+    
+        Dönüş:
+            (
+                H,
+                H_electronic_full,
+                H_phonon_full,
+                H_electron_phonon,
+            )
+        """
+    
+        tp = (
+            self.t_prime
+            if t_prime is None
+            else float(t_prime)
+        )
+    
+        if not np.isfinite(tp):
+            raise ValueError("t_prime sonlu olmalı.")
+    
+        # 36 x 36 elektronik Hubbard Hamiltonyeni
+        H_electronic = super().hamiltonian(t_prime=tp)
+    
+        n_ph = self.phonon_dimension
+        dim = self.total_dimension
+    
+        # Kimlik matrisleri
+        I_electronic = np.eye(self.dimension)
+        I_phonon = np.eye(n_ph)
+    
+        # Elektronik Hamiltonyeni fonon uzayına genişlet:
+        # H_el ⊗ I_ph
+        H_electronic_full = np.kron(
+            H_electronic,
+            I_phonon,
+        )
+    
+        # Yerel fonon Hamiltonyeni:
+        # H_ph = omega Σ_i b_i† b_i
+        H_phonon_small = np.zeros(
+            (n_ph, n_ph),
+            dtype=float,
+        )
+    
+        for phonon_index, phonons in enumerate(
+            self.phonon_basis
+        ):
+            phonon_energy = self.omega * sum(phonons)
+            H_phonon_small[phonon_index, phonon_index] = (
+                phonon_energy
+            )
+    
+        # Fononik Hamiltonyeni elektron uzayına genişlet:
+        # I_el ⊗ H_ph
+        H_phonon_full = np.kron(
+            I_electronic,
+            H_phonon_small,
+        )
+    
+        # Holstein elektron-fonon bağlaşımı:
+        # H_ep = g Σ_i n_i (b_i† + b_i)
+        H_electron_phonon = np.zeros(
+            (dim, dim),
+            dtype=float,
+        )
+    
+        for electronic_index, electronic_state in enumerate(
+            self.basis
+        ):
+            electron_numbers = np.array([
+                ((electronic_state >> site) & 1)
+                + (
+                    (electronic_state >> (self.n_sites + site)) & 1
+                )
+                for site in range(self.n_sites)
+            ])
+    
+            for phonon_index, phonons in enumerate(
+                self.phonon_basis
+            ):
+                row = (
+                    electronic_index * n_ph
+                    + phonon_index
+                )
+    
+                for site in range(self.n_sites):
+                    n = phonons[site]
+    
+                    # b_i† |n> = sqrt(n + 1) |n + 1>
+                    if n < self.n_phonon_max:
+                        new_phonons = list(phonons)
+                        new_phonons[site] = n + 1
+    
+                        column = self.phonon_basis_index[
+                            tuple(new_phonons)
+                        ]
+    
+                        target = (
+                            electronic_index * n_ph
+                            + column
+                        )
+    
+                        H_electron_phonon[
+                            row, target
+                        ] += (
+                            self.g
+                            * electron_numbers[site]
+                            * np.sqrt(n + 1)
+                        )
+    
+                    # b_i |n> = sqrt(n) |n - 1>
+                    if n > 0:
+                        new_phonons = list(phonons)
+                        new_phonons[site] = n - 1
+    
+                        column = self.phonon_basis_index[
+                            tuple(new_phonons)
+                        ]
+    
+                        target = (
+                            electronic_index * n_ph
+                            + column
+                        )
+    
+                        H_electron_phonon[
+                            row, target
+                        ] += (
+                            self.g
+                            * electron_numbers[site]
+                            * np.sqrt(n)
+                        )
+    
+        # Toplam Hubbard-Holstein Hamiltonyeni
+        H = (
+            H_electronic_full
+            + H_phonon_full
+            + H_electron_phonon
+        )
+    
+        # Hermitiklik kontrolü
+        np.testing.assert_allclose(
+            H,
+            H.conj().T,
+            rtol=1e-12,
+            atol=1e-12,
+        )
+    
+        return (
+            H,
+            H_electronic_full,
+            H_phonon_full,
+            H_electron_phonon,
+        )
+
+    def solve(self):
+        """Hubbard-Holstein sisteminin tam çözümünü hesapla."""
+
+        (
+            H,
+            H_electronic,
+            H_phonon,
+            H_electron_phonon,
+        ) = self.hamiltonian()
+
+        energies, eigenvectors = np.linalg.eigh(H)
+
+        E0 = float(energies[0])
+        psi0 = eigenvectors[:, 0]
+
+        probabilities = np.abs(psi0) ** 2
+
+        # Elektronik temel durum bileşenlerinin olasılık ağırlıkları.
+        electronic_probabilities = (
+            probabilities.reshape(
+                self.dimension,
+                self.phonon_dimension,
+            ).sum(axis=1)
+        )
+
+        double_counts = np.array([
+            self._double_occupancy_count(state)
+            for state in self.basis
+        ])
+
+        double_total = float(
+            electronic_probabilities @ double_counts
+        )
+
+        # Toplam fonon sayısı beklentisi.
+        phonon_counts = np.array([
+            sum(phonons)
+            for phonons in self.phonon_basis
+        ])
+
+        phonon_probabilities = (
+            probabilities.reshape(
+                self.dimension,
+                self.phonon_dimension,
+            ).sum(axis=0)
+        )
+
+        phonon_total = float(
+            phonon_probabilities @ phonon_counts
+        )
+
+        return {
+            "hamiltonian": H,
+            "electronic_hamiltonian": H_electronic,
+            "phonon_hamiltonian": H_phonon,
+            "electron_phonon_hamiltonian": (
+                H_electron_phonon
+            ),
+            "energies": energies,
+            "eigenvectors": eigenvectors,
+            "E0": E0,
+            "psi0": psi0,
+            "double_occupancy_total": double_total,
+            "double_occupancy_per_site": (
+                double_total / self.n_sites
+            ),
+            "phonon_number_total": phonon_total,
+            "phonon_number_per_site": (
+                phonon_total / self.n_sites
+            ),
+            "residual": float(
+                np.linalg.norm(H @ psi0 - E0 * psi0)
+            ),
+        }
+
+    def report(self):
+        """Hubbard-Holstein çözümünü yazdır ve döndür."""
+
+        result = self.solve()
+
+        print(f"Konum sayısı: {self.n_sites}")
+        print(f"Elektronik durum sayısı: {self.dimension}")
+        print(f"Fonon konfigürasyon sayısı: {self.phonon_dimension}")
+        print(f"Toplam Hilbert uzayı boyutu: {self.total_dimension}")
+        print(f"Fonon kesimi: 0..{self.n_phonon_max}")
+        print(f"Fonon frekansı omega: {self.omega:g}")
+        print(f"Elektron-fonon bağlaşımı g: {self.g:g}")
+        print(
+            f"Temel durum enerjisi: "
+            f"{result['E0']:.12f}"
+        )
+        print(
+            "Toplam çift doluluk beklentisi: "
+            f"{result['double_occupancy_total']:.12f}"
+        )
+        print(
+            "Konum başına ortalama çift doluluk: "
+            f"{result['double_occupancy_per_site']:.12f}"
+        )
+        print(
+            "Toplam fonon sayısı beklentisi: "
+            f"{result['phonon_number_total']:.12f}"
+        )
+        print(
+            "Konum başına ortalama fonon sayısı: "
+            f"{result['phonon_number_per_site']:.12f}"
+        )
+        print(
+            "Özvektör artık normu: "
+            f"{result['residual']:.3e}"
+        )
+
+        return result
+
+    def plot_spectrum(self, compare_without_diagonals=False):
+        """Hubbard-Holstein spektrumunu çiz.
+    
+        Parameters
+        ----------
+        compare_without_diagonals : bool, optional
+            True ise, köşegen sıçramaların olmadığı t'=0 referans
+            spektrumu da aynı grafikte gösterilir.
+        """
+    
+        result = self.solve()
+        energies = result["energies"]
+        indices = np.arange(self.total_dimension)
+    
+        fig, ax = plt.subplots(
+            figsize=(9, 4.5),
+            constrained_layout=True,
+        )
+    
+        if compare_without_diagonals:
+            reference = np.linalg.eigvalsh(
+                self.hamiltonian(t_prime=0.0)
+            )
+    
+            ax.plot(
+                indices,
+                reference,
+                "o",
+                markersize=5,
+                alpha=0.7,
+                label="Without diagonals: t′ = 0",
+            )
+    
+        ax.plot(
+            indices,
+            energies,
+            ".",
+            markersize=3,
+            label="Exact spectrum",
+        )
+    
+        if "E0" in result:
+            ax.axhline(
+                result["E0"],
+                color="tab:red",
+                linestyle="--",
+                label=f"E0 = {result['E0']:.6f}",
+            )
+    
+        ax.set(
+            xlabel="Eigenvalue index",
+            ylabel="Energy",
+            title=(
+                "Hubbard-Holstein spectrum\n"
+                f"t={self.t:g}, t′={self.t_prime:g}, "
+                f"U={self.U:g}, ω={self.omega:g}, "
+                f"g={self.g:g}"
+            ),
+        )
+    
+        ax.grid(alpha=0.3)
+        ax.legend()
+        plt.show()
+    
+        return fig, ax
+
+    def draw_graph(
+        self,
+        theme="technical_dark",
+        node_size=900,
+        show=True,
+        **layout_options,
+    ):
+        """
+        Elektronik bağlantı grafını Keçeci Layout ile çiz.
+
+        Fononlar grafın ayrı düğümleri değildir; her elektronik
+        konuma bağlı yerel titreşim serbestlik dereceleridir.
+        """
+
+        return super().draw_graph(
+            theme=theme,
+            node_size=node_size,
+            show=show,
+            **layout_options,
+        )
+
+    def solve_degenerate(self, tolerance=1e-10):
+        """
+        Temel durum dejenere ise eşit ağırlıklı temel durum
+        altuzayı için yoğunluk matrisi ve gözlenebilir değerleri hesapla.
+        """
+    
+        H = self.hamiltonian()[0]
+        energies, eigenvectors = np.linalg.eigh(H)
+    
+        E0 = float(energies[0])
+        degeneracy = int(
+            np.sum(np.abs(energies - E0) <= tolerance)
+        )
+    
+        ground_vectors = eigenvectors[:, :degeneracy]
+    
+        rho0 = (
+            ground_vectors
+            @ ground_vectors.conj().T
+            / degeneracy
+        )
+    
+        # Çift doluluk operatörü.
+        D = np.zeros((self.total_dimension, self.total_dimension))
+    
+        for electronic_index, electronic_state in enumerate(
+            self.basis
+        ):
+            double_count = self._double_occupancy_count(
+                electronic_state
+            )
+    
+            for phonon_index in range(
+                self.phonon_dimension
+            ):
+                row = (
+                    electronic_index * self.phonon_dimension
+                    + phonon_index
+                )
+                D[row, row] = double_count
+    
+        # Toplam fonon sayısı operatörü.
+        N_ph = np.zeros((self.total_dimension, self.total_dimension))
+    
+        for electronic_index in range(self.dimension):
+            for phonon_index, phonons in enumerate(
+                self.phonon_basis
+            ):
+                row = (
+                    electronic_index * self.phonon_dimension
+                    + phonon_index
+                )
+                N_ph[row, row] = sum(phonons)
+    
+        double_total = float(np.trace(rho0 @ D))
+        phonon_total = float(np.trace(rho0 @ N_ph))
+    
+        return {
+            "E0": E0,
+            "degeneracy": degeneracy,
+            "ground_state_density_matrix": rho0,
+            "ground_vectors": ground_vectors,
+            "double_occupancy_total": double_total,
+            "double_occupancy_per_site": (
+                double_total / self.n_sites
+            ),
+            "phonon_number_total": phonon_total,
+            "phonon_number_per_site": (
+                phonon_total / self.n_sites
+            ),
+        }
+
+
 def show_menu():
     """
     KEÇECİ Layout Menüsü – Tüm fonksiyonlar eksiksiz, ardışık numaralar, 
@@ -8929,19 +9827,19 @@ def show_menu():
         ])
 
         # 2. Özgün inşa motoru ile grafiğin oluşturulması
-        G = kl.kececi_from_matrix(w)
+        G = kececi_from_matrix(w)
 
         # 3. Ardışık-Zigzag (Sequential-Zigzag) koordinatlarının hesaplanması
-        layout = kl.kececi_layout(G, primary_spacing=2.0, secondary_spacing=2.0)
+        layout = kececi_layout(G, primary_spacing=2.0, secondary_spacing=2.0)
 
         # 4. Özgün blueprint teması seçilerek grafiğin çizilmesi
         plt.figure(figsize=(7, 7))
-        kl.kececi_draw(G, layout, node_size=700, theme="blueprint_blue")
+        kececi_draw(G, layout, node_size=700, theme="blueprint_blue")
 
         # 5. Geometrik orta nokta hesaplamalı kenar etiketlerinin eklenmesi
         # Görünürlük sorunu nedeniyle font_color siyah (#000000) olarak ayarlanmıştır.
-        edge_attrs = kl.kececi_get_edge_weights(G, "weight")
-        kl.kececi_draw_edge_labels(G, pos=layout, edge_labels=edge_attrs, font_color="#000000")
+        edge_attrs = kececi_get_edge_weights(G, "weight")
+        kececi_draw_edge_labels(G, pos=layout, edge_labels=edge_attrs, font_color="#000000")
 
         print("-> Grafik penceresi açıldı. Kapatıldığında menüye dönülecektir.")
         plt.show()
