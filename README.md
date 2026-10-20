@@ -148,11 +148,13 @@ show_menu()
 
 ---
 
-KEÇECİ Layout GÖRSELLEŞTİRME MENÜSÜ
-======================================================================
+
+=============================================================================
+               Keçeci Layout Visulation Munu (Görselleştirme Menüsü)
+=============================================================================
 
   TEMEL STİLLER
-  --------------------------------------------------------------------
+  -----------------------------------------------------------------------------
    1. Curved Style
    2. Standart 2D Layout
    3. Transparent Kenarlar
@@ -161,7 +163,7 @@ KEÇECİ Layout GÖRSELLEŞTİRME MENÜSÜ
    6. 3D Heliks Görünümü
 
   KENAR & PARAMETRE ANALİZ
-  --------------------------------------------------------------------
+  -----------------------------------------------------------------------------
    7. Edge‑Aware vs Basic Karşılaştırması
    8. ZZ Şampiyon Testi
    9. Bayesian Optimizasyon Demosu
@@ -170,7 +172,7 @@ KEÇECİ Layout GÖRSELLEŞTİRME MENÜSÜ
   12. secondary_start & Aralık Etkisi
 
   PERİYODİK TABLO
-  --------------------------------------------------------------------
+  -----------------------------------------------------------------------------
   13. Hızlı 3D Periyodik Tablo
   14. 4'lü Karşılaştırma Figürü
   15. Demo Serisi (Otomatik)
@@ -180,7 +182,7 @@ KEÇECİ Layout GÖRSELLEŞTİRME MENÜSÜ
   19. Element Bilgisi (sembol ile)
 
   ALTERNATİF YERLEŞİMLER
-  --------------------------------------------------------------------
+  -----------------------------------------------------------------------------
   20. Barbell Layout
   21. Silindirik Layout (3D)
   22. Kübik Layout (3D)
@@ -189,7 +191,7 @@ KEÇECİ Layout GÖRSELLEŞTİRME MENÜSÜ
   25. Torik Layout (3D)
 
   KÜTÜPHANE DESTEĞİ & KARŞILAŞTIRMALAR
-  --------------------------------------------------------------------
+  -----------------------------------------------------------------------------
   26. igraph Graf Çizimi
   27. Keçeci vs Kamada‑Kawai
   28. Rastgele Graf Oluştur ve Çiz (NetworkX)
@@ -197,7 +199,7 @@ KEÇECİ Layout GÖRSELLEŞTİRME MENÜSÜ
   30. NetworKit Graf Testi
 
   GELİŞMİŞ ANALİZ & DİĞER
-  --------------------------------------------------------------------
+  -----------------------------------------------------------------------------
   31. Tek Graf ZZ Skoru Hesapla
   32. Edge Crossing Analizi (K3,3)
   33. Graphillion Graf Denemesi
@@ -209,7 +211,7 @@ KEÇECİ Layout GÖRSELLEŞTİRME MENÜSÜ
   39. GNN‑GRU Renkli Karşılaştırma (Tüm Layout'lar)
 
   SATRANÇ & OYUN AĞAÇLARI
-  --------------------------------------------------------------------
+  -----------------------------------------------------------------------------
   41. Oyun Ağacı (Satranç/Go) Görselleştirme
   42. Satranç Kısa Matlar – 2B Keçeci Layout (Zigzag)
   43. Satranç Kısa Matlar – 3B Keçeci Layout (Silindirik)
@@ -222,25 +224,25 @@ KEÇECİ Layout GÖRSELLEŞTİRME MENÜSÜ
   50. Rastgele Satranç Açılış Hamle Sırası
 
   FİZİKSEL MODELLER
-  --------------------------------------------------------------------
+  -----------------------------------------------------------------------------
   51. Termodinamik Kavram Haritası (Keçeci)
   52. Kuantum Mekaniği Kavram Haritası (Keçeci)
   53. Kuantum Alan Teorisi Kavram Haritası (Keçeci)
 
   DAG ANALİZLERİ
-  --------------------------------------------------------------------
+  -----------------------------------------------------------------------------
   54. 2B DAG vs Transitive Reduction (Keçeci)
   55. 3B DAG vs Transitive Reduction (Silindirik)
 
   Kuantum Devre Analizleri ve Temsilleri
-  --------------------------------------------------------------------
+  -----------------------------------------------------------------------------
   56. OR3 Gate Circuit – VEYA(3) Kapısı Devresi, 3D Helix Sanatsal Temsili
   57. OR3 Gate Circuit – VEYA(3) Kapısı Devresi (DAG)
   58. OR3 Gate Circuit – VEYA(3) Kapısı Devresi, 3D Helix Sanatsal Temsili
   59. Quantum Circuit – Kuantum Devresi
 
   Min_Max_Cut Problemi
-  --------------------------------------------------------------------
+  -----------------------------------------------------------------------------
   60. Min_Max Cut Problemi, Tekrarlı, Simetrik
   61. Min_Max Cut Problemi, Tekrarsız, Simetrik
   62. Min_Max Cut Problemi, Tekrarlı, Simetrik
@@ -250,19 +252,34 @@ KEÇECİ Layout GÖRSELLEŞTİRME MENÜSÜ
   66. Quantum Approximate Optimization Algorithm (QAOA), optimisation
   67. Quantum Approximate Optimization Algorithm (QAOA), visualitasion
   68. Quantum Approximate Optimization Algorithm (QAOA), benchmark
-      
+
   bipartite
-  --------------------------------------------------------------------
+  -----------------------------------------------------------------------------
   69. Keçeci Layout ile Bipartite MAX-CUT Grafiği Çizimi
 
-  --------------------------------------------------------------------
+  3D Hiperbolik Poincaré Küresi Yerleşimi (QAOA/GNN)
+  -----------------------------------------------------------------------------
   70. 3D Hiperbolik Poincaré Küresi Yerleşimi (QAOA/GNN)
-      
-  --------------------------------------------------------------------
-  72. Kececilayout Özgün Matris Dönüşümü ve Blueprint Temalı Çizim Gösterimi
 
-  --------------------------------------------------------------------
-   0. Çıkış
+  Theme
+  -----------------------------------------------------------------------------
+  71. Kececilayout Özgün Matris Dönüşümü ve Blueprint Temalı Çizim Gösterimi
+
+  Hubbard Model
+  -----------------------------------------------------------------------------
+  72. Hubbard Model_1
+  73. Hubbard Model_2
+  74. Hubbard Model_3
+  75. Hubbard Model_4
+  76. Hubbard-Holstein Model
+
+  -----------------------------------------------------------------------------
+   0. Çıkış (Exit)
+=============================================================================
+
+Seçiminiz (Your choice) (0‑76):  0
+
+Program sonlandırılıyor (The program is being terminated)...
 
 ---
 
