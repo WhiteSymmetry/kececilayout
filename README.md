@@ -107,6 +107,8 @@ styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 
 **v0.7.2:** kececi_draw
 
+**v0.7.3:** Hubbard Model, Hubbard-Holstein
+
 ---
 
 Keçeci Layout is a high-performance, deterministic graph visualization library designed for linear, sequential, and highly complex relational network structures. Unlike traditional force-directed algorithms that rely on iterative physical simulations (which choke on large datasets), Keçeci Layout leverages pure analytic geometry and non-iterative functional mappings, offering unprecedented calculation velocities.
