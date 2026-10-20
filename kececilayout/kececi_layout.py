@@ -52,9 +52,10 @@ import itertools # Graphillion için eklendi
 import math
 from matplotlib.collections import LineCollection
 from matplotlib.colors import hsv_to_rgb
-from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.lines import Line2D
 from matplotlib.patches import FancyArrowPatch, Circle
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import networkit as nk # pip -U install networkit
 import networkx as nx
 from networkx.algorithms import bipartite
@@ -9844,6 +9845,372 @@ def show_menu():
         print("-> Grafik penceresi açıldı. Kapatıldığında menüye dönülecektir.")
         plt.show()
 
+
+    def hubbardmodel1():
+        # --------------------------------------------------
+        # 1. Model parametreleri
+        # --------------------------------------------------
+        t = 1.0
+        t_prime = 0.3
+
+        nearest_edges = [
+            (0, 1),
+            (0, 2),
+            (2, 3),
+            (1, 3),
+        ]
+
+        diagonal_edges = [
+            (0, 3),
+            (1, 2),
+        ]
+
+
+        # --------------------------------------------------
+        # 2. NetworkX grafı
+        # --------------------------------------------------
+        G = nx.Graph()
+        G.add_nodes_from(range(4))
+
+        for i, j in nearest_edges:
+            G.add_edge(i, j, hopping=t, kind="nearest")
+
+        for i, j in diagonal_edges:
+            G.add_edge(i, j, hopping=t_prime, kind="diagonal")
+
+
+        # --------------------------------------------------
+        # 3. Keçeci Layout koordinatları
+        # --------------------------------------------------
+        pos = kececi_layout(
+            G,
+            primary_spacing=2.0,
+            secondary_spacing=1.2,
+        )
+
+
+        # --------------------------------------------------
+        # 4. Çizim
+        # --------------------------------------------------
+        fig, ax = plt.subplots(
+            figsize=(8, 7),
+            constrained_layout=True,
+        )
+
+        # Özgün kare kafesin kenarları
+        nx.draw_networkx_edges(
+            G,
+            pos,
+            edgelist=nearest_edges,
+            edge_color="tab:blue",
+            width=2.5,
+            style="solid",
+            ax=ax,
+        )
+
+        # Özgün kare kafesin köşegenleri
+        nx.draw_networkx_edges(
+            G,
+            pos,
+            edgelist=diagonal_edges,
+            edge_color="tab:red",
+            width=2.5,
+            style="dashed",
+            ax=ax,
+        )
+
+        # Düğümler
+        nx.draw_networkx_nodes(
+            G,
+            pos,
+            node_size=1100,
+            node_color="lightblue",
+            edgecolors="black",
+            linewidths=1.5,
+            ax=ax,
+        )
+
+        # Düğüm numaraları
+        nx.draw_networkx_labels(
+            G,
+            pos,
+            font_size=16,
+            font_color="black",
+            ax=ax,
+        )
+
+        legend_handles = [
+            Line2D(
+                [0], [0],
+                color="tab:blue",
+                linewidth=2.5,
+                linestyle="-",
+                label=f"Kenar sıçraması: t = {t:g}",
+            ),
+            Line2D(
+                [0], [0],
+                color="tab:red",
+                linewidth=2.5,
+                linestyle="--",
+                label=f"Köşegen sıçraması: t′ = {t_prime:g}",
+            ),
+        ]
+
+        ax.legend(
+            handles=legend_handles,
+            loc="upper left",
+            frameon=True,
+        )
+
+        ax.set_title(
+            "Keçeci Layout ile dört konumlu Hubbard grafı\n"
+            "4 düğüm, 6 bağ",
+            fontsize=14,
+        )
+
+        ax.set_aspect("equal", adjustable="box")
+        ax.margins(0.25)
+        ax.axis("off")
+
+        plt.show()
+
+        print("Keçeci Layout koordinatları:")
+        for node in G.nodes:
+            print(f"{node}: {pos[node]}")
+
+
+    def hubbardmodel2():
+        # --------------------------------------------------
+        # 1. Model parametreleri
+        # --------------------------------------------------
+        t = 1.0
+        t_prime = 0.3
+
+        nearest_edges = [
+            (0, 1),
+            (0, 2),
+            (2, 3),
+            (1, 3),
+        ]
+
+        diagonal_edges = [
+            (0, 3),
+            (1, 2),
+        ]
+
+
+        # --------------------------------------------------
+        # 2. NetworkX grafı
+        # --------------------------------------------------
+        G = nx.Graph()
+        G.add_nodes_from(range(4))
+
+        for i, j in nearest_edges:
+            G.add_edge(i, j, weight=t, kind="nearest")
+
+        for i, j in diagonal_edges:
+            G.add_edge(i, j, weight=t_prime, kind="diagonal")
+
+
+        # --------------------------------------------------
+        # 3. Keçeci Layout koordinatları
+        # --------------------------------------------------
+        layout = kececi_layout(
+            G,
+            primary_spacing=2.0,
+            secondary_spacing=1.2,
+            primary_direction="left-to-right",
+            secondary_start="up",
+        )
+
+
+        # --------------------------------------------------
+        # 4. Paketin kendi çizim motoru
+        # --------------------------------------------------
+        plt.figure(figsize=(8, 8))
+
+        kececi_draw(
+            G,
+            layout,
+            node_size=900,
+            theme="technical_dark",
+        )
+
+        plt.show()
+
+
+        # --------------------------------------------------
+        # 5. Koordinatları yazdır
+        # --------------------------------------------------
+        print("Keçeci Layout koordinatları:")
+        for node in sorted(G.nodes):
+            print(f"{node}: {layout[node]}")
+
+    def hubbardmodel3():
+        model = HubbardPlaquette(
+            t=1.0,
+            t_prime=0.3,
+            U=0.01,
+            n_up=2,
+            n_down=2,
+        )
+
+        # Tam çözüm ve sayısal bilgiler
+        result = model.report()
+
+        # Paketin kendi çizim motoruyla bağlantı grafı
+        G, pos = model.draw_graph(
+            theme="technical_dark",
+        )
+
+        # Köşegenli ve köşegensiz enerji spektrumları
+        fig, ax = model.plot_spectrum(
+            compare_without_diagonals=True,
+        )
+
+        E0 = result["E0"]
+        psi0 = result["psi0"]
+        energies = result["energies"]
+
+        print("E0 =", E0)
+        print("Dalga fonksiyonunun normu =", np.linalg.norm(psi0))
+
+        t_prime_values = np.linspace(-1.5, 1.5, 151)
+
+        ground_energies = np.array([
+            np.linalg.eigvalsh(
+                model.hamiltonian(t_prime=tp)
+            )[0]
+            for tp in t_prime_values
+        ])
+
+        fig, ax = plt.subplots(
+            figsize=(7, 4),
+            constrained_layout=True,
+        )
+
+        ax.plot(
+            t_prime_values,
+            ground_energies,
+            color="tab:purple",
+        )
+
+        ax.axvline(
+            model.t_prime,
+            color="gray",
+            linestyle="--",
+            label=f"Selected t′ = {model.t_prime:g}",
+        )
+
+        ax.set(
+            xlabel="Diagonal hopping t′",
+            ylabel="Exact ground-state energy",
+            title="Dependence of ground-state energy on diagonal hopping",
+        )
+
+        ax.grid(alpha=0.3)
+        ax.legend()
+        plt.show()
+
+
+    def hubbardmodel4():
+        model = HubbardPlaquette(
+            t=1.0,
+            t_prime=0.3,
+            U=0.01,
+            n_up=2,
+            n_down=2,
+        )
+
+        # İstenen çözüm
+        result = model.report()
+
+        # Keçeci Layout ile graf çizimi
+        G, pos = model.draw_graph(
+            theme="technical_dark",
+        )
+
+        # Tam enerji spektrumu
+        fig, ax = model.plot_spectrum()
+
+        # Temel durum dalga fonksiyonu
+        psi0 = result["psi0"]
+
+        print("Dalga fonksiyonunun normu:")
+        print(np.linalg.norm(psi0))
+
+        psi0 /= np.linalg.norm(psi0)
+
+        print(f"Yeniden normalize edilmiş norm: {np.linalg.norm(psi0):.16f}")
+        print(f"Norm sapması: {abs(np.linalg.norm(psi0) - 1.0):.3e}")
+
+        psi0 = result["psi0"]
+
+        max_index = np.argmax(np.abs(psi0))
+
+        if psi0[max_index] < 0:
+            psi0 = -psi0
+
+        print("İşaret düzeltilmiş temel durum bileşenleri:")
+        print(psi0)
+
+    def hubbardholsteinmodel():
+        # Fononlu model
+        model = HubbardHolsteinPlaquette(
+            t=1.0,
+            t_prime=0.3,
+            U=0.01,
+            n_up=2,
+            n_down=2,
+            omega=1.0,
+            g=0.2,
+            n_phonon_max=2,
+        )
+
+        result = model.report()
+
+        # Keçeci Layout ile elektronik bağlantı grafı
+        G, pos = model.draw_graph(
+            theme="technical_dark",
+        )
+
+        # Hubbard-Holstein spektrumu
+        fig, ax = model.plot_spectrum()
+
+        # Temel durum vektörü
+        psi0 = result["psi0"]
+        psi0 /= np.linalg.norm(psi0)
+
+        print(f"Normalize edilmiş dalga fonksiyonu normu: {np.linalg.norm(psi0):.16f}")
+
+        degenerate = model.solve_degenerate()
+
+        print(f"Temel durum enerjisi: {degenerate['E0']:.12f}")
+        print(f"Temel durum dejenere mi: {degenerate['degeneracy'] > 1}")
+        print(f"Dejenerasyon: {degenerate['degeneracy']}")
+        print(
+            "Altuzay ortalamalı çift doluluk: "
+            f"{degenerate['double_occupancy_total']:.12f}"
+        )
+        print(
+            "Altuzay ortalamalı fonon sayısı: "
+            f"{degenerate['phonon_number_total']:.12f}"
+        )
+
+        H, H_el, H_ph, H_ep = model.hamiltonian()
+
+        print("Elektronik Hamiltonyen:", H_el.shape)
+        print("Fononik Hamiltonyen:  ", H_ph.shape)
+        print("Bağlaşım Hamiltonyeni:", H_ep.shape)
+        print("Toplam Hamiltonyen:   ", H.shape)
+
+        assert H_el.shape == (model.total_dimension, model.total_dimension)
+        assert H_ph.shape == (model.total_dimension, model.total_dimension)
+        assert H_ep.shape == (model.total_dimension, model.total_dimension)
+        assert H.shape == (model.total_dimension, model.total_dimension)
+
+        print("Boyutlar uyumlu.")
+
     menu = {
         "1": ("Curved Style", lambda: _draw_curved(_test_graph_nx(10, 0.3))),
         "2": ("Standart 2D Layout", lambda: (draw_kececi(_test_graph_nx(12, 0.25), style='default', layout='2d'), plt.show())),
@@ -9916,6 +10283,11 @@ def show_menu():
         "69": ("Keçeci Layout ile Bipartite MAX-CUT Grafiği Çizimi", bipartite),
         "70": ("3D Hiperbolik Poincaré Küresi Yerleşimi (QAOA/GNN)", run_hyperbolic_3d_demo),
         "71": ("Kececilayout Özgün Matris Dönüşümü ve Blueprint Temalı Çizim Gösterimi", theme_draw),
+        "72": ("Hubbard Model_1", hubbardmodel1),
+        "73": ("Hubbard Model_2", hubbardmodel2),
+        "74": ("Hubbard Model_3", hubbardmodel3),
+        "75": ("Hubbard Model_4", hubbardmodel4),
+        "76": ("Hubbard-Holstein Model", hubbardholsteinmodel),
 
 
     }
@@ -9938,41 +10310,42 @@ def show_menu():
         ("bipartite", range(69, 70)),
         ("3D Hiperbolik Poincaré Küresi Yerleşimi (QAOA/GNN)", range(70, 71)),
         ("Theme", range(71, 72)),
+        ("Hubbard Model", range(72, 77)),
     ]
 
     # -------------------------------------------------------------------------
     # Ana döngü
     # -------------------------------------------------------------------------
     while True:
-        print("\n" + "="*72)
+        print("\n" + "="*77)
         print(" "*15 + "Keçeci Layout Visulation Munu (Görselleştirme Menüsü)")
-        print("="*72)
+        print("="*77)
         for grup_adi, aralik in groups:
             print(f"\n  {grup_adi}")
-            print("  " + "-"*72)
+            print("  " + "-"*77)
             for num in aralik:
                 key = str(num)
                 if key in menu:
                     desc, _ = menu[key]
                     print(f"  {num:>2}. {desc}")
-        print("\n  " + "-"*72)
-        print("   0. Çıkış")
-        print("="*72)
+        print("\n  " + "-"*77)
+        print("   0. Çıkış (Exit)")
+        print("="*77)
 
-        secim = input("Seçiminiz (0‑71): ").strip()
+        secim = input("Seçiminiz (Your choice) (0‑76): ").strip()
         if secim == '0':
-            print("Program sonlandırılıyor...")
+            print("Program sonlandırılıyor (The program is being terminated)...")
             break
         elif secim in menu:
             desc, func = menu[secim]
-            print(f"\n{desc} çalıştırılıyor...")
+            print(f"\n{desc} çalıştırılıyor (is being run)...")
             try:
                 func()
             except Exception as e:
-                print(f"Hata oluştu: {e}")
-            input("\nDevam için Enter...")
+                print(f"Hata oluştu (An error occurred): {e}")
+            input("\nDevam için Enter (Press Enter to continue)...")
         else:
-            print("Geçersiz seçim! Lütfen listeden bir sayı girin.")
+            print("Geçersiz seçim! Lütfen listeden bir sayı girin (Invalid selection! Please enter a number from the list).")
 
 # =============================================================================
 # MODULE TEST CODE
