@@ -4,33 +4,33 @@
 kececilayout - A Python package for sequential-zigzag graph layouts
 and advanced visualizations compatible with multiple graph libraries.
 
-**v0.2.7**: Curved, transparent, 3D, and `expanding=True` styles supported.
+v0.2.7: Curved, transparent, 3D, and `expanding=True` styles supported.
 
-**v0.5.0:** 
+v0.5.0: 
 
 layouts = ['2d', 'cylindrical', 'cubic', 'spherical', 'elliptical', 'toric']
 
 styles = ['standard', 'default', 'curved', 'helix', '3d', 'weighted', 'colored']
 
-**v0.5.1:** edge (kececi_layout_edge)
+v0.5.1: edge (kececi_layout_edge)
 
-**v0.6.0:** periodic table
+v0.6.0: periodic table
 
-**v0.6.3:** KececiBayesianOptimizer, kececi_barbell_layout
+v0.6.5: show_menu()
 
-**v0.6.5:** show_menu()
+v0.6.6: DAG & Transitive redused DAG
 
-**v0.6.6:** DAG & Transitive redused DAG
+v0.6.7: Quantum Circuit: Kuantum Devresi
 
-**v0.6.7:** Quantum Circuit: Kuantum Devresi
+v0.6.8: Min_Max Cut Problem & Quantum Approximate Optimization Algorithm (QAOA)
 
-**v0.6.8:** Min_Max Cut Problem & Quantum Approximate Optimization Algorithm (QAOA)
+v0.6.9: Bipartite
 
-**v0.6.9:** Bipartite
+v0.7.1: 3D Hiperbolik Poincaré Küresi Yerleşimi (QAOA/GNN)
 
-**v0.7.1:** 3D Hiperbolik Poincaré Küresi Yerleşimi (QAOA/GNN)
+v0.7.2: kececi_draw
 
-**v0.7.3:** kececi_draw
+v0.7.3: Hubbard Model, Hubbard-Holstein
 
 """
 
@@ -39,7 +39,7 @@ import inspect
 import warnings
 
 # Paket sürüm numarası
-__version__ = "0.7.2"
+__version__ = "0.7.3"
 
 # =============================================================================
 # OTOMATİK İÇE AKTARMA VE __all__ OLUŞTURMA
@@ -59,6 +59,10 @@ from .kececi_layout import (  # Veya fonksiyonların bulunduğu asıl modül
     kececi_layout_3d_helix_parametric,
     kececi_layout_v4,
     KececiHyperbolic3D,
+    KececiZigzagValidator,
+    KececiBayesianOptimizer,
+    HubbardPlaquette,
+    HubbardHolsteinPlaquette,
     
     # Library-specific layout functions
     kececi_layout_nx,
@@ -134,8 +138,6 @@ from .kececi_layout import (  # Veya fonksiyonların bulunduğu asıl modül
     classic_small_barbell,
     extended_barbell_layout,
     zigzag_kececi_layout,
-    KececiZigzagValidator,
-    KececiBayesianOptimizer,
     center_layout,
     scale_layout,
     gnn_gru_colored_comparison,
@@ -219,6 +221,8 @@ __all__ = [
     
     # Library-specific layout functions
     'KececiHyperbolic3D',
+    'HubbardPlaquette',
+    'HubbardHolsteinPlaquette',
     'kececi_layout_nx',
     'kececi_layout_networkx',
     'kececi_layout_ig',
