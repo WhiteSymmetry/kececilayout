@@ -33,7 +33,6 @@ requirements:
    - python >=3.11
    - numpy
    - pip
-   - numpy
    - pandas
    - scipy
    - matplotlib
